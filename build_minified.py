@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""Genera dist/televisita_fix.html minificando il JS dentro <script>...</script>.
+"""Genera docs/televisita_fix.html minificando il JS dentro <script>...</script>.
 Il file alla radice (televisita_fix.html) resta leggibile per il lavoro di sviluppo;
-solo dist/televisita_fix.html va pubblicato (è quello che GitHub Pages serve)."""
+solo docs/televisita_fix.html va pubblicato (è la cartella che GitHub Pages serve)."""
 import re
 import subprocess
 import sys
 from pathlib import Path
 
 SRC = Path(__file__).parent / "televisita_fix.html"
-DIST = Path(__file__).parent / "dist" / "televisita_fix.html"
+DIST = Path(__file__).parent / "docs" / "televisita_fix.html"
 
 html = SRC.read_text(encoding="utf-8")
 
