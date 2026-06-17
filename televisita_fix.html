@@ -780,6 +780,16 @@
                         <i class="bi bi-check-circle me-1"></i><span id="patient-consent-accept-btn-text"></span>
                     </button>
                 </div>
+                <div id="patient-otp-step" class="d-none mt-3">
+                    <p class="text-muted small mb-2" id="patient-otp-instructions"></p>
+                    <input type="text" id="patient-otp-input" class="form-control mb-2" inputmode="numeric"
+                        maxlength="4" placeholder="Codice OTP">
+                    <div id="patient-otp-error" class="text-danger small mb-2"></div>
+                    <button class="btn btn-success w-100 fw-bold py-2" id="patient-otp-confirm-btn"
+                        onclick="patientVerifyOtp()">
+                        <i class="bi bi-pen me-1"></i><span id="patient-otp-confirm-btn-text"></span>
+                    </button>
+                </div>
                 <div id="patient-consent-success" class="d-none text-center text-success fw-semibold py-3">
                     <i class="bi bi-check-circle-fill fs-2 d-block mb-2"></i>
                     <span id="patient-consent-success-text"></span>
@@ -2191,6 +2201,10 @@
                 patient_consent_sending: "Invio in corso...",
                 patient_consent_success: "Grazie! Il codice OTP per firmare il consenso è stato inviato alla tua email.",
                 patient_consent_success_noemail: "Documento accettato. Il medico è stato avvisato; riceverai il codice OTP a breve.",
+                patient_otp_instructions: "Abbiamo inviato un codice OTP alla tua email. Inseriscilo qui sotto per firmare il consenso.",
+                patient_otp_confirm_btn: "Firma il Consenso",
+                patient_otp_invalid: "Codice OTP errato. Riprova.",
+                patient_consent_signed_success: "Consenso firmato con successo! Puoi chiudere questa pagina.",
                 email_invite_simulated_title: "Invito e-mail inviato a {patient}",
                 email_invite_simulated_body: "Gentile paziente, la tua televisita è pronta. Clicca sul seguente link per unirti alla videoconferenza: <br><a href='{url}' target='_blank' class='btn btn-sm btn-primary mt-2 text-white'><i class='bi bi-box-arrow-up-right me-1'></i>Accedi alla Televisita</a><br><br><small class='text-muted'>Link diretto: {url}</small>",
                 toast_invite_sent: "Link di invito Jitsi inviato al paziente via e-mail.",
@@ -2431,6 +2445,10 @@
                 patient_consent_sending: "Envoi en cours...",
                 patient_consent_success: "Merci ! Le code OTP pour signer le consentement a été envoyé à votre e-mail.",
                 patient_consent_success_noemail: "Document accepté. Le médecin a été averti ; vous recevrez le code OTP sous peu.",
+                patient_otp_instructions: "Nous avons envoyé un code OTP à votre e-mail. Saisissez-le ci-dessous pour signer le consentement.",
+                patient_otp_confirm_btn: "Signer le Consentement",
+                patient_otp_invalid: "Code OTP incorrect. Veuillez réessayer.",
+                patient_consent_signed_success: "Consentement signé avec succès ! Vous pouvez fermer cette page.",
                 email_invite_simulated_title: "Invitation e-mail envoyée à {patient}",
                 email_invite_simulated_body: "Cher patient, votre télévisite est prête. Cliquez sur le lien suivant pour rejoindre la visioconférence : <br><a href='{url}' target='_blank' class='btn btn-sm btn-primary mt-2 text-white'><i class='bi bi-box-arrow-up-right me-1'></i>Accéder à la Télévisite</a><br><br><small class='text-muted'>Lien direct : {url}</small>",
                 toast_invite_sent: "Lien d'invitation Jitsi envoyé au patient par e-mail.",
@@ -3154,7 +3172,20 @@
             // Aggiorna solo la televisita interessata, senza toccare il resto dello stato (a differenza del merge "shared" sotto).
             if (data.type === 'consent_event') {
                 const tv = S.televisite.find(tvItem => tvItem.id === data.tvId);
-                if (tv && tv.consentStatus === 'inviato' && !tv.consentOtp) {
+                if (!tv) return;
+
+                if (data.action === 'sign') {
+                    // Il paziente ha inserito da solo l'OTP ricevuto via email e ha firmato direttamente dalla sua pagina.
+                    if (tv.consentStatus !== 'firmato' && (!tv.consentOtp || tv.consentOtp === data.otp)) {
+                        tv.consentStatus = 'firmato';
+                        tv.consentOtp = null;
+                        renderAll();
+                        try { localStorage.setItem('tv_state', JSON.stringify(getSharedStateForStorage())); } catch (_) { }
+                        showToast(t('toast_consent_signed'), 'success');
+                        addNotif('bi-check-circle-fill', t('email_simulated_title', { patient: tv.patient }), t('toast_consent_signed'), 'incoming');
+                        flashBell();
+                    }
+                } else if (tv.consentStatus === 'inviato' && !tv.consentOtp) {
                     tv.consentOtp = data.otp;
                     renderAll();
                     try { localStorage.setItem('tv_state', JSON.stringify(getSharedStateForStorage())); } catch (_) { }
@@ -4121,8 +4152,52 @@
             }
 
             document.getElementById('patient-consent-form').style.display = 'none';
+
+            if (emailSent) {
+                // Il paziente firma da qui stesso inserendo l'OTP appena ricevuto via email,
+                // invece di doverlo comunicare al medico (es. per telefono) perché lo digiti lui.
+                ctx.otp = otp;
+                document.getElementById('patient-otp-instructions').textContent = t('patient_otp_instructions');
+                document.getElementById('patient-otp-confirm-btn-text').textContent = t('patient_otp_confirm_btn');
+                document.getElementById('patient-otp-step').classList.remove('d-none');
+            } else {
+                const successEl = document.getElementById('patient-consent-success');
+                document.getElementById('patient-consent-success-text').textContent = t('patient_consent_success_noemail');
+                successEl.classList.remove('d-none');
+            }
+        }
+
+        async function patientVerifyOtp() {
+            const ctx = patientConsentCtx;
+            if (!ctx || !ctx.otp) return;
+
+            const inputEl = document.getElementById('patient-otp-input');
+            const errEl = document.getElementById('patient-otp-error');
+            const val = inputEl.value.trim();
+
+            if (val !== ctx.otp) {
+                errEl.textContent = t('patient_otp_invalid');
+                inputEl.value = '';
+                inputEl.focus();
+                return;
+            }
+
+            errEl.textContent = '';
+
+            // Stesso canale già usato per lo sblocco OTP: notifica il cruscotto del medico che il consenso è firmato.
+            try { bc.postMessage({ type: 'consent_event', action: 'sign', tvId: ctx.tvId, otp: ctx.otp }); } catch (_) { }
+            try {
+                const encrypted = await encryptPayload({ type: 'consent_event', action: 'sign', tvId: ctx.tvId, otp: ctx.otp }, ctx.room);
+                if (encrypted) {
+                    await publishPatientMqttMessage(ctx.room, { sender: 'patient', iv: encrypted.iv, ciphertext: encrypted.ciphertext });
+                }
+            } catch (err) {
+                console.error('Errore notifica MQTT di firma dalla vista paziente:', err);
+            }
+
+            document.getElementById('patient-otp-step').classList.add('d-none');
             const successEl = document.getElementById('patient-consent-success');
-            document.getElementById('patient-consent-success-text').textContent = emailSent ? t('patient_consent_success') : t('patient_consent_success_noemail');
+            document.getElementById('patient-consent-success-text').textContent = t('patient_consent_signed_success');
             successEl.classList.remove('d-none');
         }
 
