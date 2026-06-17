@@ -3073,6 +3073,21 @@
             } catch (_) { }
         }
 
+        // Unisce due liste per id: l'elemento in arrivo sovrascrive quello locale con lo stesso id
+        // (è la versione più recente), ma nulla che esiste solo in locale viene rimosso.
+        function mergeById(localList, incomingList) {
+            const merged = (localList || []).slice();
+            (incomingList || []).forEach(incomingItem => {
+                const idx = merged.findIndex(item => item.id === incomingItem.id);
+                if (idx === -1) {
+                    merged.push(incomingItem);
+                } else {
+                    merged[idx] = incomingItem;
+                }
+            });
+            return merged;
+        }
+
         function handleIncomingSync(data) {
             if (data.type === 'doc_chunk') {
                 const { docId, chunkIndex, totalChunks, chunkData } = data;
@@ -3166,15 +3181,18 @@
                 }
             }
 
-            S.televisite = shared.televisite;
+            // Unione per id invece di sovrascrittura totale: un dispositivo che si collega per la prima volta
+            // (cache locale vuota, es. un'altra struttura/PC) ha uno stato vuoto finché non riceve la risposta
+            // state_share. Se nel frattempo invia comunque un sync, una sostituzione totale (S.televisite =
+            // shared.televisite) cancellerebbe i dati già presenti sull'altro lato. L'app non ha una funzione
+            // per eliminare una televisita, quindi l'unione per id è sempre sicura: nulla va perso.
+            S.televisite = mergeById(S.televisite, shared.televisite);
+
             // Sincronizza i documenti preservando i dati Base64 locali se l'incoming non li possiede (es. per bozze private o risparmio banda)
             if (shared.docs) {
-                // Conserviamo i documenti privati locali (quelli creati da noi e non condivisi) che non sono presenti nello stato in arrivo
-                const localPrivateDocs = S.docs.filter(ld => ld.by === S.role && ld.shared === false);
-
                 const updatedIncomingDocs = shared.docs.map(incomingDoc => {
                     const localDoc = S.docs.find(ld => ld.id === incomingDoc.id);
-                    
+
                     // Se l'incoming non ha isUploaded ma il locale sì, preservalo
                     if (localDoc && localDoc.isUploaded) {
                         incomingDoc.isUploaded = true;
@@ -3193,20 +3211,15 @@
                     return incomingDoc;
                 });
 
-                // Unisci i documenti in arrivo con i privati locali preservati
-                const mergedDocs = [...updatedIncomingDocs];
-                localPrivateDocs.forEach(localDoc => {
-                    if (!mergedDocs.some(d => d.id === localDoc.id)) {
-                        mergedDocs.push(localDoc);
-                    }
-                });
-
-                S.docs = mergedDocs;
+                // Mantiene qualsiasi documento locale (privato o condiviso) che l'incoming non conosce ancora,
+                // per lo stesso motivo dell'unione delle televisite qui sopra.
+                S.docs = mergeById(S.docs, updatedIncomingDocs);
             }
             S.immReq = shared.immReq;
             S.immRoom = shared.immRoom;
             S.activeRoom = shared.activeRoom;
-            S.emails = shared.emails || [];
+            // Stessa unione per id: la cronologia e-mail non deve sparire solo perché l'altro lato è ancora vuoto.
+            S.emails = mergeById(S.emails, shared.emails || []);
             S.immReqSender = shared.immReqSender ?? null;
 
             if (S.activeRoom) {
