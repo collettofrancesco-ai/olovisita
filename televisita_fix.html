@@ -843,6 +843,25 @@
         </div>
     </div>
 
+    <!-- Vista pubblica per il paziente: link "Entra in Videochiamata" dall'e-mail di invito.
+         Verifica se la televisita è già terminata prima di aprire Jitsi. -->
+    <div id="patient-call-overlay"
+        style="display:none; position:fixed; inset:0; z-index:9000; background:linear-gradient(135deg, rgb(13, 71, 161) 0%, rgb(21, 101, 192) 50%, rgb(0, 121, 107) 100%); overflow-y:auto;">
+        <div class="d-flex align-items-center justify-content-center" style="min-height:100vh; padding:2rem 1rem;">
+            <div style="max-width:480px; width:100%; background:#fff; border-radius:20px; padding:2.5rem 2rem; box-shadow:0 16px 40px rgba(0,0,0,0.25); text-align:center;">
+                <div id="patient-call-checking">
+                    <div class="spinner-border text-primary mb-3" role="status" style="width:2.5rem; height:2.5rem;"></div>
+                    <p class="text-muted mb-0" id="patient-call-checking-text"></p>
+                </div>
+                <div id="patient-call-ended" class="d-none">
+                    <i class="bi bi-camera-video-off-fill text-secondary" style="font-size:2.5rem;"></i>
+                    <h5 class="fw-bold mt-3 mb-2" id="patient-call-ended-title"></h5>
+                    <p class="text-muted mb-0" id="patient-call-ended-text"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div id="login-overlay">
         <div class="position-absolute top-0 end-0 p-4">
             <div class="dropdown lang-dropdown">
@@ -2246,6 +2265,9 @@
                 patient_consent_signed_success: "Consenso firmato con successo! Puoi chiudere questa pagina.",
                 patient_consent_link_expired_title: "Link già utilizzato",
                 patient_consent_link_expired_text: "Questo link di consenso è scaduto perché è già stato usato per firmare. Se hai bisogno di assistenza contatta la struttura.",
+                patient_call_checking: "Verifica dello stato della televisita in corso...",
+                patient_call_ended_title: "Televisita Terminata",
+                patient_call_ended_text: "Questa televisita è già terminata. Il link non è più valido. Se hai bisogno di assistenza contatta la struttura.",
                 email_invite_simulated_title: "Invito e-mail inviato a {patient}",
                 email_invite_simulated_body: "Gentile paziente, la tua televisita è pronta. Clicca sul seguente link per unirti alla videoconferenza: <br><a href='{url}' target='_blank' class='btn btn-sm btn-primary mt-2 text-white'><i class='bi bi-box-arrow-up-right me-1'></i>Accedi alla Televisita</a>",
                 toast_invite_sent: "Link di invito Jitsi inviato al paziente via e-mail.",
@@ -2498,6 +2520,9 @@
                 patient_consent_signed_success: "Consentement signé avec succès ! Vous pouvez fermer cette page.",
                 patient_consent_link_expired_title: "Lien déjà utilisé",
                 patient_consent_link_expired_text: "Ce lien de consentement a expiré car il a déjà été utilisé pour signer. Si vous avez besoin d'aide, contactez l'établissement.",
+                patient_call_checking: "Vérification de l'état de la télévisite en cours...",
+                patient_call_ended_title: "Télévisite Terminée",
+                patient_call_ended_text: "Cette télévisite est déjà terminée. Le lien n'est plus valide. Si vous avez besoin d'aide, contactez l'établissement.",
                 email_invite_simulated_title: "Invitation e-mail envoyée à {patient}",
                 email_invite_simulated_body: "Cher patient, votre télévisite est prête. Cliquez sur le lien suivant pour rejoindre la visioconférence : <br><a href='{url}' target='_blank' class='btn btn-sm btn-primary mt-2 text-white'><i class='bi bi-box-arrow-up-right me-1'></i>Accéder à la Télévisite</a>",
                 toast_invite_sent: "Lien d'invitation Jitsi envoyé au patient par e-mail.",
@@ -2941,6 +2966,17 @@
                     if (err) console.error('Errore pubblicazione MQTT:', err);
                 });
             });
+        }
+
+        // Flag di stato della videochiamata su un topic dedicato, con retain:true: chi si iscrive
+        // dopo (es. il paziente che apre il link dell'invito a chiamata già conclusa) riceve subito
+        // l'ultimo valore pubblicato dal broker, senza dover aspettare che un medico sia online in
+        // quel momento per rispondergli. Non cifrato: non contiene alcun dato del paziente, solo
+        // "active"/"ended".
+        function publishCallStatus(room, status) {
+            if (!mqttClient || !mqttClient.connected || !room) return;
+            const topic = MQTT_TOPIC_BASE + room + '/status';
+            mqttClient.publish(topic, status, { qos: 1, retain: true });
         }
 
         // Broker pubblici di fallback per massimizzare la compatibilità e stabilità
@@ -4017,6 +4053,20 @@
             return `${base}?${params.toString()}`;
         }
 
+        // Costruisce il link pubblico "Entra in Videochiamata" inviato per e-mail al paziente.
+        // Punta a una pagina nostra (non direttamente a Jitsi): così, se il paziente clicca il
+        // link DOPO che la televisita è già terminata, può accorgersene invece di entrare in
+        // una stanza Jitsi vuota o ormai chiusa.
+        function buildPatientCallUrl(room) {
+            const base = window.location.origin + window.location.pathname;
+            const params = new URLSearchParams({
+                call: '1',
+                room: room,
+                lang: currentLang
+            });
+            return `${base}?${params.toString()}`;
+        }
+
         function sendConsentEmail(id) {
             const tv = S.televisite.find(t => t.id === id);
             if (!tv) return;
@@ -4289,6 +4339,78 @@
             document.getElementById('patient-report-download-btn-text').textContent = t('patient_report_download_btn');
             document.getElementById('patient-report-close-note').textContent = t('patient_report_close_note');
             document.getElementById('patient-report-overlay').style.display = 'block';
+        }
+
+        // ---------------------------------------------------------------------------
+        // VISTA PUBBLICA PAZIENTE: INGRESSO IN VIDEOCHIAMATA (con controllo "già terminata")
+        // Aperta dal link "Entra in Videochiamata" incluso nell'e-mail di invito. Prima di
+        // aprire Jitsi, controlla lo stato della stanza pubblicato dai medici su un topic MQTT
+        // dedicato con retain:true, così riceve subito l'ultimo valore noto anche se nessun
+        // medico è online in quel momento.
+        // ---------------------------------------------------------------------------
+        function isPatientCallMode() {
+            const params = new URLSearchParams(window.location.search);
+            return params.get('call') === '1' && !!params.get('room');
+        }
+
+        function initPatientCallView() {
+            const params = new URLSearchParams(window.location.search);
+            const lang = params.get('lang');
+            if (lang && LANGS[lang]) currentLang = lang;
+            const room = params.get('room');
+
+            document.getElementById('patient-call-checking-text').textContent = t('patient_call_checking');
+            document.getElementById('patient-call-ended-title').textContent = t('patient_call_ended_title');
+            document.getElementById('patient-call-ended-text').textContent = t('patient_call_ended_text');
+            document.getElementById('patient-call-overlay').style.display = 'block';
+
+            const jitsiUrl = `https://${JITSI_DOMAIN}/${room}`;
+            checkCallStatusThenProceed(room, (ended) => {
+                if (ended) {
+                    document.getElementById('patient-call-checking').classList.add('d-none');
+                    document.getElementById('patient-call-ended').classList.remove('d-none');
+                } else {
+                    window.location.href = jitsiUrl;
+                }
+            });
+        }
+
+        // Si iscrive al topic di stato della stanza e attende l'ultimo valore retained dal broker.
+        // Se non arriva nulla entro il timeout (nessuno l'ha mai pubblicato, o problemi di rete),
+        // si comporta come se la chiamata fosse ancora attiva: bloccare per errore l'accesso a una
+        // televisita realmente in corso sarebbe un fallimento peggiore di un tentativo in più verso
+        // una stanza eventualmente già vuota.
+        function checkCallStatusThenProceed(room, callback) {
+            const topic = MQTT_TOPIC_BASE + room + '/status';
+            const broker = MQTT_BROKERS[0];
+            let settled = false;
+            let client;
+            const finish = (ended) => {
+                if (settled) return;
+                settled = true;
+                try { if (client) client.end(true); } catch (_) { }
+                callback(ended);
+            };
+            try {
+                client = mqtt.connect(broker.url, {
+                    clientId: 'patientcall_' + Math.random().toString(16).slice(2),
+                    connectTimeout: 5000,
+                    reconnectPeriod: 0
+                });
+            } catch (_) {
+                finish(false);
+                return;
+            }
+            client.on('connect', () => {
+                client.subscribe(topic, { qos: 1 }, (err) => {
+                    if (err) finish(false);
+                });
+            });
+            client.on('message', (_topic, payload) => {
+                finish(payload.toString() === 'ended');
+            });
+            client.on('error', () => finish(false));
+            setTimeout(() => finish(false), 4000);
         }
 
         // Connessione MQTT "usa e getta": pubblica un singolo messaggio e si disconnette.
@@ -6222,19 +6344,20 @@
             S.activeRoom = tv.room;
             renderAll();
             launchJitsi(tv.room);
+            publishCallStatus(tv.room, 'active');
             scrollToVideo();
             showToast(t('toast_sched_started', { patient: tv.patient }), 'success');
 
-            // Invia email con il link di Jitsi se non è già stata inviata
+            // Invia email con il link alla videochiamata se non è già stata inviata
             if (!tv.inviteSent) {
                 tv.inviteSent = true;
-                const jitsiUrl = `https://${JITSI_DOMAIN}/${tv.room}`;
+                const callUrl = buildPatientCallUrl(tv.room);
                 const patientName = tv.patient;
                 const patientEmail = tv.email || 'paziente@email.com';
 
                 setTimeout(() => {
                     const subject = t('email_subject_invite');
-                    const body = t('email_invite_simulated_body', { url: jitsiUrl });
+                    const body = t('email_invite_simulated_body', { url: callUrl });
                     const email = addSimulatedEmail({
                         type: 'invite',
                         patientName: patientName,
@@ -6242,12 +6365,12 @@
                         subject: subject,
                         body: body,
                         tvId: tv.id,
-                        inviteUrl: jitsiUrl
+                        inviteUrl: callUrl
                     });
                     showEmailNotificationToast(email);
 
                     // Aggiunge l'invito alla campana delle notifiche
-                    addNotif('bi-envelope-fill', t('email_invite_simulated_title', { patient: patientName }), t('email_invite_simulated_body', { url: jitsiUrl }), 'incoming', email.id);
+                    addNotif('bi-envelope-fill', t('email_invite_simulated_title', { patient: patientName }), t('email_invite_simulated_body', { url: callUrl }), 'incoming', email.id);
                     flashBell();
                 }, 800);
             }
@@ -6329,11 +6452,11 @@
             renderAll();
             showToast(t('toast_imm_sent'), 'info');
 
-            // Invia la mail di invito al paziente (con link di Jitsi e link al portale)
-            const jitsiUrl = `https://${JITSI_DOMAIN}/${room}`;
+            // Invia la mail di invito al paziente (con link alla videochiamata e link al portale)
+            const callUrl = buildPatientCallUrl(room);
             const mailBody = currentLang === 'fr'
-                ? `Cher patient, vous êtes invité à participer à une télévisite urgente en temps réel. Veuillez vous connecter au portail patient ou cliquer sur le lien suivant pour rejoindre l'appel vidéo : <a href="${jitsiUrl}">${jitsiUrl}</a>. Veuillez également signer le formulaire de consentement ci-joint.`
-                : `Gentile paziente, sei invitato a partecipare a una televisita urgente in tempo reale. Accedi al portale paziente o clicca sul seguente link per unirti alla videochiamata: <a href="${jitsiUrl}">${jitsiUrl}</a>. Ti invitiamo inoltre a prendere visione e firmare il consenso allegato.`;
+                ? `Cher patient, vous êtes invité à participer à une télévisite urgente en temps réel. Veuillez vous connecter au portail patient ou cliquer sur le lien suivant pour rejoindre l'appel vidéo : <a href="${callUrl}">${callUrl}</a>. Veuillez également signer le formulaire de consentement ci-joint.`
+                : `Gentile paziente, sei invitato a partecipare a una televisita urgente in tempo reale. Accedi al portale paziente o clicca sul seguente link per unirti alla videochiamata: <a href="${callUrl}">${callUrl}</a>. Ti invitiamo inoltre a prendere visione e firmare il consenso allegato.`;
 
             const email = addSimulatedEmail({
                 type: 'call_invite',
@@ -6342,10 +6465,10 @@
                 subject: currentLang === 'fr' ? 'Invitation Télévisite Urgente' : 'Invito Televisita Urgente',
                 body: mailBody,
                 tvId: newTv.id,
-                inviteUrl: jitsiUrl
+                inviteUrl: callUrl
             });
             showEmailNotificationToast(email);
-            addNotif('bi-envelope-fill', t('email_invite_simulated_title', { patient: finalPatient }), t('email_invite_simulated_body', { url: jitsiUrl }), 'incoming', email.id);
+            addNotif('bi-envelope-fill', t('email_invite_simulated_title', { patient: finalPatient }), t('email_invite_simulated_body', { url: callUrl }), 'incoming', email.id);
             flashBell();
 
             // Sincronizza lo stato su MQTT
@@ -6509,6 +6632,7 @@
             if (roomToClean) {
                 const tv = S.televisite.find(t => t.room === roomToClean);
                 if (tv) tv.status = 'completata';
+                publishCallStatus(roomToClean, 'ended');
             }
             if (S.immReq === 'in-corso') { S.immReq = null; S.immRoom = null; S.immReqSender = null; }
             S.activeRoom = null;
@@ -7937,6 +8061,14 @@
                 document.getElementById('login-overlay').style.display = 'none';
                 lockBackgroundForPatientView();
                 initPatientReportView();
+                return;
+            }
+
+            // Vista pubblica paziente: ingresso in videochiamata (controlla se è già terminata)
+            if (isPatientCallMode()) {
+                document.getElementById('login-overlay').style.display = 'none';
+                lockBackgroundForPatientView();
+                initPatientCallView();
                 return;
             }
 
