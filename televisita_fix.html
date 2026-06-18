@@ -1782,7 +1782,7 @@
                             id="pdf-modal-title">Consenso_Televisita.pdf</span></h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body py-3 px-4" style="background:#f1f5f9;">
+                <div class="modal-body py-3 px-4" id="pdf-modal-scroll-body" style="background:#f1f5f9;">
                     <div class="bg-white p-4 shadow-sm rounded border"
                         style="font-family:'Times New Roman', Times, serif; color:#1e293b; line-height:1.5; font-size:0.95rem;">
                         <h4 class="text-center fw-bold mb-4" id="pdf-doc-title">Consenso alla TeleVisita e al
@@ -2184,7 +2184,7 @@
                 consent_section_title: "Consensi Paziente",
                 consent_status_label: "Consenso:",
                 consent_status_non_inviato: "Non inviato",
-                consent_status_inviato: "Email Inviata (OTP)",
+                consent_status_inviato: "In attesa di firma",
                 consent_status_firmato: "Firmato",
                 btn_send_consent: "Invia Consenso",
                 btn_sign_consent: "Firma",
@@ -2243,7 +2243,7 @@
     <li>Dichiaro di aver preso visione dell'informativa privacy resa dalla struttura sanitaria e autorizzo il trattamento dei miei dati personali e sanitari per le finalità connesse alla TeleVisita.</li>
     <li>Acconsento, ove necessario, alla consultazione e alla condivisione dei documenti clinici tra le strutture sanitarie coinvolte nella TeleVisita.</li>
 </ul>
-<p class="text-center fw-bold mt-4" style="font-size:0.85rem;">Per confermare il consenso, inserire il codice OTP ricevuto tramite e-mail.</p>`,
+<p class="text-center fw-bold mt-4" style="font-size:0.85rem;">Per confermare il consenso, dopo l'accettazione ti verrà mostrato un codice OTP da inserire per completare la firma.</p>`,
                 webmail_title: "Client E-mail Simulato (Paziente)",
                 webmail_active_patient: "Account Paziente",
                 webmail_compose: "Scrivi",
@@ -2433,7 +2433,7 @@
                 consent_section_title: "Consentement du Patient",
                 consent_status_label: "Consentement :",
                 consent_status_non_inviato: "Non envoyé",
-                consent_status_inviato: "E-mail Envoyé (OTP)",
+                consent_status_inviato: "En attente de signature",
                 consent_status_firmato: "Signé",
                 btn_send_consent: "Envoyer Consentement",
                 btn_sign_consent: "Signer",
@@ -2492,7 +2492,7 @@
     <li>Je déclare avoir pris connaissance de la note d'information sur la confidentialité fournie par l'établissement de santé et j'autorise le traitement de mes données personnelles et de santé aux fins liées à la Télévisite.</li>
     <li>Je consens, le cas échéant, à la consultation et au partage de documents cliniques entre les établissements de santé impliqués dans la Télévisite.</li>
 </ul>
-<p class="text-center fw-bold mt-4" style="font-size:0.85rem;">Pour confirmer le consentement, saisissez le code OTP reçu par e-mail.</p>`,
+<p class="text-center fw-bold mt-4" style="font-size:0.85rem;">Pour confirmer le consentement, après l'acceptation un code OTP à saisir vous sera montré pour finaliser la signature.</p>`,
                 webmail_title: "Client E-mail Simulé (Patient)",
                 webmail_active_patient: "Compte Patient",
                 webmail_compose: "Écrire",
@@ -3980,6 +3980,26 @@
 
 
 
+        // Tiene il bottone di accettazione disabilitato finché il testo del consenso non è
+        // stato scorso fino in fondo, per evitare che venga accettato senza essere letto.
+        function gateButtonUntilScrolledToEnd(container, button) {
+            if (!container || !button) return;
+            button.disabled = true;
+            const check = () => {
+                // Appena dopo modal.show()/display:block il layout può non essere ancora pronto
+                // (clientHeight 0): in quel caso non è una vera fine-scroll, va solo riprovato.
+                if (container.clientHeight === 0) {
+                    requestAnimationFrame(check);
+                    return;
+                }
+                if (container.scrollHeight - container.scrollTop - container.clientHeight < 16) {
+                    button.disabled = false;
+                }
+            };
+            container.onscroll = check;
+            requestAnimationFrame(check);
+        }
+
         let pendingTvId = null;
 
         function viewConsentPDF(id) {
@@ -4006,11 +4026,13 @@
             if (btnCancel) btnCancel.querySelector('span').textContent = t('btn_cancel');
 
             const btnUnlock = document.getElementById('btn-unlock-otp');
+            const tv = S.televisite.find(t => t.id === id);
+            const showUnlockBtn = btnUnlock && tv && tv.consentStatus === 'inviato' && !tv.consentOtp;
             if (btnUnlock) {
-                const tv = S.televisite.find(t => t.id === id);
-                if (tv && tv.consentStatus === 'inviato' && !tv.consentOtp) {
+                if (showUnlockBtn) {
                     btnUnlock.style.display = '';
                     document.getElementById('btn-unlock-otp-text').textContent = t('btn_accept_and_unlock');
+                    btnUnlock.title = currentLang === 'fr' ? 'Faites défiler le document jusqu\'à la fin pour activer' : 'Scorri il documento fino alla fine per abilitare';
                 } else {
                     btnUnlock.style.display = 'none';
                 }
@@ -4018,6 +4040,12 @@
 
             const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('pdfModal'));
             modal.show();
+
+            // Il gate va impostato DOPO modal.show(): prima il contenitore è ancora nascosto
+            // (0x0), quindi la verifica scrollHeight/clientHeight risulterebbe falsamente "già in fondo".
+            if (showUnlockBtn) {
+                gateButtonUntilScrolledToEnd(document.getElementById('pdf-modal-scroll-body'), btnUnlock);
+            }
         }
 
         function unlockConsentOtp() {
@@ -4134,6 +4162,10 @@
             document.getElementById('patient-consent-greeting').textContent = t('patient_consent_greeting', { name: patientConsentCtx.patientName });
             document.getElementById('patient-consent-body').innerHTML = t('pdf_consent_body');
             document.getElementById('patient-consent-accept-btn-text').textContent = t('btn_accept_and_unlock');
+
+            const acceptBtn = document.getElementById('patient-consent-accept-btn');
+            acceptBtn.title = currentLang === 'fr' ? 'Faites défiler le document jusqu\'à la fin pour activer' : 'Scorri il documento fino alla fine per abilitare';
+            gateButtonUntilScrolledToEnd(document.getElementById('patient-consent-body'), acceptBtn);
         }
 
         // Connessione MQTT "usa e getta": pubblica un singolo messaggio e si disconnette.
