@@ -4819,6 +4819,15 @@
  
             container.innerHTML = bodyHtml;
 
+            // Se la collaborazione era già attiva con uno zoom diverso da quello di base, va
+            // riapplicato PRIMA di renderizzare il PDF: altrimenti, chiudendo e riaprendo
+            // l'anteprima, questo lato tornerebbe alla larghezza di base mentre l'altro medico
+            // resta sullo zoom precedente, e l'altezza calcolata dei due canvas non corrisponderebbe più.
+            if (isCollaborating && activeCollabDocId === id) {
+                const wrapperRestore = document.getElementById('collab-board-wrapper');
+                if (wrapperRestore && currentCollabWidth) wrapperRestore.style.width = currentCollabWidth + 'px';
+            }
+
             currentPdfReadyPromise = isPdfPreview ? renderPdfPreviewPages(d.base64Data) : Promise.resolve();
 
             // Se la collaborazione era già attiva sul modale precedentemente aperto, mostriamo e reinizializziamo il canvas
@@ -5159,6 +5168,10 @@
             if (newWidth < 500) newWidth = 500;
             if (newWidth > 2000) newWidth = 2000;
 
+            // Va sempre aggiornato: altrimenti questa variabile resta indietro di un passaggio
+            // e, chiudendo e riaprendo l'anteprima, lo zoom restituito non sarebbe quello reale.
+            currentCollabWidth = newWidth;
+
             wrapper.style.width = newWidth + 'px';
 
             // Le pagine PDF mantengono le proporzioni (width:100%/height:auto), quindi quando
@@ -5208,7 +5221,8 @@
             }
         }
 
-        function initCollabCanvas() {
+        function initCollabCanvas(retryCount) {
+            retryCount = retryCount || 0;
             const canvas = document.getElementById('collab-canvas');
             if (!canvas) return;
 
@@ -5234,9 +5248,21 @@
             // Fallback se il canvas non ha dimensioni (modal non ancora pronto)
             if (newCanvas.width === 0 || newCanvas.height === 0) {
                 const parent = newCanvas.parentElement;
-                newCanvas.width = parent ? parent.offsetWidth : 700;
-                newCanvas.height = parent ? parent.offsetHeight : 700;
+                newCanvas.width = parent ? parent.offsetWidth : 0;
+                newCanvas.height = parent ? parent.offsetHeight : 0;
             }
+
+            // Se è ancora 0x0 (es. il modale Bootstrap non ha ancora finito la propria animazione
+            // di apertura quando questa funzione viene chiamata), ritenta tra poco invece di
+            // "congelare" un canvas a dimensione zero: altrimenti ogni tratto, locale o in arrivo,
+            // verrebbe normalizzato su un riferimento sbagliato.
+            if ((newCanvas.width === 0 || newCanvas.height === 0) && retryCount < 20) {
+                requestAnimationFrame(() => initCollabCanvas(retryCount + 1));
+                return;
+            }
+            // Esauriti i tentativi: ultima rete di sicurezza per non restare bloccati a 0x0.
+            if (newCanvas.width === 0) newCanvas.width = 700;
+            if (newCanvas.height === 0) newCanvas.height = 700;
 
             const ctx = newCanvas.getContext('2d');
             ctx.lineCap = 'round';
