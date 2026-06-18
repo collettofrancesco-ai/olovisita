@@ -221,6 +221,89 @@
             border-color: #b4c6fc !important;
         }
 
+        /* Pannello guida della demo megagalattica: spiega ogni passo a schermo */
+        #demo-guide-panel {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 100000;
+            width: 360px;
+            max-width: calc(100vw - 32px);
+            background: linear-gradient(180deg, #0f2d63 0%, #0d47a1 100%);
+            color: #fff;
+            border-radius: 16px;
+            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
+            padding: 1rem 1.15rem 1.1rem;
+            font-size: .85rem;
+            animation: demoGuideIn .35s ease-out;
+        }
+
+        @keyframes demoGuideIn {
+            from {
+                opacity: 0;
+                transform: translateY(16px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        #demo-guide-progress-track {
+            height: 5px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.18);
+            overflow: hidden;
+            margin-bottom: .7rem;
+        }
+
+        #demo-guide-progress-bar {
+            height: 100%;
+            background: #4ade80;
+            border-radius: 3px;
+            transition: width .4s ease;
+        }
+
+        #demo-guide-panel .demo-guide-step-label {
+            font-size: .68rem;
+            letter-spacing: .04em;
+            text-transform: uppercase;
+            color: #93c5fd;
+            font-weight: 700;
+            margin-bottom: .25rem;
+        }
+
+        #demo-guide-panel .demo-guide-title {
+            font-weight: 700;
+            font-size: .98rem;
+            margin-bottom: .35rem;
+        }
+
+        #demo-guide-panel .demo-guide-text {
+            color: #dbeafe;
+            line-height: 1.5;
+        }
+
+        .demo-pulse {
+            animation: demoPulse 1.1s ease-in-out 3;
+            border-radius: 12px;
+        }
+
+        @keyframes demoPulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(13, 71, 161, 0.55);
+            }
+
+            70% {
+                box-shadow: 0 0 0 14px rgba(13, 71, 161, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(13, 71, 161, 0);
+            }
+        }
+
         #doc-tabs .nav-link {
             transition: all 0.15s ease-in-out;
             color: #475569;
@@ -1353,7 +1436,7 @@
                     </div>
                 </div>
 
-                <div class="section-card mb-4">
+                <div class="section-card mb-4" id="card-imm-section">
                     <div class="card-header">
                         <div class="card-icon" style="background:#fff3e0;color:#e65100;"><i
                                 class="bi bi-lightning-charge-fill"></i></div>
@@ -1536,15 +1619,15 @@
                     <div class="p-3" id="session-info"></div>
                 </div>
 
-                <div class="section-card">
+                <div class="section-card" id="card-docs-section">
                     <div class="card-header">
                         <div class="card-icon" style="background:#e3f2fd;color:#1565c0;"><i
                                 class="bi bi-folder-fill"></i></div>
                         <div>
                             <div class="fw-bold" data-i18n="card_docs_title">Documenti Clinici</div>
-                            <div class="text-muted" style="font-size:.78rem;" data-i18n="card_docs_sub">Condivisi
-                                tra le
-                                strutture</div>
+                            <div class="text-muted" style="font-size:.78rem;" data-i18n="card_docs_sub">Referti,
+                                consensi e
+                                allegati</div>
                         </div>
                         <span id="doc-badge" class="ms-auto badge" style="background:#e3f2fd;color:#1565c0;"></span>
                     </div>
@@ -2157,7 +2240,7 @@
                 video_placeholder_text: "La conferenza si avvierà quando una televisita viene accettata.",
                 card_session_title: "Stato Sessione",
                 card_docs_title: "Documenti Clinici",
-                card_docs_sub: "Condivisi tra le strutture",
+                card_docs_sub: "Referti, consensi e allegati",
                 upload_title: "Carica documento",
                 upload_subtitle: "Clicca o trascina un file",
                 share_btn: "Condividi con l'altra struttura",
@@ -2234,10 +2317,6 @@
                 notif_doc_sent_title: "Documento inviato a {facility}",
                 notif_doc_sent_body: "{names} · Da: {name}",
                 toast_simulated_download: "Download simulato: <strong>{name}</strong> ({size})",
-                demo_step1: "Demo: Struttura 1 richiede una televisita immediata…",
-                demo_step2: "Nuova richiesta di televisita da <strong>Médecin Thomas Perturbè</strong>!",
-                demo_step3: "Demo: Il medico di Struttura 2 ha accettato la richiesta!",
-                demo_step4: "Demo: Videoconferenza avviata! Entrambi i medici possono partecipare.",
                 consent_section_title: "Consensi Paziente",
                 consent_status_label: "Consenso:",
                 consent_status_non_inviato: "Non inviato",
@@ -2412,7 +2491,7 @@
                 video_placeholder_text: "La conférence démarrera dès qu'une télévisite sera acceptée.",
                 card_session_title: "État de la Session",
                 card_docs_title: "Documents Cliniques",
-                card_docs_sub: "Partagés entre les établissements",
+                card_docs_sub: "Rapports, consentements et pièces jointes",
                 upload_title: "Charger un document",
                 upload_subtitle: "Cliquez ou glissez un fichier",
                 share_btn: "Partager avec l'autre établissement",
@@ -2489,10 +2568,6 @@
                 notif_doc_sent_title: "Document envoyé à {facility}",
                 notif_doc_sent_body: "{names} · De : {name}",
                 toast_simulated_download: "Téléchargement simulé : <strong>{name}</strong> ({size})",
-                demo_step1: "Démo : L'établissement 1 demande une télévisite immédiate…",
-                demo_step2: "Nouvelle demande de télévisite de <strong>Médecin Thomas Perturbè</strong> !",
-                demo_step3: "Démo : Le médecin de l'Établissement 2 a accepté la demande !",
-                demo_step4: "Démo : Visioconférence démarrée ! Les deux médecins peuvent participer.",
                 consent_section_title: "Consentement du Patient",
                 consent_status_label: "Consentement :",
                 consent_status_non_inviato: "Non envoyé",
@@ -7882,22 +7957,200 @@
             showToast(currentLang === 'fr' ? 'Données réinitialisées.' : 'Dati di test azzerati.', 'success');
         }
 
+        // ---------------------------------------------------------------------------
+        // DEMO GUIDATA: mostra a un medico che non conosce il software l'intero
+        // percorso di una televisita, dalla richiesta fino al referto firmato e
+        // consegnato al paziente, spiegando ogni passo con un pannello a schermo.
+        // ---------------------------------------------------------------------------
+        let demoTimeouts = [];
+
+        function scheduleDemo(delay, fn) {
+            demoTimeouts.push(setTimeout(fn, delay));
+        }
+
+        function showDemoGuide(step, total, titleIt, titleFr, textIt, textFr) {
+            const fr = currentLang === 'fr';
+            let panel = document.getElementById('demo-guide-panel');
+            if (!panel) {
+                panel = document.createElement('div');
+                panel.id = 'demo-guide-panel';
+                document.body.appendChild(panel);
+            }
+            const pct = Math.round((step / total) * 100);
+            panel.innerHTML = `
+                <div class="d-flex align-items-start justify-content-between mb-1">
+                    <span class="demo-guide-step-label"><i class="bi bi-stars me-1"></i>${fr ? `Démo guidée — Étape ${step}/${total}` : `Demo guidata — Passo ${step}/${total}`}</span>
+                    <button onclick="stopDemo()" style="background:none;border:none;color:#bfdbfe;opacity:.8;cursor:pointer;font-size:.95rem;line-height:1;padding:0;" title="${fr ? 'Quitter la démo' : 'Esci dalla demo'}">&#x2715;</button>
+                </div>
+                <div id="demo-guide-progress-track"><div id="demo-guide-progress-bar" style="width:${pct}%;"></div></div>
+                <div class="demo-guide-title">${fr ? titleFr : titleIt}</div>
+                <div class="demo-guide-text">${fr ? textFr : textIt}</div>
+                ${step === total ? `<button class="btn btn-sm btn-light fw-bold mt-3 w-100" onclick="stopDemo()"><i class="bi bi-check-circle-fill me-1"></i>${fr ? 'Terminer la démo' : 'Chiudi la demo'}</button>` : ''}
+            `;
+        }
+
+        function hideDemoGuide() {
+            const panel = document.getElementById('demo-guide-panel');
+            if (panel) panel.remove();
+        }
+
+        function highlightDemoEl(selector) {
+            const el = document.querySelector(selector);
+            if (!el) return;
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            el.classList.add('demo-pulse');
+            setTimeout(() => el.classList.remove('demo-pulse'), 3400);
+        }
+
+        function stopDemo() {
+            demoTimeouts.forEach(clearTimeout);
+            demoTimeouts = [];
+            hideDemoGuide();
+            document.querySelectorAll('.demo-pulse').forEach(el => el.classList.remove('demo-pulse'));
+            showToast(currentLang === 'fr' ? 'Démo interrompue.' : 'Demo interrotta.', 'warning');
+        }
+
         function runDemo() {
-            const steps = [
-                [0, () => { switchRole('struttura1'); showToast(t('demo_step1'), 'info'); }],
-                [900, () => { requestImmediate(); }],
-                [2200, () => { switchRole('struttura2'); showBanner(`<i class="bi bi-bell-fill me-2"></i>${t('demo_step2')}`, 'warning'); }],
-                [3800, () => { acceptImmediate(); showToast(t('demo_step3'), 'success'); }],
-                [5200, () => {
-                    S.immReq = 'in-corso';
-                    S.activeRoom = S.immRoom;
-                    renderAll();
-                    launchJitsi(S.immRoom);
-                    scrollToVideo();
-                    showToast(t('demo_step4'), 'success');
-                }]
-            ];
-            steps.forEach(([delay, fn]) => setTimeout(fn, delay));
+            stopDemo(); // Annulla un'eventuale demo già in corso prima di ripartire da zero
+
+            const TOTAL = 13;
+            const DEMO_PATIENT = 'Maria Esposito';
+            const DEMO_NOTES_IT = 'Paziente lucida e collaborante. Riferisce cefalea persistente da 3 giorni, lieve febbre serale. Pressione e saturazione nella norma. Diagnosi: sindrome influenzale. Prescrizione: riposo, paracetamolo 1000mg al bisogno, controllo se i sintomi persistono oltre 5 giorni.';
+            const DEMO_NOTES_FR = 'Patiente lucide et coopérative. Signale des céphalées persistantes depuis 3 jours, légère fièvre le soir. Tension et saturation normales. Diagnostic : syndrome grippal. Prescription : repos, paracétamol 1000mg si besoin, contrôle si les symptômes persistent plus de 5 jours.';
+
+            scheduleDemo(0, () => {
+                switchRole('struttura1');
+                showDemoGuide(1, TOTAL,
+                    'Benvenuto in oloHealth Televisita',
+                    'Bienvenue dans oloHealth Televisita',
+                    'Questa demo guidata ti mostra, passo dopo passo, l\'intero percorso di una televisita: dalla richiesta del medico fino al referto firmato e consegnato al paziente. Ora sei collegato come medico della <strong>Struttura 1 — Centro Tunisia</strong>.',
+                    'Cette démo guidée vous montre, étape par étape, tout le parcours d\'une télévisite : de la demande du médecin jusqu\'au rapport signé et remis au patient. Vous êtes connecté en tant que médecin de l\'<strong>Établissement 1 — Centro Tunisia</strong>.');
+                highlightDemoEl('#role-badge');
+            });
+
+            scheduleDemo(4500, () => {
+                showDemoGuide(2, TOTAL,
+                    'Richiesta di televisita urgente',
+                    'Demande de télévisite urgente',
+                    'Quando un paziente ha bisogno di un consulto immediato, il medico attiva una richiesta urgente: il sistema crea subito la cartella clinica e allega il modulo di consenso informato, già firmato automaticamente per le urgenze.',
+                    'Lorsqu\'un patient a besoin d\'une consultation immédiate, le médecin lance une demande urgente : le système crée immédiatement le dossier clinique et joint le formulaire de consentement, déjà signé automatiquement pour les urgences.');
+                highlightDemoEl('#card-imm-section');
+            });
+
+            scheduleDemo(8500, () => {
+                requestImmediate(DEMO_PATIENT, 'maria.esposito@example.com', '+39 333 123 4567', '1985-04-12', 'F', 'Palermo', 'CF', '');
+                showDemoGuide(3, TOTAL,
+                    'Richiesta inviata',
+                    'Demande envoyée',
+                    `La richiesta per <strong>${DEMO_PATIENT}</strong> è partita verso la Struttura 2. Il paziente riceve già un\'email con il link per partecipare alla videochiamata, e il consenso informato è visibile qui sotto, in Documenti Clinici.`,
+                    `La demande pour <strong>${DEMO_PATIENT}</strong> est partie vers l\'Établissement 2. Le patient reçoit déjà un e-mail avec le lien pour rejoindre la visioconférence, et le consentement est visible ci-dessous, dans Documents Cliniques.`);
+                highlightDemoEl('#card-docs-section');
+            });
+
+            scheduleDemo(13500, () => {
+                const consentDoc = S.docs.find(d => d.patient === DEMO_PATIENT && d.isConsentDocument);
+                if (consentDoc) viewDocPreview(consentDoc.id);
+                showDemoGuide(4, TOTAL,
+                    'Il consenso informato',
+                    'Le consentement éclairé',
+                    'Ecco il documento di consenso: viene generato automaticamente, è leggibile e professionale, e risulta già condiviso con l\'altra struttura, pronto per essere consultato da entrambi i medici.',
+                    'Voici le document de consentement : il est généré automatiquement, lisible et professionnel, et déjà partagé avec l\'autre établissement, prêt à être consulté par les deux médecins.');
+            });
+
+            scheduleDemo(19000, () => {
+                const modalEl = document.getElementById('docPreviewModal');
+                const modal = modalEl && bootstrap.Modal.getInstance(modalEl);
+                if (modal) modal.hide();
+                switchRole('struttura2');
+                showDemoGuide(5, TOTAL,
+                    'Cambiamo prospettiva: Struttura 2',
+                    'Changeons de perspective : Établissement 2',
+                    'Chiudiamo l\'anteprima e passiamo al medico della <strong>Struttura 2 — Ospedale Cervello di Palermo</strong>. Grazie alla sincronizzazione in tempo reale via rete MQTT, la richiesta è già arrivata, pur trovandosi i due medici in ospedali diversi e senza alcun server centrale.',
+                    'Fermons l\'aperçu et passons au médecin de l\'<strong>Établissement 2 — Hôpital Cervello de Palerme</strong>. Grâce à la synchronisation en temps réel via le réseau MQTT, la demande est déjà arrivée, bien que les deux médecins se trouvent dans des hôpitaux différents, sans aucun serveur central.');
+                highlightDemoEl('#role-badge');
+            });
+
+            scheduleDemo(24000, () => {
+                showDemoGuide(6, TOTAL,
+                    'La richiesta in arrivo',
+                    'La demande entrante',
+                    'Il medico della Struttura 2 vede subito la richiesta in arrivo, con il nome del collega e i dettagli del paziente, e può scegliere se accettarla o rifiutarla.',
+                    'Le médecin de l\'Établissement 2 voit immédiatement la demande entrante, avec le nom du confrère et les détails du patient, et peut choisir de l\'accepter ou de la refuser.');
+                highlightDemoEl('#card-imm-section');
+            });
+
+            scheduleDemo(28500, () => {
+                acceptImmediate();
+                showDemoGuide(7, TOTAL,
+                    'Richiesta accettata',
+                    'Demande acceptée',
+                    'Il medico accetta: lo stato si aggiorna all\'istante su entrambi i dispositivi, ed entrambi i medici sono pronti per entrare in videochiamata.',
+                    'Le médecin accepte : le statut se met à jour instantanément sur les deux appareils, et les deux médecins sont prêts à rejoindre la visioconférence.');
+            });
+
+            scheduleDemo(33000, () => {
+                S.immReq = 'in-corso';
+                S.activeRoom = S.immRoom;
+                renderAll();
+                launchJitsi(S.immRoom);
+                scrollToVideo();
+                showDemoGuide(8, TOTAL,
+                    'Videochiamata avviata',
+                    'Visioconférence démarrée',
+                    'Ecco l\'integrazione con Jitsi Meet per il consulto video: i due medici si vedono in tempo reale, mentre a fianco resta sempre visibile la cartella clinica del paziente.',
+                    'Voici l\'intégration avec Jitsi Meet pour la consultation vidéo : les deux médecins se voient en temps réel, tandis que le dossier clinique du patient reste toujours visible à côté.');
+            });
+
+            scheduleDemo(40000, () => {
+                const textarea = document.getElementById('emr-notes-textarea');
+                if (textarea) {
+                    textarea.value = currentLang === 'fr' ? DEMO_NOTES_FR : DEMO_NOTES_IT;
+                    saveEMRNotes(S.activeTvId, false);
+                }
+                showDemoGuide(9, TOTAL,
+                    'Diagnosi e note cliniche',
+                    'Diagnostic et notes cliniques',
+                    'Durante il consulto, il medico annota direttamente nella cartella clinica i sintomi riferiti, la diagnosi e la terapia prescritta: tutto resta salvato nel fascicolo del paziente.',
+                    'Pendant la consultation, le médecin note directement dans le dossier clinique les symptômes rapportés, le diagnostic et le traitement prescrit : tout reste enregistré dans le dossier du patient.');
+                highlightDemoEl('#emr-notes-textarea');
+            });
+
+            scheduleDemo(45500, () => {
+                openDoctorSignatureModal(S.activeTvId);
+                setTimeout(() => document.getElementById('sig-text-tab')?.click(), 500);
+                showDemoGuide(10, TOTAL,
+                    'Firma digitale del referto',
+                    'Signature numérique du rapport',
+                    'A consulto terminato, il medico firma digitalmente il referto: può disegnare la firma a mano oppure, come in questa demo, usare la firma testuale certificata.',
+                    'À la fin de la consultation, le médecin signe numériquement le rapport : il peut dessiner sa signature à la main ou, comme dans cette démo, utiliser la signature textuelle certifiée.');
+            });
+
+            scheduleDemo(51000, () => {
+                confirmDoctorSignature();
+                showDemoGuide(11, TOTAL,
+                    'Referto firmato e consegnato',
+                    'Rapport signé et remis',
+                    'Il referto viene generato in formato PDF con tanto di codice di verifica, condiviso automaticamente con l\'altra struttura, e il paziente riceve un\'email con un link sicuro per visualizzarlo e scaricarlo.',
+                    'Le rapport est généré au format PDF avec un code de vérification, partagé automatiquement avec l\'autre établissement, et le patient reçoit un e-mail avec un lien sécurisé pour le consulter et le télécharger.');
+                highlightDemoEl('#card-docs-section');
+            });
+
+            scheduleDemo(56500, () => {
+                endCall();
+                showDemoGuide(12, TOTAL,
+                    'Fine del consulto',
+                    'Fin de la consultation',
+                    'Il medico chiude la videochiamata: la televisita passa automaticamente allo stato "Completata" per entrambe le strutture.',
+                    'Le médecin termine la visioconférence : la télévisite passe automatiquement au statut "Terminée" pour les deux établissements.');
+            });
+
+            scheduleDemo(61500, () => {
+                showDemoGuide(13, TOTAL,
+                    'Demo completata!',
+                    'Démo terminée !',
+                    'Hai visto l\'intero percorso: richiesta urgente, consenso informato, accettazione, consulto video, diagnosi, firma digitale e consegna del referto al paziente. Puoi ripetere la demo in qualsiasi momento.',
+                    'Vous avez vu tout le parcours : demande urgente, consentement éclairé, acceptation, consultation vidéo, diagnostic, signature numérique et remise du rapport au patient. Vous pouvez relancer la démo à tout moment.');
+            });
         }
 
         // ---------------------------------------------------------------------------
