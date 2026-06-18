@@ -8014,7 +8014,7 @@
         function runDemo() {
             stopDemo(); // Annulla un'eventuale demo già in corso prima di ripartire da zero
 
-            const TOTAL = 16;
+            const TOTAL = 22;
             const DEMO_PATIENT = 'Maria Esposito';
             const DEMO_NOTES_IT = 'Paziente lucida e collaborante. Riferisce cefalea persistente da 3 giorni, lieve febbre serale. Pressione e saturazione nella norma. Diagnosi: sindrome influenzale. Prescrizione: riposo, paracetamolo 1000mg al bisogno, controllo se i sintomi persistono oltre 5 giorni.';
             const DEMO_NOTES_FR = 'Patiente lucide et coopérative. Signale des céphalées persistantes depuis 3 jours, légère fièvre le soir. Tension et saturation normales. Diagnostic : syndrome grippal. Prescription : repos, paracétamol 1000mg si besoin, contrôle si les symptômes persistent plus de 5 jours.';
@@ -8192,11 +8192,72 @@
             });
 
             scheduleDemo(126500, () => {
+                switchRole('struttura1');
                 showDemoGuide(16, TOTAL,
+                    'Ora vediamo una televisita urgente',
+                    'Voyons maintenant une télévisite urgente',
+                    'Abbiamo visto il caso normale. Ora vediamo cosa cambia per un\'urgenza: quando un paziente ha bisogno di un consulto immediato, non c\'è tempo per l\'invio del consenso via email e l\'attesa della firma con OTP.',
+                    'Nous avons vu le cas normal. Voyons maintenant ce qui change pour une urgence : lorsqu\'un patient a besoin d\'une consultation immédiate, il n\'y a pas le temps d\'envoyer le consentement par e-mail et d\'attendre la signature avec OTP.');
+                highlightDemoEl('#card-imm-section');
+            });
+
+            scheduleDemo(134500, () => {
+                requestImmediate('Luca Bianchi', 'luca.bianchi@example.com', '+39 333 987 6543', '1978-09-02', 'M', 'Catania', 'CF', '');
+                showDemoGuide(17, TOTAL,
+                    'Richiesta urgente inviata',
+                    'Demande urgente envoyée',
+                    'Per le urgenze, il consenso viene firmato automaticamente alla creazione della richiesta, per non far attendere il paziente: resta comunque tracciato e consultabile come quello firmato manualmente.',
+                    'Pour les urgences, le consentement est signé automatiquement dès la création de la demande, pour ne pas faire attendre le patient : il reste néanmoins tracé et consultable, comme celui signé manuellement.');
+                highlightDemoEl('#card-docs-section');
+            });
+
+            scheduleDemo(143000, () => {
+                switchRole('struttura2');
+                showDemoGuide(18, TOTAL,
+                    'Anche qui, sincronizzazione immediata',
+                    'Ici aussi, synchronisation immédiate',
+                    'Come nel caso normale, la richiesta arriva subito alla Struttura 2 tramite la rete MQTT, senza alcun server centrale.',
+                    'Comme dans le cas normal, la demande arrive immédiatement à l\'Établissement 2 via le réseau MQTT, sans aucun serveur central.');
+                highlightDemoEl('#card-imm-section');
+            });
+
+            scheduleDemo(150500, () => {
+                acceptImmediate();
+                showDemoGuide(19, TOTAL,
+                    'Richiesta urgente accettata',
+                    'Demande urgente acceptée',
+                    'Il medico accetta: essendo già tutto pronto (consenso compreso), si può entrare in videochiamata immediatamente.',
+                    'Le médecin accepte : tout étant déjà prêt (consentement compris), on peut rejoindre la visioconférence immédiatement.');
+            });
+
+            scheduleDemo(159000, () => {
+                S.immReq = 'in-corso';
+                S.activeRoom = S.immRoom;
+                renderAll();
+                launchJitsi(S.immRoom);
+                scrollToVideo();
+                showDemoGuide(20, TOTAL,
+                    'Videochiamata urgente avviata',
+                    'Visioconférence urgente démarrée',
+                    'Stessa identica interfaccia di consulto vista prima: cartella clinica, note cliniche e firma del referto funzionano in modo identico, l\'unica differenza è stata la rapidità con cui si è arrivati fin qui.',
+                    'Exactement la même interface de consultation que précédemment : dossier clinique, notes cliniques et signature du rapport fonctionnent de manière identique, la seule différence a été la rapidité pour arriver jusqu\'ici.');
+            });
+
+            scheduleDemo(168000, () => {
+                endCall();
+                showDemoGuide(21, TOTAL,
+                    'Fine del consulto urgente',
+                    'Fin de la consultation urgente',
+                    'Anche qui il medico chiude la videochiamata e la televisita passa allo stato "Completata", esattamente come nel caso normale.',
+                    'Ici aussi, le médecin termine la visioconférence et la télévisite passe au statut "Terminée", exactement comme dans le cas normal.');
+            });
+
+            scheduleDemo(176000, () => {
+                showDemoGuide(22, TOTAL,
                     'Demo completata!',
                     'Démo terminée !',
-                    'Hai visto l\'intero percorso di una televisita normale: programmazione, accettazione, consenso informato letto e firmato dal paziente con codice OTP, consulto video, diagnosi, firma digitale con valore legale e consegna del referto al paziente. Puoi ripetere la demo in qualsiasi momento.',
-                    'Vous avez vu tout le parcours d\'une télévisite normale : planification, acceptation, consentement éclairé lu et signé par le patient avec un code OTP, consultation vidéo, diagnostic, signature numérique à valeur légale et remise du rapport au patient. Vous pouvez relancer la démo à tout moment.');
+                    'Hai visto entrambi i percorsi: una televisita normale, con consenso letto e firmato dal paziente con codice OTP, e una televisita urgente, con consenso firmato automaticamente per non perdere tempo. In entrambi i casi: consulto video, diagnosi, firma digitale con valore legale e consegna del referto al paziente. Puoi ripetere la demo in qualsiasi momento.',
+                    'Vous avez vu les deux parcours : une télévisite normale, avec un consentement lu et signé par le patient via un code OTP, et une télévisite urgente, avec un consentement signé automatiquement pour ne pas perdre de temps. Dans les deux cas : consultation vidéo, diagnostic, signature numérique à valeur légale et remise du rapport au patient. Vous pouvez relancer la démo à tout moment.');
             });
         }
 
