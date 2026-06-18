@@ -3773,7 +3773,16 @@
                 // Il bottone inline (testo+link) viene rimosso del tutto dal testo semplice: nell'e-mail
                 // reale il bottone arriva già separatamente dal template tramite {{action_label}}/{{invite_url}},
                 // altrimenti comparirebbe due volte (una come testo morto, una come vero bottone del template).
-                const cleanBody = body.replace(/<a [^>]*>.*?<\/a>/gi, '').replace(/<[^>]*>/g, '\n').replace(/\n{2,}/g, '\n').trim();
+                // Solo i tag di blocco (</p>, <br>) diventano un a-capo: i tag inline come <strong></strong>
+                // vanno rimossi senza spezzare la riga, altrimenti "Gentile <strong>Nome</strong>," diventa
+                // tre righe separate ("Gentile" / "Nome" / ",") invece di restare sulla stessa riga.
+                const cleanBody = body
+                    .replace(/<a [^>]*>.*?<\/a>/gi, '')
+                    .replace(/<\/p>/gi, '\n')
+                    .replace(/<br\s*\/?>/gi, '\n')
+                    .replace(/<[^>]*>/g, '')
+                    .replace(/\n{2,}/g, '\n')
+                    .trim();
                 // Lo stesso invite_url viene riusato per scopi diversi (consenso, videochiamata):
                 // il testo del bottone nel template deve quindi venire da qui, non essere scritto fisso nel template.
                 const actionLabel = (type === 'consent_locked') ? t('email_action_label_consent')
