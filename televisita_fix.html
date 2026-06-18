@@ -9,7 +9,11 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/4.3.7/mqtt.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+    <!-- pdf.js ospitato in locale (cartella vendor/) invece che su CDN esterno: se il CDN è
+         bloccato o irraggiungibile (es. firewall ospedaliero) il rendering del PDF fallisce in
+         silenzio su un solo lato, e la lavagna collaborativa finisce su un'altezza diversa tra
+         i due medici, spostando le annotazioni nel punto sbagliato. -->
+    <script src="vendor/pdf.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap"
@@ -4828,9 +4832,19 @@
                 if (canvas) canvas.style.display = 'block';
                 if (toolbar) toolbar.style.setProperty('display', 'flex', 'important');
                 if (statusDiv) statusDiv.style.display = 'block';
-                currentPdfReadyPromise.then(() => initCollabCanvas());
+                currentPdfReadyPromise.then(() => {
+                    if (pdfRenderFailed) {
+                        isCollaborating = false;
+                        activeCollabDocId = null;
+                        if (canvas) canvas.style.display = 'none';
+                        if (toolbar) toolbar.style.setProperty('display', 'none', 'important');
+                        if (statusDiv) statusDiv.style.display = 'none';
+                        return;
+                    }
+                    initCollabCanvas();
+                });
             }
- 
+
             const modalEl = document.getElementById('docPreviewModal');
             if (modalEl && !modalEl.classList.contains('show')) {
                 const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
@@ -4845,10 +4859,25 @@
         // così anche la lavagna collaborativa sovrapposta copre l'intero documento.
         async function renderPdfPreviewPages(base64Data) {
             const pagesContainer = document.getElementById('pdf-pages-container');
-            if (!pagesContainer || typeof pdfjsLib === 'undefined') return;
+            pdfRenderFailed = false;
+            if (!pagesContainer) return;
+
+            // Se pdf.js non si è caricato, niente fallback silenzioso: senza l'altezza reale
+            // del documento la lavagna collaborativa finirebbe su un'altezza diversa tra i due
+            // medici, spostando le annotazioni nel punto sbagliato. Meglio avvisare e bloccare
+            // la collaborazione su questo documento finché il problema non è risolto.
+            if (typeof pdfjsLib === 'undefined') {
+                console.error('pdf.js non disponibile: impossibile calcolare l\'altezza reale del documento.');
+                pagesContainer.innerHTML = `<div class="text-danger text-center py-5">${currentLang === 'fr' ? 'Erreur de chargement du visualisateur PDF.' : 'Errore nel caricamento del visualizzatore PDF.'}</div>`;
+                pdfRenderFailed = true;
+                showToast(currentLang === 'fr'
+                    ? 'Le visualisateur PDF n\'a pas pu être chargé : le tableau collaboratif est désactivé pour ce document.'
+                    : 'Il visualizzatore PDF non si è caricato: la lavagna collaborativa è disattivata per questo documento.', 'danger');
+                return;
+            }
 
             if (pdfjsLib.GlobalWorkerOptions && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
-                pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+                pdfjsLib.GlobalWorkerOptions.workerSrc = 'vendor/pdf.worker.min.js';
             }
 
             try {
@@ -4892,6 +4921,10 @@
             } catch (err) {
                 console.error('Errore nel rendering delle pagine PDF:', err);
                 pagesContainer.innerHTML = '<div class="text-danger text-center py-5">Errore nel caricamento del PDF.</div>';
+                pdfRenderFailed = true;
+                showToast(currentLang === 'fr'
+                    ? 'Erreur de rendu du PDF : le tableau collaboratif est désactivé pour ce document.'
+                    : 'Errore nel rendering del PDF: la lavagna collaborativa è disattivata per questo documento.', 'danger');
             }
         }
 
@@ -4914,6 +4947,10 @@
         // tutti compressi in alto a sinistra, nel punto sbagliato rispetto all'altro schermo.
         let collabCanvasReady = false;
         let pendingIncomingDraws = [];
+        // True quando il rendering del PDF (locale) non è andato a buon fine: in questo caso
+        // l'altezza del documento non è nota in modo affidabile, quindi la collaborazione non
+        // deve attivarsi, per evitare di disegnare su un'altezza diversa da quella dell'altro medico.
+        let pdfRenderFailed = false;
         let isCollaborating = false;
         let isIncomingScroll = false;
         let isCollabDrawing = false;
@@ -4963,7 +5000,24 @@
 
                 // Inizializza i listener sul canvas, aspettando prima che il PDF (se in corso
                 // di caricamento) abbia finito di renderizzare e l'altezza reale sia nota
-                currentPdfReadyPromise.then(() => initCollabCanvas());
+                currentPdfReadyPromise.then(() => {
+                    if (pdfRenderFailed) {
+                        // Il rendering è fallito: niente canvas su un'altezza inaffidabile.
+                        // Disattiva di nuovo la collaborazione, qui e sull'altro PC.
+                        isCollaborating = false;
+                        activeCollabDocId = null;
+                        if (canvas) canvas.style.display = 'none';
+                        if (toolbar) toolbar.style.setProperty('display', 'none', 'important');
+                        if (statusDiv) statusDiv.style.display = 'none';
+                        if (toggleText) toggleText.textContent = currentLang === 'fr' ? 'Activer le Tableau Collaboratif' : 'Attiva Lavagna Collaborativa';
+                        if (toggleBtn) toggleBtn.className = 'btn btn-primary btn-sm fw-semibold';
+                        const stopAction = { kind: 'stop' };
+                        bc.postMessage({ type: 'collab_action', action: stopAction });
+                        if (mqttClient && mqttClient.connected) sendMQTTMessage({ type: 'collab_action', action: stopAction });
+                        return;
+                    }
+                    initCollabCanvas();
+                });
 
                 // Notifica l'altro PC dell'inizio collaborazione
                 bc.postMessage({
@@ -5423,7 +5477,7 @@
                 }
 
                 if (pdfjsLib.GlobalWorkerOptions && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
-                    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+                    pdfjsLib.GlobalWorkerOptions.workerSrc = 'vendor/pdf.worker.min.js';
                 }
 
                 try {
