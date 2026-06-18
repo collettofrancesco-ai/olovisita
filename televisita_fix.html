@@ -792,7 +792,7 @@
 
     <!-- Vista pubblica per il paziente: apertura diretta dal link di consenso ricevuto via e-mail, senza login -->
     <div id="patient-consent-overlay"
-        style="display:none; position:fixed; inset:0; z-index:9000; background:linear-gradient(135deg, rgba(13, 71, 161, 0.85) 0%, rgba(21, 101, 192, 0.8) 50%, rgba(0, 121, 107, 0.85) 100%); overflow-y:auto;">
+        style="display:none; position:fixed; inset:0; z-index:9000; background:linear-gradient(135deg, rgb(13, 71, 161) 0%, rgb(21, 101, 192) 50%, rgb(0, 121, 107) 100%); overflow-y:auto;">
         <div class="d-flex align-items-center justify-content-center" style="min-height:100vh; padding:2rem 1rem;">
             <div style="max-width:560px; width:100%; background:#fff; border-radius:20px; padding:2rem; box-shadow:0 16px 40px rgba(0,0,0,0.25);">
                 <h4 class="fw-bold mb-1" id="patient-consent-title" style="color:#1565c0;"></h4>
@@ -831,7 +831,7 @@
 
     <!-- Vista pubblica per il paziente: referto firmato, apertura diretta dal link via e-mail -->
     <div id="patient-report-overlay"
-        style="display:none; position:fixed; inset:0; z-index:9000; background:linear-gradient(135deg, rgba(13, 71, 161, 0.85) 0%, rgba(21, 101, 192, 0.8) 50%, rgba(0, 121, 107, 0.85) 100%); overflow-y:auto;">
+        style="display:none; position:fixed; inset:0; z-index:9000; background:linear-gradient(135deg, rgb(13, 71, 161) 0%, rgb(21, 101, 192) 50%, rgb(0, 121, 107) 100%); overflow-y:auto;">
         <div class="d-flex flex-column align-items-center" style="min-height:100vh; padding:2rem 1rem;">
             <div id="patient-report-print-area" style="max-width:760px; width:100%;"></div>
             <div class="mt-3 d-flex flex-column align-items-center gap-2 no-print">
@@ -4174,6 +4174,14 @@
         // dell'e-mail con l'OTP (via EmailJS, con le credenziali passate nell'URL).
         // ---------------------------------------------------------------------------
         let patientConsentCtx = null;
+
+        // Il cruscotto resta nel DOM dietro all'overlay (mai inizializzato/popolato in questa
+        // modalità, ma comunque presente): blocca lo scroll di html/body così non scorre più
+        // "in trasparenza" dietro la pagina pubblica del paziente quando questa è più alta dello schermo.
+        function lockBackgroundForPatientView() {
+            document.documentElement.style.overflow = 'hidden';
+            document.body.style.overflow = 'hidden';
+        }
 
         function isPatientConsentMode() {
             const params = new URLSearchParams(window.location.search);
@@ -7887,6 +7895,7 @@
             // Vista pubblica paziente: bypassa interamente login/dashboard, mostra solo il consenso
             if (isPatientConsentMode()) {
                 document.getElementById('login-overlay').style.display = 'none';
+                lockBackgroundForPatientView();
                 initPatientConsentView();
                 return;
             }
@@ -7894,6 +7903,7 @@
             // Vista pubblica paziente: referto firmato (sola lettura)
             if (isPatientReportMode()) {
                 document.getElementById('login-overlay').style.display = 'none';
+                lockBackgroundForPatientView();
                 initPatientReportView();
                 return;
             }
