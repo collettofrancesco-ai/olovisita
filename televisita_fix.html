@@ -786,6 +786,8 @@
                 </div>
                 <div id="patient-otp-step" class="d-none mt-3">
                     <p class="text-muted small mb-2" id="patient-otp-instructions"></p>
+                    <div id="patient-otp-code-display" class="text-center fw-bold mb-3"
+                        style="font-size:1.8rem; letter-spacing:0.4rem; color:#0d6efd;"></div>
                     <input type="text" id="patient-otp-input" class="form-control mb-2" inputmode="numeric"
                         maxlength="4" placeholder="Codice OTP">
                     <div id="patient-otp-error" class="text-danger small mb-2"></div>
@@ -797,6 +799,10 @@
                 <div id="patient-consent-success" class="d-none text-center text-success fw-semibold py-3">
                     <i class="bi bi-check-circle-fill fs-2 d-block mb-2"></i>
                     <span id="patient-consent-success-text"></span>
+                </div>
+                <div id="patient-consent-expired" class="d-none text-center text-warning-emphasis fw-semibold py-3">
+                    <i class="bi bi-exclamation-triangle-fill fs-2 d-block mb-2"></i>
+                    <span id="patient-consent-expired-text"></span>
                 </div>
             </div>
         </div>
@@ -1787,10 +1793,10 @@
                     </div>
                 </div>
                 <div class="modal-footer border-0 pt-0">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <button type="button" id="btn-pdf-modal-cancel" class="btn btn-outline-secondary" data-bs-dismiss="modal">
                         <i class="bi bi-x-lg me-1"></i><span data-i18n="btn_cancel">Annulla</span>
                     </button>
-                    <button type="button" class="btn btn-primary fw-semibold" onclick="downloadConsentPDF()">
+                    <button type="button" id="btn-download-consent-pdf" class="btn btn-primary fw-semibold" onclick="downloadConsentPDF()">
                         <i class="bi bi-download me-1"></i><span>Download PDF</span>
                     </button>
                     <button type="button" id="btn-unlock-otp" class="btn btn-success fw-bold"
@@ -2189,15 +2195,19 @@
                 email_otp_locked_body: "Gentile paziente, per ottenere il codice OTP necessario per firmare i consensi della tua televisita, apri il link seguente per leggere e accettare il documento di consenso:<br><a href='{url}' target='_blank' class='btn btn-sm btn-primary mt-2 text-white'><i class='bi bi-box-arrow-up-right me-1'></i>Leggi e Accetta il Consenso</a>",
                 email_otp_unlocked_body: "Gentile paziente, a seguito della lettura e accettazione del documento, il tuo codice OTP per firmare i consensi è: <strong>{code}</strong>. Comunicando l'OTP, accetti le condizioni del consenso allegato.",
                 btn_accept_and_unlock: "Accetto e sblocca OTP",
-                toast_otp_unlocked: "Documento visionato. Codice OTP inviato al paziente via e-mail.",
+                toast_otp_unlocked: "Documento visionato. Codice OTP generato.",
+                otp_unlocked_title: "Codice OTP generato",
+                otp_unlocked_instructions: "Inserisci questo codice nella scheda della visita per completare la firma del consenso:",
                 patient_consent_greeting: "Gentile {name}, prima di proseguire ti chiediamo di leggere e accettare il consenso informato qui sotto.",
                 patient_consent_sending: "Invio in corso...",
                 patient_consent_success: "Grazie! Il codice OTP per firmare il consenso è stato inviato alla tua email.",
                 patient_consent_success_noemail: "Documento accettato. Il medico è stato avvisato; riceverai il codice OTP a breve.",
-                patient_otp_instructions: "Abbiamo inviato un codice OTP alla tua email. Inseriscilo qui sotto per firmare il consenso.",
+                patient_otp_instructions: "Ecco il tuo codice OTP. Inseriscilo qui sotto per firmare il consenso:",
                 patient_otp_confirm_btn: "Firma il Consenso",
                 patient_otp_invalid: "Codice OTP errato. Riprova.",
                 patient_consent_signed_success: "Consenso firmato con successo! Puoi chiudere questa pagina.",
+                patient_consent_link_expired_title: "Link già utilizzato",
+                patient_consent_link_expired_text: "Questo link di consenso è scaduto perché è già stato usato per firmare. Se hai bisogno di assistenza contatta la struttura.",
                 email_invite_simulated_title: "Invito e-mail inviato a {patient}",
                 email_invite_simulated_body: "Gentile paziente, la tua televisita è pronta. Clicca sul seguente link per unirti alla videoconferenza: <br><a href='{url}' target='_blank' class='btn btn-sm btn-primary mt-2 text-white'><i class='bi bi-box-arrow-up-right me-1'></i>Accedi alla Televisita</a>",
                 toast_invite_sent: "Link di invito Jitsi inviato al paziente via e-mail.",
@@ -2434,15 +2444,19 @@
                 email_otp_locked_body: "Cher patient, pour obtenir le code OTP nécessaire pour signer les consentements de votre télévisite, ouvrez le lien suivant pour lire et accepter le document de consentement :<br><a href='{url}' target='_blank' class='btn btn-sm btn-primary mt-2 text-white'><i class='bi bi-box-arrow-up-right me-1'></i>Lire et Accepter le Consentement</a>",
                 email_otp_unlocked_body: "Cher patient, suite à la lecture et à l'acceptation du document, votre code OTP pour signer les consentements est : <strong>{code}</strong>. En communiquant l'OTP, vous acceptez les conditions du consentement en pièce jointe.",
                 btn_accept_and_unlock: "Accepter et débloquer l'OTP",
-                toast_otp_unlocked: "Document visualisé. Code OTP envoyé au patient par e-mail.",
+                toast_otp_unlocked: "Document visualisé. Code OTP généré.",
+                otp_unlocked_title: "Code OTP généré",
+                otp_unlocked_instructions: "Saisissez ce code dans la fiche de la visite pour finaliser la signature du consentement :",
                 patient_consent_greeting: "Cher/Chère {name}, avant de continuer, veuillez lire et accepter le consentement informé ci-dessous.",
                 patient_consent_sending: "Envoi en cours...",
                 patient_consent_success: "Merci ! Le code OTP pour signer le consentement a été envoyé à votre e-mail.",
                 patient_consent_success_noemail: "Document accepté. Le médecin a été averti ; vous recevrez le code OTP sous peu.",
-                patient_otp_instructions: "Nous avons envoyé un code OTP à votre e-mail. Saisissez-le ci-dessous pour signer le consentement.",
+                patient_otp_instructions: "Voici votre code OTP. Saisissez-le ci-dessous pour signer le consentement :",
                 patient_otp_confirm_btn: "Signer le Consentement",
                 patient_otp_invalid: "Code OTP incorrect. Veuillez réessayer.",
                 patient_consent_signed_success: "Consentement signé avec succès ! Vous pouvez fermer cette page.",
+                patient_consent_link_expired_title: "Lien déjà utilisé",
+                patient_consent_link_expired_text: "Ce lien de consentement a expiré car il a déjà été utilisé pour signer. Si vous avez besoin d'aide, contactez l'établissement.",
                 email_invite_simulated_title: "Invitation e-mail envoyée à {patient}",
                 email_invite_simulated_body: "Cher patient, votre télévisite est prête. Cliquez sur le lien suivant pour rejoindre la visioconférence : <br><a href='{url}' target='_blank' class='btn btn-sm btn-primary mt-2 text-white'><i class='bi bi-box-arrow-up-right me-1'></i>Accéder à la Télévisite</a>",
                 toast_invite_sent: "Lien d'invitation Jitsi envoyé au patient par e-mail.",
@@ -3984,6 +3998,13 @@
             document.getElementById('pdf-doc-title').textContent = t('pdf_consent_doc_title');
             document.getElementById('pdf-doc-body').innerHTML = t('pdf_consent_body');
 
+            // Ripristina i pulsanti del footer: unlockConsentOtp() li altera per mostrare il codice
+            // direttamente nel modale, quindi vanno rimessi a posto ogni volta che si riapre.
+            const btnDownload = document.getElementById('btn-download-consent-pdf');
+            if (btnDownload) btnDownload.style.display = '';
+            const btnCancel = document.getElementById('btn-pdf-modal-cancel');
+            if (btnCancel) btnCancel.querySelector('span').textContent = t('btn_cancel');
+
             const btnUnlock = document.getElementById('btn-unlock-otp');
             if (btnUnlock) {
                 const tv = S.televisite.find(t => t.id === id);
@@ -4009,10 +4030,21 @@
             tv.consentOtp = otp;
             renderAll();
 
-            // Nasconde il modale
-            const modalEl = document.getElementById('pdfModal');
-            const modalInstance = bootstrap.Modal.getInstance(modalEl);
-            if (modalInstance) modalInstance.hide();
+            // Mostra subito il codice OTP in questo stesso modale, invece di chiuderlo e
+            // costringere a cercarlo in un'altra e-mail simulata della campanella.
+            document.getElementById('pdf-doc-title').textContent = t('otp_unlocked_title');
+            document.getElementById('pdf-doc-body').innerHTML = `
+                <div class="text-center py-3">
+                    <i class="bi bi-shield-check text-success" style="font-size:2.5rem;"></i>
+                    <p class="mt-3 mb-3">${t('otp_unlocked_instructions')}</p>
+                    <div class="fw-bold" style="font-size:2.2rem; letter-spacing:0.4rem; color:#0d6efd;">${otp}</div>
+                </div>
+            `;
+            document.getElementById('btn-unlock-otp').style.display = 'none';
+            const btnDownload = document.getElementById('btn-download-consent-pdf');
+            if (btnDownload) btnDownload.style.display = 'none';
+            const btnCancel = document.getElementById('btn-pdf-modal-cancel');
+            if (btnCancel) btnCancel.querySelector('span').textContent = currentLang === 'fr' ? 'Fermer' : 'Chiudi';
 
             showToast(t('toast_otp_unlocked'), 'success');
 
@@ -4056,6 +4088,21 @@
             return params.get('consent') === '1' && !!params.get('tvId');
         }
 
+        // Non c'è un backend che possa invalidare il link lato server: una volta firmato,
+        // lo segniamo come "usato" nel localStorage di QUESTO browser, così se lo stesso link
+        // viene riaperto sullo stesso dispositivo (es. tasto Indietro, o riapertura dall'e-mail)
+        // non permette di firmare di nuovo. Non protegge da un link rigirato ad un altro dispositivo:
+        // senza backend non è possibile garantirlo davvero, ma copre il caso reale più comune.
+        function patientConsentUsedKey(tvId) {
+            return 'tv_consent_used_' + tvId;
+        }
+        function isPatientConsentLinkUsed(tvId) {
+            try { return localStorage.getItem(patientConsentUsedKey(tvId)) === '1'; } catch (_) { return false; }
+        }
+        function markPatientConsentLinkUsed(tvId) {
+            try { localStorage.setItem(patientConsentUsedKey(tvId), '1'); } catch (_) { }
+        }
+
         function initPatientConsentView() {
             const params = new URLSearchParams(window.location.search);
             const lang = params.get('lang');
@@ -4071,11 +4118,22 @@
                 tid: params.get('tid') || ''
             };
 
+            document.getElementById('patient-consent-overlay').style.display = 'block';
+
+            if (isPatientConsentLinkUsed(patientConsentCtx.tvId)) {
+                document.getElementById('patient-consent-title').textContent = t('pdf_consent_doc_title');
+                document.getElementById('patient-consent-greeting').textContent = '';
+                document.getElementById('patient-consent-body').innerHTML = '';
+                document.getElementById('patient-consent-form').classList.add('d-none');
+                document.getElementById('patient-consent-expired-text').textContent = t('patient_consent_link_expired_text');
+                document.getElementById('patient-consent-expired').classList.remove('d-none');
+                return;
+            }
+
             document.getElementById('patient-consent-title').textContent = t('pdf_consent_doc_title');
             document.getElementById('patient-consent-greeting').textContent = t('patient_consent_greeting', { name: patientConsentCtx.patientName });
             document.getElementById('patient-consent-body').innerHTML = t('pdf_consent_body');
             document.getElementById('patient-consent-accept-btn-text').textContent = t('btn_accept_and_unlock');
-            document.getElementById('patient-consent-overlay').style.display = 'block';
         }
 
         // Connessione MQTT "usa e getta": pubblica un singolo messaggio e si disconnette.
@@ -4158,16 +4216,18 @@
             document.getElementById('patient-consent-form').style.display = 'none';
 
             if (emailSent) {
-                // Il paziente firma da qui stesso inserendo l'OTP appena ricevuto via email,
-                // invece di doverlo comunicare al medico (es. per telefono) perché lo digiti lui.
+                // Il codice viene mostrato qui stesso, nella stessa pagina: il paziente non deve
+                // più tornare nella propria casella di posta per leggerlo prima di firmare.
                 ctx.otp = otp;
                 document.getElementById('patient-otp-instructions').textContent = t('patient_otp_instructions');
+                document.getElementById('patient-otp-code-display').textContent = otp;
                 document.getElementById('patient-otp-confirm-btn-text').textContent = t('patient_otp_confirm_btn');
                 document.getElementById('patient-otp-step').classList.remove('d-none');
             } else {
                 const successEl = document.getElementById('patient-consent-success');
                 document.getElementById('patient-consent-success-text').textContent = t('patient_consent_success_noemail');
                 successEl.classList.remove('d-none');
+                markPatientConsentLinkUsed(ctx.tvId);
             }
         }
 
@@ -4203,6 +4263,7 @@
             const successEl = document.getElementById('patient-consent-success');
             document.getElementById('patient-consent-success-text').textContent = t('patient_consent_signed_success');
             successEl.classList.remove('d-none');
+            markPatientConsentLinkUsed(ctx.tvId);
         }
 
         function downloadConsentPDF() {
