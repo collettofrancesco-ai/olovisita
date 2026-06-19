@@ -859,11 +859,24 @@
             #patient-report-print-area * {
                 visibility: visible;
             }
+            /* L'overlay e il suo contenitore usano position:fixed e min-height:100vh per centrare
+               il referto a schermo: in stampa vanno riportati al flusso normale, altrimenti
+               il browser li ripete su ogni pagina generata o calcola un'altezza enorme,
+               producendo pagine bianche in più o un referto rimpicciolito in un angolo. */
+            #patient-report-overlay {
+                position: static !important;
+                inset: auto !important;
+                overflow: visible !important;
+                background: none !important;
+            }
+            #patient-report-overlay>div {
+                min-height: 0 !important;
+                padding: 0 !important;
+                display: block !important;
+            }
             #patient-report-print-area {
-                position: absolute;
-                top: 0;
-                left: 0;
-                width: 100%;
+                width: 100% !important;
+                max-width: 100% !important;
             }
             .no-print {
                 display: none !important;
@@ -4316,9 +4329,16 @@
         // Il cruscotto resta nel DOM dietro all'overlay (mai inizializzato/popolato in questa
         // modalità, ma comunque presente): blocca lo scroll di html/body così non scorre più
         // "in trasparenza" dietro la pagina pubblica del paziente quando questa è più alta dello schermo.
+        // Lo rimuove anche dal flusso del documento (non solo dalla vista): altrimenti la sua
+        // altezza reale si somma a quella della pagina durante la stampa/"Salva come PDF" del
+        // referto, generando pagine bianche in più (o il referto rimpicciolito in un angolo,
+        // se il browser scala per far entrare tutto in una sola pagina).
         function lockBackgroundForPatientView() {
             document.documentElement.style.overflow = 'hidden';
             document.body.style.overflow = 'hidden';
+            document.querySelectorAll('.app-header, .role-bar, .container-xl').forEach(el => {
+                el.style.display = 'none';
+            });
         }
 
         function isPatientConsentMode() {
