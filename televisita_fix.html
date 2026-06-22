@@ -3944,6 +3944,29 @@
     `;
         }
 
+        // Invia l'e-mail reale via EmailJS con un paio di ritentativi automatici: un cambio di rete
+        // momentaneo (es. durante una videochiamata Jitsi attiva, che a sua volta lo rileva e mostra
+        // "È stato rilevato un cambio di rete") fa cadere la richiesta HTTP con ERR_NETWORK_CHANGED;
+        // il browser non la riprova da solo perché è una POST, quindi ci pensiamo noi prima di
+        // arrenderci e mostrare l'errore al medico.
+        function sendEmailJsWithRetry(emailJsConfig, templateParams, patientEmail, attempt = 1) {
+            const maxAttempts = 3;
+            emailjs.send(emailJsConfig.serviceId, emailJsConfig.templateId, templateParams, emailJsConfig.publicKey)
+                .then(response => {
+                    console.log('EmailJS Success:', response.status, response.text);
+                    showToast('✉️ E-mail reale inviata con successo a ' + patientEmail, 'success');
+                })
+                .catch(error => {
+                    console.error(`EmailJS Error (tentativo ${attempt}/${maxAttempts}):`, error);
+                    if (attempt < maxAttempts) {
+                        setTimeout(() => sendEmailJsWithRetry(emailJsConfig, templateParams, patientEmail, attempt + 1), attempt * 2000);
+                    } else {
+                        const errorDetail = (error && (error.text || error.message)) || 'connessione di rete instabile';
+                        showToast('⚠️ Errore invio e-mail EmailJS dopo ' + maxAttempts + ' tentativi: ' + errorDetail, 'danger');
+                    }
+                });
+        }
+
         function addSimulatedEmail({ type, patientName, patientEmail, subject, body, tvId, otp, inviteUrl }) {
             const now = new Date();
             const time = now.toLocaleTimeString(currentLang === 'fr' ? 'fr-FR' : 'it-IT', { hour: '2-digit', minute: '2-digit' });
@@ -4003,15 +4026,7 @@
                     otp_code: otp || ''
                 };
 
-                emailjs.send(emailJsConfig.serviceId, emailJsConfig.templateId, templateParams, emailJsConfig.publicKey)
-                    .then(response => {
-                        console.log('EmailJS Success:', response.status, response.text);
-                        showToast('✉️ E-mail reale inviata con successo a ' + patientEmail, 'success');
-                    })
-                    .catch(error => {
-                        console.error('EmailJS Error:', error);
-                        showToast('⚠️ Errore invio e-mail EmailJS: ' + (error.text || error), 'danger');
-                    });
+                sendEmailJsWithRetry(emailJsConfig, templateParams, patientEmail);
             }
 
             return email;
