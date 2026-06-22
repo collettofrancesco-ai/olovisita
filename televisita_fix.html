@@ -2926,6 +2926,15 @@
             };
         }
 
+        // Base URL pubblica e sempre raggiungibile da internet per i link che il paziente riceve
+        // via e-mail (consenso, videochiamata, referto). Fissa su GitHub Pages indipendentemente da
+        // dove il medico stia effettivamente usando l'app in quel momento (es. un domani Docker di
+        // una clinica, magari raggiungibile solo dalla rete interna): il paziente clicca il link da
+        // casa o dal cellulare, quindi deve sempre poter arrivare a una copia dell'app pubblicamente
+        // accessibile. Essendo un'app 100% client-side, qualunque copia identica del codice gestisce
+        // la pagina del paziente: non serve che sia la stessa istanza usata in quel momento dal medico.
+        const PUBLIC_PATIENT_BASE_URL = 'https://collettofrancesco-ai.github.io/olovisita/';
+
         // Configurazione EmailJS di default "di fabbrica": senza questa, ogni nuovo dominio/deploy
         // (es. il Docker di Olomedia) parte con localStorage vuoto e le e-mail reali non partono finché
         // qualcuno non rientra in Impostazioni a digitare di nuovo le 3 chiavi. Con un default imbustato
@@ -4318,7 +4327,7 @@
         // Costruisce il link pubblico che il paziente apre dalla sua e-mail reale per leggere il consenso
         // e sbloccare l'OTP da solo (senza login, senza backend: tutto lo stato necessario viaggia nell'URL).
         function buildPatientConsentUrl(tv, patientName, patientEmail) {
-            const base = window.location.origin + window.location.pathname;
+            const base = PUBLIC_PATIENT_BASE_URL;
             const params = new URLSearchParams({
                 consent: '1',
                 tvId: tv.id,
@@ -4335,7 +4344,7 @@
         // in base64 e gonfiare troppo l'URL): nel link la firma è rappresentata solo testualmente,
         // il codice di verifica FEA resta comunque la prova legale del documento.
         function buildPatientReportUrl(d) {
-            const base = window.location.origin + window.location.pathname;
+            const base = PUBLIC_PATIENT_BASE_URL;
             const params = new URLSearchParams({
                 report: '1',
                 docId: d.id,
@@ -4357,7 +4366,7 @@
         // link DOPO che la televisita è già terminata, può accorgersene invece di entrare in
         // una stanza Jitsi vuota o ormai chiusa.
         function buildPatientCallUrl(room) {
-            const base = window.location.origin + window.location.pathname;
+            const base = PUBLIC_PATIENT_BASE_URL;
             const params = new URLSearchParams({
                 call: '1',
                 room: room,
