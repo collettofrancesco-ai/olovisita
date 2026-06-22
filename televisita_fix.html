@@ -3956,10 +3956,21 @@
         // paziente in initPatientConsentView/patientAcceptConsent): un cambio di rete momentaneo
         // (es. durante una videochiamata Jitsi attiva, che lo rileva e lo segnala da sola) fa cadere
         // la richiesta con un errore che il browser non riprova da solo, perché è una POST.
+        // Un errore "di rete" (richiesta mai arrivata al server: cambio di rete, DNS, timeout) non porta
+        // mai uno status HTTP nell'oggetto di errore di EmailJS — solo in quel caso ha senso riprovare.
+        // Un errore 4xx (credenziali sbagliate, quota account superata, richiesta non valida, ecc.) è
+        // invece un rifiuto del server: riprovare la stessa richiesta identica non risolverebbe nulla,
+        // e anzi consumerebbe altre 2 richieste della quota mensile per ogni invio fallito.
+        function isRetryableEmailJsError(error) {
+            const status = error && error.status;
+            if (typeof status !== 'number' || status === 0) return true; // nessuna risposta dal server
+            return status >= 500; // errore lato server EmailJS, può valere la pena riprovare
+        }
+
         function emailjsSendWithRetry(serviceId, templateId, templateParams, publicKey, maxAttempts = 3, attempt = 1) {
             return emailjs.send(serviceId, templateId, templateParams, publicKey).catch(error => {
                 console.error(`EmailJS Error (tentativo ${attempt}/${maxAttempts}):`, error);
-                if (attempt >= maxAttempts) throw error;
+                if (attempt >= maxAttempts || !isRetryableEmailJsError(error)) throw error;
                 return new Promise(resolve => setTimeout(resolve, attempt * 2000))
                     .then(() => emailjsSendWithRetry(serviceId, templateId, templateParams, publicKey, maxAttempts, attempt + 1));
             });
@@ -3972,8 +3983,10 @@
                     showToast('✉️ E-mail reale inviata con successo a ' + patientEmail, 'success');
                 })
                 .catch(error => {
-                    const errorDetail = (error && (error.text || error.message)) || 'connessione di rete instabile';
-                    showToast('⚠️ Errore invio e-mail EmailJS dopo i tentativi: ' + errorDetail, 'danger');
+                    const status = error && error.status;
+                    const detail = (error && (error.text || error.message)) || 'connessione di rete instabile';
+                    const prefix = (typeof status === 'number' && status > 0) ? `Errore invio e-mail EmailJS (HTTP ${status})` : 'Errore invio e-mail EmailJS';
+                    showToast('⚠️ ' + prefix + ': ' + detail, 'danger');
                 });
         }
 
