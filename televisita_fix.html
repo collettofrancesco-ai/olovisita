@@ -2934,23 +2934,28 @@
         // sovrascriverlo da Impostazioni: quel valore in localStorage ha sempre la precedenza su questo.
         // La Public Key di EmailJS è pensata per stare in codice lato client (non è un segreto, a
         // differenza di un'eventuale Private Key lato server, che qui non esiste).
-        const DEFAULT_EMAILJS_CONFIG = {
-            publicKey: 'v1V2lLUF0sjTkVbgE',
-            serviceId: 'service_ekiv0hd',
-            templateId: 'template_p95rg2w'
-        };
+        // Catena di account EmailJS di fabbrica, provati in ordine: un account gratuito ha una quota
+        // mensile limitata, quindi appena se ne esaurisce uno a metà mese le e-mail reali smetterebbero
+        // di partire fino al rinnovo. Con più account in lista (stesso template ricreato su ciascuno),
+        // quando il primo rifiuta la richiesta (quota esaurita, o qualsiasi altro errore del server) si
+        // passa automaticamente al successivo, invece di arrendersi al primo che si esaurisce.
+        const DEFAULT_EMAILJS_CONFIGS = [
+            { publicKey: 'v1V2lLUF0sjTkVbgE', serviceId: 'service_ekiv0hd', templateId: 'template_p95rg2w' }
+        ];
 
-        // Legge la configurazione EmailJS effettiva: quella salvata da un medico in Impostazioni se
-        // presente, altrimenti il default di fabbrica qui sopra.
-        function getEmailJsConfig() {
+        // Legge la catena di configurazioni EmailJS da provare in ordine: quella salvata da un medico in
+        // Impostazioni se presente (sostituisce per intero la catena di default: è una scelta esplicita
+        // di usare proprio quell'account, non un fallback a sorpresa su un altro), altrimenti la catena
+        // di default di fabbrica qui sopra.
+        function getEmailJsConfigs() {
             try {
                 const raw = localStorage.getItem('tv_emailjs_config');
                 if (raw) {
                     const stored = JSON.parse(raw);
-                    if (stored && stored.serviceId && stored.templateId && stored.publicKey) return stored;
+                    if (stored && stored.serviceId && stored.templateId && stored.publicKey) return [stored];
                 }
             } catch (_) { }
-            return DEFAULT_EMAILJS_CONFIG;
+            return DEFAULT_EMAILJS_CONFIGS;
         }
 
         let mqttClient = null;
@@ -4045,8 +4050,22 @@
             });
         }
 
-        function sendEmailJsWithRetry(emailJsConfig, templateParams, patientEmail) {
-            emailjsSendWithRetry(emailJsConfig.serviceId, emailJsConfig.templateId, templateParams, emailJsConfig.publicKey)
+        // Prova gli account EmailJS della catena in ordine: ognuno con i propri ritentativi su errori
+        // temporanei (vedi emailjsSendWithRetry); solo quando un account fallisce in modo definitivo
+        // (es. quota mensile esaurita) si passa al successivo della lista, finché non ne resta nessuno.
+        function sendAcrossEmailJsAccounts(configs, templateParams, index = 0) {
+            const config = configs[index];
+            return emailjsSendWithRetry(config.serviceId, config.templateId, templateParams, config.publicKey)
+                .catch(error => {
+                    const hasNext = index + 1 < configs.length;
+                    if (!hasNext) throw error;
+                    console.warn(`Account EmailJS #${index + 1} esaurito o non disponibile, passo al successivo:`, error);
+                    return sendAcrossEmailJsAccounts(configs, templateParams, index + 1);
+                });
+        }
+
+        function sendEmailJsWithRetry(emailJsConfigs, templateParams, patientEmail) {
+            sendAcrossEmailJsAccounts(emailJsConfigs, templateParams)
                 .then(response => {
                     console.log('EmailJS Success:', response.status, response.text);
                     showToast('✉️ E-mail reale inviata con successo a ' + patientEmail, 'success');
@@ -4080,14 +4099,14 @@
             S.emails.unshift(email);
             syncState({ kind: 'email_received', emailId: email.id });
 
-            // Invio Reale via EmailJS (config del medico se presente, altrimenti il default di fabbrica)
-            const emailJsConfig = getEmailJsConfig();
+            // Invio Reale via EmailJS (config del medico se presente, altrimenti la catena di default di fabbrica)
+            const emailJsConfigs = getEmailJsConfigs();
 
             // realSend=false per le email il cui contenuto (tipicamente un codice OTP) è già mostrato
             // direttamente a video nello stesso momento in cui viene generato: inviarlo anche per email
             // non aggiunge nulla per chi la riceve, e con una quota EmailJS mensile limitata è uno spreco
             // di richieste reali per un'informazione che il destinatario ha già sotto gli occhi.
-            if (realSend && emailJsConfig && emailJsConfig.serviceId && emailJsConfig.templateId && emailJsConfig.publicKey) {
+            if (realSend && emailJsConfigs && emailJsConfigs.length > 0) {
                 console.log('Sending real email via EmailJS...', email);
                 // Il bottone inline (testo+link) viene rimosso del tutto dal testo semplice: nell'e-mail
                 // reale il bottone arriva già separatamente dal template tramite {{action_label}}/{{invite_url}},
@@ -4118,7 +4137,7 @@
                     otp_code: otp || ''
                 };
 
-                sendEmailJsWithRetry(emailJsConfig, templateParams, patientEmail);
+                sendEmailJsWithRetry(emailJsConfigs, templateParams, patientEmail);
             }
 
             return email;
@@ -4181,16 +4200,20 @@
                 if (raw) override = JSON.parse(raw);
             } catch (_) { }
 
-            const config = override || DEFAULT_EMAILJS_CONFIG;
+            const config = override || DEFAULT_EMAILJS_CONFIGS[0];
             document.getElementById('emailjs-public-key').value = config.publicKey || '';
             document.getElementById('emailjs-service-id').value = config.serviceId || '';
             document.getElementById('emailjs-template-id').value = config.templateId || '';
 
             const sourceEl = document.getElementById('emailjs-config-source');
             if (sourceEl) {
-                sourceEl.textContent = override
-                    ? '🔧 Configurazione personalizzata, salvata su questo browser.'
-                    : '✓ Configurazione predefinita di fabbrica: già attiva, valida su qualunque dispositivo o dominio senza bisogno di impostarla.';
+                if (override) {
+                    sourceEl.textContent = '🔧 Configurazione personalizzata, salvata su questo browser.';
+                } else if (DEFAULT_EMAILJS_CONFIGS.length > 1) {
+                    sourceEl.textContent = `✓ Configurazione predefinita di fabbrica (account 1 di ${DEFAULT_EMAILJS_CONFIGS.length} nella catena di riserva): già attiva, valida su qualunque dispositivo o dominio senza bisogno di impostarla.`;
+                } else {
+                    sourceEl.textContent = '✓ Configurazione predefinita di fabbrica: già attiva, valida su qualunque dispositivo o dominio senza bisogno di impostarla.';
+                }
             }
 
             const modal = new bootstrap.Modal(document.getElementById('emailSettingsModal'));
