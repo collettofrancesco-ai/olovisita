@@ -6032,6 +6032,16 @@
                 if (mqttClient && mqttClient.connected) {
                     sendMQTTMessage({ type: 'collab_action', action: sizeAction });
                 }
+                // Rete di sicurezza: questo è il messaggio più importante di tutti (senza, l'altro
+                // lato resta in attesa all'infinito), ma viaggia sullo stesso broker pubblico che
+                // può occasionalmente perdere un singolo messaggio. Un secondo invio identico poco
+                // dopo costa nulla (applicarlo due volte è innocuo, vedi 'canvas_size' più sotto)
+                // e copre il caso in cui il primo non sia arrivato.
+                setTimeout(() => {
+                    if (mqttClient && mqttClient.connected) {
+                        sendMQTTMessage({ type: 'collab_action', action: sizeAction });
+                    }
+                }, 1500);
                 markCollabCanvasReady();
             } else if (lastAgreedCanvasWidth && lastAgreedCanvasHeight) {
                 // Si ha già una misura concordata con l'host per questa sessione di
