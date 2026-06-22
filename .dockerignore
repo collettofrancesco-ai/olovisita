@@ -1,0 +1,13 @@
+# Solo docs/ entra nell'immagine (vedi Dockerfile): tutto il resto qui sotto serve solo
+# allo sviluppo locale e non deve far parte del contesto di build inviato a Docker.
+.git
+.gitignore
+.claude
+.DS_Store
+manuale/
+televisita.html
+televisita_fix.html
+vendor/
+build_minified.py
+Avvia_Server.command
+STUDIO_PRESENTAZIONE.md
