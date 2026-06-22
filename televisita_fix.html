@@ -1165,14 +1165,26 @@
                 <div class="row g-4">
                     <div class="col-md-6">
                         <div class="login-card" style="cursor:default;">
-                            <h6 class="fw-bold mb-1" style="color:#1565c0;">Struttura 1</h6>
+                            <div class="d-flex justify-content-between align-items-start">
+                                <h6 class="fw-bold mb-1" style="color:#1565c0;">Struttura 1</h6>
+                                <button id="admin-download-struttura1" class="btn btn-outline-secondary btn-sm"
+                                    style="font-size:0.7rem;" disabled onclick="downloadAdminBackup('struttura1')">
+                                    <i class="bi bi-download me-1"></i>Scarica JSON
+                                </button>
+                            </div>
                             <div id="admin-status-struttura1" class="text-muted small mb-3">In attesa di dati...</div>
                             <div id="admin-content-struttura1"></div>
                         </div>
                     </div>
                     <div class="col-md-6">
                         <div class="login-card" style="cursor:default;">
-                            <h6 class="fw-bold mb-1" style="color:#00796b;">Struttura 2</h6>
+                            <div class="d-flex justify-content-between align-items-start">
+                                <h6 class="fw-bold mb-1" style="color:#00796b;">Struttura 2</h6>
+                                <button id="admin-download-struttura2" class="btn btn-outline-secondary btn-sm"
+                                    style="font-size:0.7rem;" disabled onclick="downloadAdminBackup('struttura2')">
+                                    <i class="bi bi-download me-1"></i>Scarica JSON
+                                </button>
+                            </div>
                             <div id="admin-status-struttura2" class="text-muted small mb-3">In attesa di dati...</div>
                             <div id="admin-content-struttura2"></div>
                         </div>
@@ -3505,6 +3517,8 @@
             if (!statusEl || !contentEl) return;
 
             statusEl.textContent = entry.facility + ' — ultimo aggiornamento: ' + new Date(entry.ts).toLocaleString('it-IT');
+            const downloadBtn = document.getElementById('admin-download-' + role);
+            if (downloadBtn) downloadBtn.disabled = false;
 
             const televisite = (entry.data.shared && entry.data.shared.televisite) || [];
             const docs = (entry.data.shared && entry.data.shared.docs) || [];
@@ -3541,6 +3555,23 @@
             }
 
             contentEl.innerHTML = html;
+        }
+
+        // Scarica il backup decifrato di una struttura come file .json, nello stesso formato di
+        // "Esporta Backup" (buildBackupData): la struttura può poi recuperarlo da sola con
+        // "Importa Backup", senza che l'amministratore debba intervenire sui suoi dati.
+        function downloadAdminBackup(role) {
+            const entry = adminReceivedBackups[role];
+            if (!entry) return;
+            const blob = new Blob([JSON.stringify(entry.data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `backup_${role}_${new Date(entry.ts).toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
         }
 
         function initAdminView() {
