@@ -2904,12 +2904,17 @@
                 docs: S.docs
                     .filter(d => d.shared !== false || d.by === S.role) // Non inviare documenti privati dell'altra struttura
                     .filter(d => {
-                        // Stessa esclusione totale delle televisite Centro: un documento collegato
-                        // (consenso, referto, upload) non deve raggiungere l'altra struttura nemmeno
-                        // come metadato, anche se il suo base64Data non viaggia comunque su MQTT.
+                        // I documenti di una televisita "Centro" restano privati per default (la
+                        // visita in sé non viene mai condivisa, vedi il filtro su S.televisite qui
+                        // sopra), ma il medico può scegliere di condividerne comunque uno con l'altra
+                        // struttura (es. per un consulto su quel paziente), esattamente come farebbe
+                        // con un documento di una televisita Network: in quel caso d.shared diventa
+                        // true tramite shareDoc/confirmShareDoc, e da quel momento il documento deve
+                        // poter raggiungere l'altra struttura come qualsiasi altro documento condiviso.
                         if (!d.tvId) return true;
                         const linkedTv = S.televisite.find(tv => tv.id === d.tvId);
-                        return !linkedTv || linkedTv.visitMode !== 'centro';
+                        if (!linkedTv || linkedTv.visitMode !== 'centro') return true;
+                        return d.shared === true;
                     })
                     .map(d => {
                         return {
@@ -4948,12 +4953,15 @@
             }
 
             let docs = S.docs.filter(d => d.by === S.role || d.shared !== false);
-            // Esclude i documenti legati a una televisita "Centro" dell'altro ruolo: anche se "shared",
-            // restano una faccenda interna alla struttura che li ha creati (vedi anche visibleTelevisite()).
+            // Esclude i documenti legati a una televisita "Centro" dell'altro ruolo, A MENO CHE
+            // siano stati esplicitamente condivisi (d.shared === true): in quel caso il medico ha
+            // scelto di farli arrivare all'altra struttura (es. per un consulto sul paziente), quindi
+            // devono comparire qui esattamente come un documento condiviso qualsiasi. La visita in sé
+            // resta comunque privata (vedi visibleTelevisite()): solo il documento viene condiviso.
             docs = docs.filter(d => {
                 if (!d.tvId) return true;
                 const linkedTv = S.televisite.find(tv => tv.id === d.tvId);
-                return !linkedTv || linkedTv.visitMode !== 'centro' || linkedTv.scheduledBy === S.role;
+                return !linkedTv || linkedTv.visitMode !== 'centro' || linkedTv.scheduledBy === S.role || d.shared === true;
             });
 
             docs.forEach(d => {
@@ -5043,7 +5051,9 @@
                     const linkedCentroTv = d.tvId ? S.televisite.find(tv => tv.id === d.tvId && tv.visitMode === 'centro') : null;
 
                     let shareBadge = '';
-                    if (linkedCentroTv) {
+                    if (linkedCentroTv && isPrivate) {
+                        // Ancora privato (non ancora condiviso): segnala che viene da una
+                        // televisita Centro, non ancora "Bozza Locale" generico.
                         shareBadge = `<span class="badge bg-info-subtle text-info-emphasis" style="font-size:0.62rem;font-weight:500;"><i class="bi bi-building-lock me-1"></i>${t('badge_visit_centro')}</span>`;
                     } else if (isPrivate) {
                         shareBadge = `<span class="badge" style="font-size:0.62rem;background:#fff3e0;color:#e65100;font-weight:500;"><i class="bi bi-lock-fill me-1"></i>${t('doc_private_badge') || 'Bozza Locale'}</span>`;
@@ -5079,7 +5089,7 @@
                                     <button class="btn btn-sm btn-light p-1 border-0" onclick="viewDocPreview('${d.id}')" title="Anteprima" style="color:#1565c0; background:none;">
                                         <i class="bi bi-eye fs-5"></i>
                                     </button>
-                                    ${isOwner && isPrivate && !linkedCentroTv ? `
+                                    ${isOwner && isPrivate ? `
                                     <button class="btn btn-sm btn-light p-1 border-0" onclick="shareDoc('${d.id}')" title="Condividi" style="color:#2e7d32; background:none;">
                                         <i class="bi bi-share fs-5"></i>
                                     </button>` : ''}
@@ -6748,7 +6758,10 @@
                 ibg: '#ffebee',
                 ic: '#c62828',
                 file: null,
-                shared: true, // Auto-condiviso
+                // Per le televisite Network resta condiviso automaticamente come sempre; per le
+                // Centro parte privato (la struttura può comunque condividerlo a mano in seguito,
+                // es. per un consulto sul paziente, esattamente come un documento qualsiasi).
+                shared: !isCentro,
                 base64Data: null,
                 category: 'consenso',
                 isConsentDocument: true
@@ -6911,6 +6924,7 @@
                 isConsentDocument: true
             };
             S.docs.push(consentDoc);
+            // Nota: le televisite urgenti non hanno una modalità "Centro", sono sempre condivise.
 
             // Attiva la chiamata urgente
             S.immReq = 'waiting';
@@ -7827,7 +7841,9 @@
                 size: '142 KB',
                 at: docTime,
                 by: S.role,
-                shared: true, // Condiviso automaticamente
+                // Come per il consenso: condiviso automaticamente solo per le televisite Network,
+                // privato di default per le Centro (condivisibile a mano in seguito se serve).
+                shared: tv.visitMode !== 'centro',
                 icon: 'bi-file-earmark-medical-fill',
                 ic: '#0d47a1',
                 ibg: '#e8f0fe',
@@ -8281,17 +8297,6 @@
             pendingShareId = null;
             bootstrap.Modal.getInstance(document.getElementById('shareModal')).hide();
             if (!d) return;
-
-            // Un documento legato a una televisita "Centro" non va mai condiviso con l'altra
-            // struttura: il bottone "Condividi" è già nascosto per questi documenti (vedi renderDocs),
-            // questo controllo è solo una seconda rete di sicurezza.
-            const linkedTv = d.tvId ? S.televisite.find(tv => tv.id === d.tvId) : null;
-            if (linkedTv && linkedTv.visitMode === 'centro') {
-                showToast(currentLang === 'fr'
-                    ? 'Ce document appartient à une télévisite "Centre" : il ne peut pas être partagé avec l\'autre établissement.'
-                    : 'Questo documento appartiene a una televisita "Centro": non può essere condiviso con l\'altra struttura.', 'warning');
-                return;
-            }
 
             d.shared = true;
             setDocTab('shared');
