@@ -1319,10 +1319,12 @@
                             </div>
                             <div class="row g-3 mb-3">
                                 <div class="col-md-12">
-                                    <label class="form-label fw-semibold small" data-i18n="form_visit_mode">Tipo di
-                                        Televisita</label>
-                                    <select class="form-select" id="f-visit-mode">
-                                        <option value="network" selected data-i18n="visit_mode_network">Televisita
+                                    <label class="form-label fw-semibold small"><span data-i18n="form_visit_mode">Tipo
+                                            di Televisita</span> <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="f-visit-mode" required>
+                                        <option value="" selected disabled data-i18n="visit_mode_select_placeholder">--
+                                            Seleziona il tipo di televisita --</option>
+                                        <option value="network" data-i18n="visit_mode_network">Televisita
                                             Network (condivisa con l'altra struttura)</option>
                                         <option value="centro" data-i18n="visit_mode_centro">Televisita Centro (solo
                                             questa struttura)</option>
@@ -1437,10 +1439,12 @@
                             </div>
                             <div class="row g-3 mb-3">
                                 <div class="col-md-12">
-                                    <label class="form-label fw-semibold small" data-i18n="form_visit_mode">Tipo di
-                                        Televisita</label>
-                                    <select class="form-select" id="f2-visit-mode">
-                                        <option value="network" selected data-i18n="visit_mode_network">Televisita
+                                    <label class="form-label fw-semibold small"><span data-i18n="form_visit_mode">Tipo
+                                            di Televisita</span> <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="f2-visit-mode" required>
+                                        <option value="" selected disabled data-i18n="visit_mode_select_placeholder">--
+                                            Seleziona il tipo di televisita --</option>
+                                        <option value="network" data-i18n="visit_mode_network">Televisita
                                             Network (condivisa con l'altra struttura)</option>
                                         <option value="centro" data-i18n="visit_mode_centro">Televisita Centro (solo
                                             questa struttura)</option>
@@ -2251,9 +2255,11 @@
                 form_cf: "Codice Identificativo",
                 form_cf_placeholder: "Codice Identificativo",
                 form_visit_mode: "Tipo di Televisita",
+                visit_mode_select_placeholder: "-- Seleziona il tipo di televisita --",
                 visit_mode_network: "Televisita Network (condivisa con l'altra struttura)",
                 visit_mode_centro: "Televisita Centro (solo questa struttura)",
                 visit_mode_help: "Network: la richiesta va anche all'altra struttura, che deve accettarla. Centro: resta interna, parte subito dopo il consenso del paziente.",
+                visit_mode_required_error: "Scegli se la televisita è Network (condivisa) o Centro (solo questa struttura) prima di programmarla.",
                 badge_visit_centro: "Centro",
                 form_date: "Data",
                 form_time: "Ora",
@@ -2507,9 +2513,11 @@
                 form_cf: "Code Identificatif",
                 form_cf_placeholder: "Code Identificatif",
                 form_visit_mode: "Type de Télévisite",
+                visit_mode_select_placeholder: "-- Sélectionnez le type de télévisite --",
                 visit_mode_network: "Télévisite Réseau (partagée avec l'autre établissement)",
                 visit_mode_centro: "Télévisite Centre (cet établissement uniquement)",
                 visit_mode_help: "Réseau : la demande part aussi vers l'autre établissement, qui doit l'accepter. Centre : elle reste interne, et démarre dès que le patient a donné son consentement.",
+                visit_mode_required_error: "Choisissez si la télévisite est Réseau (partagée) ou Centre (cet établissement uniquement) avant de la planifier.",
                 badge_visit_centro: "Centre",
                 form_date: "Date",
                 form_time: "Heure",
@@ -6398,6 +6406,23 @@
                 return;
             }
 
+            // La struttura deve scegliere consapevolmente se la televisita è Network (condivisa con
+            // l'altra struttura) o Centro (gestita da sola): niente valore predefinito silenzioso, va
+            // selezionato ogni volta. Il <select> ha già l'attributo "required", questo controllo è una
+            // seconda rete di sicurezza (es. se la validazione nativa del browser viene bypassata).
+            const visitModeEl = document.getElementById(`${pfx}-visit-mode`);
+            const visitMode = visitModeEl ? visitModeEl.value : '';
+            if (!visitMode) {
+                if (visitModeEl) {
+                    visitModeEl.classList.add('is-invalid');
+                    setTimeout(() => visitModeEl.classList.remove('is-invalid'), 3000);
+                    visitModeEl.focus();
+                }
+                showCenteredAlert(t('visit_mode_required_error'), 'warning');
+                return;
+            }
+            const isCentro = visitMode === 'centro';
+
             // Recupero i dati demografici inseriti per la televisita
             const dob = document.getElementById(`${pfx}-dob`).value;
             const gender = document.getElementById(`${pfx}-gender`).value;
@@ -6424,12 +6449,6 @@
                 }
             }
 
-            // Modalità "Network" (default, condivisa con l'altra struttura, richiede la sua accettazione)
-            // oppure "Centro" (resta interna: nessuna accettazione dell'altra struttura, si avvia in
-            // autonomia non appena il paziente firma il consenso).
-            const visitModeEl = document.getElementById(`${pfx}-visit-mode`);
-            const visitMode = visitModeEl ? visitModeEl.value : 'network';
-            const isCentro = visitMode === 'centro';
             const newTvId = 'TV' + Date.now();
 
             const tv = {
@@ -8174,6 +8193,9 @@
                 document.getElementById('f-patient').value = DEMO_PATIENT;
                 document.getElementById('f-email').value = 'maria.esposito@example.com';
                 document.getElementById('f-phone').value = '+39 333 123 4567';
+                // Il tipo di televisita non ha più un valore predefinito (va scelto consapevolmente
+                // ogni volta): la demo lo seleziona esplicitamente come farebbe il medico.
+                document.getElementById('f-visit-mode').value = 'network';
                 // Orario randomico per evitare conflitti con eventuali precedenti esecuzioni della demo nella stessa sessione
                 document.getElementById('f-time').value = `${String(10 + Math.floor(Math.random() * 8)).padStart(2, '0')}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')}`;
                 const notesEl = document.getElementById('f-notes');
