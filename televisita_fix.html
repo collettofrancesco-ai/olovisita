@@ -1318,6 +1318,23 @@
                                 </div>
                             </div>
                             <div class="row g-3 mb-3">
+                                <div class="col-md-12">
+                                    <label class="form-label fw-semibold small" data-i18n="form_visit_mode">Tipo di
+                                        Televisita</label>
+                                    <select class="form-select" id="f-visit-mode">
+                                        <option value="network" selected data-i18n="visit_mode_network">Televisita
+                                            Network (condivisa con l'altra struttura)</option>
+                                        <option value="centro" data-i18n="visit_mode_centro">Televisita Centro (solo
+                                            questa struttura)</option>
+                                    </select>
+                                    <div class="text-muted" style="font-size: 0.65rem; margin-top: 2px;"
+                                        data-i18n="visit_mode_help">
+                                        Network: la richiesta va anche all'altra struttura, che deve accettarla.
+                                        Centro: resta interna, parte subito dopo il consenso del paziente.
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row g-3 mb-3">
                                 <div class="col-md-3">
                                     <label class="form-label fw-semibold small"><span data-i18n="form_date">Data</span>
                                         <span class="text-danger">*</span></label>
@@ -1415,6 +1432,23 @@
                                             onclick="autoCalculateCF('f2')" title="Calcola automaticamente"
                                             style="border-color: #dee2e6;"><i
                                                 class="bi bi-magic text-primary"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-12">
+                                    <label class="form-label fw-semibold small" data-i18n="form_visit_mode">Tipo di
+                                        Televisita</label>
+                                    <select class="form-select" id="f2-visit-mode">
+                                        <option value="network" selected data-i18n="visit_mode_network">Televisita
+                                            Network (condivisa con l'altra struttura)</option>
+                                        <option value="centro" data-i18n="visit_mode_centro">Televisita Centro (solo
+                                            questa struttura)</option>
+                                    </select>
+                                    <div class="text-muted" style="font-size: 0.65rem; margin-top: 2px;"
+                                        data-i18n="visit_mode_help">
+                                        Network: la richiesta va anche all'altra struttura, che deve accettarla.
+                                        Centro: resta interna, parte subito dopo il consenso del paziente.
                                     </div>
                                 </div>
                             </div>
@@ -2216,6 +2250,11 @@
                 form_id_none: "-- Nessuno --",
                 form_cf: "Codice Identificativo",
                 form_cf_placeholder: "Codice Identificativo",
+                form_visit_mode: "Tipo di Televisita",
+                visit_mode_network: "Televisita Network (condivisa con l'altra struttura)",
+                visit_mode_centro: "Televisita Centro (solo questa struttura)",
+                visit_mode_help: "Network: la richiesta va anche all'altra struttura, che deve accettarla. Centro: resta interna, parte subito dopo il consenso del paziente.",
+                badge_visit_centro: "Centro",
                 form_date: "Data",
                 form_time: "Ora",
                 form_notes: "Note cliniche",
@@ -2467,6 +2506,11 @@
                 form_id_none: "-- Aucun --",
                 form_cf: "Code Identificatif",
                 form_cf_placeholder: "Code Identificatif",
+                form_visit_mode: "Type de Télévisite",
+                visit_mode_network: "Télévisite Réseau (partagée avec l'autre établissement)",
+                visit_mode_centro: "Télévisite Centre (cet établissement uniquement)",
+                visit_mode_help: "Réseau : la demande part aussi vers l'autre établissement, qui doit l'accepter. Centre : elle reste interne, et démarre dès que le patient a donné son consentement.",
+                badge_visit_centro: "Centre",
                 form_date: "Date",
                 form_time: "Heure",
                 form_notes: "Notes cliniques",
@@ -2808,6 +2852,14 @@
             currentDoctor: null
         };
 
+        // Le televisite "Centro" sono visibili solo alla struttura che le ha create: per l'altra
+        // struttura è come se non esistessero (oltre a non arrivarle mai via MQTT, vedi getShared()).
+        // Usata ovunque in UI si elenchino/contino le televisite, per non far "trapelare" una
+        // televisita Centro nelle statistiche o nei menu a tendina dell'altra struttura.
+        function visibleTelevisite() {
+            return S.televisite.filter(tv => tv.visitMode !== 'centro' || tv.scheduledBy === S.role);
+        }
+
         // ---------------------------------------------------------------------------
         // BROADCAST CHANNEL — sincronizzazione real-time tra tab dello stesso browser
         // ---------------------------------------------------------------------------
@@ -2827,9 +2879,23 @@
 
         function getShared() {
             return {
-                televisite: S.televisite,
+                // Le televisite "Centro" non devono mai arrivare all'altra struttura. A differenza del
+                // filtro usato in UI (visibleTelevisite, che lascia passare le proprie), qui l'esclusione
+                // è totale e senza eccezioni: entrambe le strutture sono iscritte allo STESSO topic MQTT,
+                // quindi anche pubblicare le proprie televisite Centro le renderebbe leggibili (una volta
+                // decifrate) dall'altra struttura. Restano comunque intatte nel proprio localStorage, vedi
+                // getSharedStateForStorage più sotto, che non applica questo filtro.
+                televisite: S.televisite.filter(tv => tv.visitMode !== 'centro'),
                 docs: S.docs
                     .filter(d => d.shared !== false || d.by === S.role) // Non inviare documenti privati dell'altra struttura
+                    .filter(d => {
+                        // Stessa esclusione totale delle televisite Centro: un documento collegato
+                        // (consenso, referto, upload) non deve raggiungere l'altra struttura nemmeno
+                        // come metadato, anche se il suo base64Data non viaggia comunque su MQTT.
+                        if (!d.tvId) return true;
+                        const linkedTv = S.televisite.find(tv => tv.id === d.tvId);
+                        return !linkedTv || linkedTv.visitMode !== 'centro';
+                    })
                     .map(d => {
                         return {
                             ...d,
@@ -3740,8 +3806,11 @@
 
         function renderVisits() {
             const isS1 = S.role === 'struttura1';
-            const html = S.televisite.length
-                ? S.televisite.map(tv => visitHTML(tv, isS1)).join('')
+            // Le televisite "Centro" sono visibili solo alla struttura che le ha create: per l'altra
+            // struttura è come se non esistessero (oltre a non arrivarle mai via MQTT, vedi getShared()).
+            const visible = visibleTelevisite();
+            const html = visible.length
+                ? visible.map(tv => visitHTML(tv, isS1)).join('')
                 : `<div class="empty small"><i class="bi bi-calendar-x fs-2"></i><p class="mt-2 mb-0">${t('no_visits')}</p></div>`;
 
             document.getElementById('vlist-s1').innerHTML = html;
@@ -3753,7 +3822,7 @@
                 s2TitleEl.textContent = t('received_visits');
             }
 
-            const active = S.televisite.filter(tv => tv.status !== 'completata' && tv.status !== 'rifiutata').length;
+            const active = visible.filter(tv => tv.status !== 'completata' && tv.status !== 'rifiutata').length;
             document.getElementById('vis-badge').textContent = active + ' ' + t('status_accepted').toLowerCase();
         }
 
@@ -3770,6 +3839,7 @@
 
             const isActive = tv.id === S.activeTvId;
             const activeBadge = isActive ? `<span class="badge bg-primary ms-1" style="font-size:0.62rem; font-weight:500;"><i class="bi bi-person-check-fill me-1"></i>${currentLang === 'fr' ? 'Actif' : 'Attivo'}</span>` : '';
+            const centroBadge = tv.visitMode === 'centro' ? `<span class="badge bg-info-subtle text-info-emphasis ms-1" style="font-size:0.62rem; font-weight:500;"><i class="bi bi-building-lock me-1"></i>${t('badge_visit_centro')}</span>` : '';
 
             return `
     <div class="visit-item${isActive ? ' visit-selected' : ''}" onclick="selectPatientContext('${tv.id}')">
@@ -3779,6 +3849,7 @@
                 <div class="d-flex align-items-center flex-wrap gap-2 justify-content-between">
                     <span class="fw-bold">${tv.patient}
                         <span class="badge ms-1 ${si.cls}" style="font-size:.68rem;">${si.label}</span>
+                        ${centroBadge}
                         ${activeBadge}
                     </span>
                     <div class="d-flex align-items-center gap-2">
@@ -4700,7 +4771,7 @@
             if (!select) return;
             const currentVal = select.value || 'all';
 
-            const patients = Array.from(new Set(S.televisite.map(tv => tv.patient)));
+            const patients = Array.from(new Set(visibleTelevisite().map(tv => tv.patient)));
             let html = `<option value="all">${currentLang === 'fr' ? 'Tous les patients' : 'Tutti i pazienti'}</option>`;
             patients.forEach(p => {
                 html += `<option value="${p}">${p}</option>`;
@@ -4751,6 +4822,13 @@
             }
 
             let docs = S.docs.filter(d => d.by === S.role || d.shared !== false);
+            // Esclude i documenti legati a una televisita "Centro" dell'altro ruolo: anche se "shared",
+            // restano una faccenda interna alla struttura che li ha creati (vedi anche visibleTelevisite()).
+            docs = docs.filter(d => {
+                if (!d.tvId) return true;
+                const linkedTv = S.televisite.find(tv => tv.id === d.tvId);
+                return !linkedTv || linkedTv.visitMode !== 'centro' || linkedTv.scheduledBy === S.role;
+            });
 
             docs.forEach(d => {
                 if (!d.category) d.category = getDocCategory(d);
@@ -4836,9 +4914,12 @@
                         ${grp.docs.map(d => {
                     const isOwner = d.by === S.role;
                     const isPrivate = d.shared === false;
+                    const linkedCentroTv = d.tvId ? S.televisite.find(tv => tv.id === d.tvId && tv.visitMode === 'centro') : null;
 
                     let shareBadge = '';
-                    if (isPrivate) {
+                    if (linkedCentroTv) {
+                        shareBadge = `<span class="badge bg-info-subtle text-info-emphasis" style="font-size:0.62rem;font-weight:500;"><i class="bi bi-building-lock me-1"></i>${t('badge_visit_centro')}</span>`;
+                    } else if (isPrivate) {
                         shareBadge = `<span class="badge" style="font-size:0.62rem;background:#fff3e0;color:#e65100;font-weight:500;"><i class="bi bi-lock-fill me-1"></i>${t('doc_private_badge') || 'Bozza Locale'}</span>`;
                     } else {
                         if (isOwner) {
@@ -4872,7 +4953,7 @@
                                     <button class="btn btn-sm btn-light p-1 border-0" onclick="viewDocPreview('${d.id}')" title="Anteprima" style="color:#1565c0; background:none;">
                                         <i class="bi bi-eye fs-5"></i>
                                     </button>
-                                    ${isOwner && isPrivate ? `
+                                    ${isOwner && isPrivate && !linkedCentroTv ? `
                                     <button class="btn btn-sm btn-light p-1 border-0" onclick="shareDoc('${d.id}')" title="Condividi" style="color:#2e7d32; background:none;">
                                         <i class="bi bi-share fs-5"></i>
                                     </button>` : ''}
@@ -6252,9 +6333,10 @@
 
         function renderSession() {
             const d = DOCTORS[S.role];
-            const total = S.televisite.length;
-            const prog = S.televisite.filter(tv => tv.status === 'programmata').length;
-            const acc = S.televisite.filter(tv => tv.status === 'accettata').length;
+            const sessionVisits = visibleTelevisite();
+            const total = sessionVisits.length;
+            const prog = sessionVisits.filter(tv => tv.status === 'programmata').length;
+            const acc = sessionVisits.filter(tv => tv.status === 'accettata').length;
 
             document.getElementById('session-info').innerHTML = `
         <div class="d-flex align-items-center gap-3 p-3 mb-3 rounded-3" style="background:${d.bg};">
@@ -6342,8 +6424,16 @@
                 }
             }
 
+            // Modalità "Network" (default, condivisa con l'altra struttura, richiede la sua accettazione)
+            // oppure "Centro" (resta interna: nessuna accettazione dell'altra struttura, si avvia in
+            // autonomia non appena il paziente firma il consenso).
+            const visitModeEl = document.getElementById(`${pfx}-visit-mode`);
+            const visitMode = visitModeEl ? visitModeEl.value : 'network';
+            const isCentro = visitMode === 'centro';
+            const newTvId = 'TV' + Date.now();
+
             const tv = {
-                id: 'TV' + Date.now(),
+                id: newTvId,
                 patient: patientName,
                 phone: document.getElementById(`${pfx}-phone`).value.trim(),
                 email: document.getElementById(`${pfx}-email`).value.trim(),
@@ -6354,10 +6444,13 @@
                 date: newDate,
                 time: newTime,
                 notes: document.getElementById(`${pfx}-notes`).value.trim(),
-                status: 'programmata',
+                visitMode: visitMode,
+                // Una televisita "Centro" non ha una seconda struttura da cui attendere l'accettazione:
+                // parte già "accettata" e con la propria stanza video pronta, in attesa solo del consenso.
+                status: isCentro ? 'accettata' : 'programmata',
                 scheduledBy: S.role,
                 createdByName: S.currentDoctor ? S.currentDoctor.name : DOCTORS[S.role].name,
-                room: null,
+                room: isCentro ? genRoom(newTvId) : null,
                 consentStatus: 'non-inviato',
                 consentOtp: null
             };
@@ -6366,6 +6459,7 @@
             // Carica automaticamente il Consenso Informato per questo paziente
             const consentDoc = {
                 id: 'D_CONS_' + Date.now() + Math.floor(Math.random() * 100),
+                tvId: newTvId, // collega il documento alla visita, per poterlo escludere dal sync se è "Centro"
                 name: 'Consenso_Televisita.pdf',
                 ext: 'pdf',
                 size: '124 KB',
@@ -6946,7 +7040,7 @@
                             <option value="" selected>
                                 -- ${currentLang === 'fr' ? 'Notes de Consultation (Collega)' : 'Note di Consulto (Nessun paziente)'} --
                             </option>
-                            ${S.televisite.map(t => {
+                            ${visibleTelevisite().map(t => {
                     const dateStr = fmtDate(t.date);
                     return `<option value="${t.id}">${t.patient} (${dateStr} ${t.time})</option>`;
                 }).join('')}
@@ -7008,7 +7102,7 @@
                         <option value="">
                             -- ${currentLang === 'fr' ? 'Notes de Consultation (Collega)' : 'Note di Consulto (Nessun paziente)'} --
                         </option>
-                        ${S.televisite.map(t => {
+                        ${visibleTelevisite().map(t => {
                 const dateStr = fmtDate(t.date);
                 return `<option value="${t.id}" ${t.id === S.activeTvId ? 'selected' : ''}>${t.patient} (${dateStr} ${t.time})</option>`;
             }).join('')}
@@ -7129,18 +7223,19 @@
 
             if (type === 'total' || type === 'programmata' || type === 'accettata') {
                 let list = [];
+                const statsVisits = visibleTelevisite();
                 if (type === 'total') {
                     title = currentLang === 'fr' ? 'Toutes les Télévisites' : 'Tutte le Televisite';
                     iconClass = 'bi-calendar3';
-                    list = S.televisite;
+                    list = statsVisits;
                 } else if (type === 'programmata') {
                     title = currentLang === 'fr' ? 'Télévisites Planifiées' : 'Televisite Programmate';
                     iconClass = 'bi-calendar-plus';
-                    list = S.televisite.filter(tv => tv.status === 'programmata');
+                    list = statsVisits.filter(tv => tv.status === 'programmata');
                 } else if (type === 'accettata') {
                     title = currentLang === 'fr' ? 'Télévisites Acceptées' : 'Televisite Accettate';
                     iconClass = 'bi-calendar-check';
-                    list = S.televisite.filter(tv => tv.status === 'accettata' || tv.status === 'in-corso');
+                    list = statsVisits.filter(tv => tv.status === 'accettata' || tv.status === 'in-corso');
                 }
 
                 if (!list.length) {
@@ -7445,6 +7540,7 @@
 
             const newDoc = {
                 id: docId,
+                tvId: tv.id, // collega il documento alla visita, per poterlo escludere dal sync se è "Centro"
                 name: docName,
                 patient: tv.patient,
                 patientDob: tv.dob || '',
@@ -7838,6 +7934,7 @@
                 const now = new Date();
                 const newDoc = {
                     id: 'D' + Date.now() + Math.floor(Math.random() * 1000),
+                    tvId: S.activeTvId || null, // collega il documento alla visita, per poterlo escludere dal sync se è "Centro"
                     name: f.name,
                     ext,
                     size: fmtSize(f.size),
@@ -7906,6 +8003,18 @@
             pendingShareId = null;
             bootstrap.Modal.getInstance(document.getElementById('shareModal')).hide();
             if (!d) return;
+
+            // Un documento legato a una televisita "Centro" non va mai condiviso con l'altra
+            // struttura: il bottone "Condividi" è già nascosto per questi documenti (vedi renderDocs),
+            // questo controllo è solo una seconda rete di sicurezza.
+            const linkedTv = d.tvId ? S.televisite.find(tv => tv.id === d.tvId) : null;
+            if (linkedTv && linkedTv.visitMode === 'centro') {
+                showToast(currentLang === 'fr'
+                    ? 'Ce document appartient à une télévisite "Centre" : il ne peut pas être partagé avec l\'autre établissement.'
+                    : 'Questo documento appartiene a una televisita "Centro": non può essere condiviso con l\'altra struttura.', 'warning');
+                return;
+            }
+
             d.shared = true;
             setDocTab('shared');
             const otherD = DOCTORS[S.role === 'struttura1' ? 'struttura2' : 'struttura1'];
@@ -8034,11 +8143,13 @@
         function runDemo() {
             stopDemo(); // Annulla un'eventuale demo già in corso prima di ripartire da zero
 
-            const TOTAL = 22;
+            const TOTAL = 29;
             const DEMO_PATIENT = 'Maria Esposito';
+            const DEMO_CENTRO_PATIENT = 'Sara Greco';
             const DEMO_NOTES_IT = 'Paziente lucida e collaborante. Riferisce cefalea persistente da 3 giorni, lieve febbre serale. Pressione e saturazione nella norma. Diagnosi: sindrome influenzale. Prescrizione: riposo, paracetamolo 1000mg al bisogno, controllo se i sintomi persistono oltre 5 giorni.';
             const DEMO_NOTES_FR = 'Patiente lucide et coopérative. Signale des céphalées persistantes depuis 3 jours, légère fièvre le soir. Tension et saturation normales. Diagnostic : syndrome grippal. Prescription : repos, paracétamol 1000mg si besoin, contrôle si les symptômes persistent plus de 5 jours.';
             let demoTvId = null;
+            let demoCentroTvId = null;
 
             scheduleDemo(0, () => {
                 switchRole('struttura1');
@@ -8081,8 +8192,8 @@
                 showDemoGuide(4, TOTAL,
                     'Cambiamo prospettiva: Struttura 2',
                     'Changeons de perspective : Établissement 2',
-                    'Passiamo al medico della <strong>Struttura 2 — Ospedale Cervello di Palermo</strong>. Grazie alla sincronizzazione in tempo reale via rete MQTT, la richiesta è già arrivata, pur trovandosi i due medici in ospedali diversi e senza alcun server centrale che conservi i dati.',
-                    'Passons au médecin de l\'<strong>Établissement 2 — Hôpital Cervello de Palerme</strong>. Grâce à la synchronisation en temps réel via le réseau MQTT, la demande est déjà arrivée, bien que les deux médecins se trouvent dans des hôpitaux différents, sans aucun serveur central qui conserve les données.');
+                    'Passiamo al medico della <strong>Struttura 2 — Ospedale Cervello di Palermo</strong>. La richiesta è già arrivata sul suo cruscotto in tempo reale, anche se i due medici si trovano in ospedali diversi.',
+                    'Passons au médecin de l\'<strong>Établissement 2 — Hôpital Cervello de Palerme</strong>. La demande est déjà arrivée sur son tableau de bord en temps réel, même si les deux médecins se trouvent dans des hôpitaux différents.');
                 highlightDemoEl('#role-badge');
             });
 
@@ -8236,8 +8347,8 @@
                 showDemoGuide(18, TOTAL,
                     'Anche qui, sincronizzazione immediata',
                     'Ici aussi, synchronisation immédiate',
-                    'Come nel caso normale, la richiesta arriva subito alla Struttura 2 tramite la rete MQTT, senza alcun server centrale.',
-                    'Comme dans le cas normal, la demande arrive immédiatement à l\'Établissement 2 via le réseau MQTT, sans aucun serveur central.');
+                    'Come nel caso normale, la richiesta arriva subito sul cruscotto di Struttura 2, in tempo reale.',
+                    'Comme dans le cas normal, la demande arrive immédiatement sur le tableau de bord de l\'Établissement 2, en temps réel.');
                 highlightDemoEl('#card-imm-section');
             });
 
@@ -8272,12 +8383,115 @@
                     'Ici aussi, le médecin termine la visioconférence et la télévisite passe au statut "Terminée", exactement comme dans le cas normal.');
             });
 
+            // ---------------------------------------------------------------------------
+            // TERZO PERCORSO: TELEVISITA CENTRO (la struttura gestisce la visita da sola,
+            // senza coinvolgere l'altra struttura). Restiamo connessi come Struttura 2,
+            // così non serve un altro cambio di profilo medico.
+            // ---------------------------------------------------------------------------
             scheduleDemo(176000, () => {
                 showDemoGuide(22, TOTAL,
+                    'Una terza modalità: Televisita Centro',
+                    'Un troisième mode : Télévisite Centre',
+                    'Finora abbiamo visto televisite condivise tra le due strutture. A volte invece una struttura vuole occuparsi di una visita con un proprio paziente in piena autonomia: per questo, al momento della programmazione, si può scegliere la modalità <strong>"Televisita Centro"</strong> invece di "Network".',
+                    'Jusqu\'ici, nous avons vu des télévisites partagées entre les deux établissements. Parfois, un établissement souhaite au contraire gérer une visite avec son propre patient en totale autonomie : pour cela, au moment de la planification, on peut choisir le mode <strong>"Télévisite Centre"</strong> au lieu de "Réseau".');
+                highlightDemoEl('#card-sched-section');
+            });
+
+            scheduleDemo(184500, () => {
+                document.getElementById('f2-patient').value = DEMO_CENTRO_PATIENT;
+                document.getElementById('f2-email').value = 'sara.greco@example.com';
+                document.getElementById('f2-phone').value = '+39 333 555 1212';
+                document.getElementById('f2-date').value = todayStr();
+                document.getElementById('f2-time').value = `${String(10 + Math.floor(Math.random() * 8)).padStart(2, '0')}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')}`;
+                document.getElementById('f2-visit-mode').value = 'centro';
+                const notesEl2 = document.getElementById('f2-notes');
+                if (notesEl2) notesEl2.value = currentLang === 'fr' ? 'Suivi de routine' : 'Controllo di routine';
+                document.getElementById('sched-form-s2').requestSubmit();
+                demoCentroTvId = S.televisite.find(t => t.patient === DEMO_CENTRO_PATIENT)?.id;
+                showDemoGuide(23, TOTAL,
+                    'Televisita Centro già pronta',
+                    'Télévisite Centre déjà prête',
+                    `Il modulo è identico a quello di prima, solo con il tipo cambiato. Niente "in attesa di conferma": la televisita per <strong>${DEMO_CENTRO_PATIENT}</strong> è già "Accettata", perché l'altra struttura non viene proprio coinvolta. Manca solo il consenso del paziente per poter partire.`,
+                    `Le formulaire est identique à celui d'avant, seul le type a changé. Pas d'"attente de confirmation" : la télévisite pour <strong>${DEMO_CENTRO_PATIENT}</strong> est déjà "Acceptée", car l'autre établissement n'est même pas concerné. Il ne manque que le consentement du patient pour pouvoir démarrer.`);
+            });
+
+            scheduleDemo(193500, () => {
+                if (demoCentroTvId) sendConsentEmail(demoCentroTvId);
+                showDemoGuide(24, TOTAL,
+                    'Il consenso funziona allo stesso modo',
+                    'Le consentement fonctionne de la même façon',
+                    'Anche per una Televisita Centro il consenso informato resta obbligatorio e funziona esattamente come prima: lo inviamo al paziente via email, che dovrà leggerlo e firmarlo con il codice OTP.',
+                    'Même pour une Télévisite Centre, le consentement éclairé reste obligatoire et fonctionne exactement comme avant : on l\'envoie au patient par e-mail, qui devra le lire et le signer avec le code OTP.');
+                highlightDemoEl('#card-sched-section');
+            });
+
+            scheduleDemo(203000, () => {
+                if (demoCentroTvId) viewConsentPDF(demoCentroTvId);
+                setTimeout(() => {
+                    const scrollBody = document.getElementById('pdf-modal-scroll-body');
+                    if (scrollBody) scrollBody.scrollTop = scrollBody.scrollHeight;
+                    setTimeout(() => document.getElementById('btn-unlock-otp')?.click(), 700);
+                }, 600);
+                showDemoGuide(25, TOTAL,
+                    'Il paziente legge e firma',
+                    'Le patient lit et signe',
+                    'Il paziente apre il link ricevuto, legge tutto il modulo e accetta: il sistema gli invia il codice OTP da inserire per firmare, proprio come nel percorso normale.',
+                    'Le patient ouvre le lien reçu, lit l\'intégralité du formulaire et accepte : le système lui envoie le code OTP à saisir pour signer, exactement comme dans le parcours normal.');
+            });
+
+            scheduleDemo(213000, () => {
+                const tv = S.televisite.find(t => t.id === demoCentroTvId);
+                const otp = tv ? tv.consentOtp : null;
+                const modalEl = document.getElementById('pdfModal');
+                const modal = modalEl && bootstrap.Modal.getInstance(modalEl);
+                if (modal) modal.hide();
+                if (otp && demoCentroTvId) {
+                    setTimeout(() => {
+                        // La card della televisita è renderizzata identica in entrambi i pannelli
+                        // (vlist-s1 e vlist-s2 ricevono lo stesso HTML): l'id "otp-input-..." è quindi
+                        // duplicato nel DOM. Va selezionato dentro il pannello del ruolo attivo (qui
+                        // Struttura 2), esattamente come fa verifyConsentOtp() internamente, altrimenti
+                        // si rischia di scrivere il codice nella copia nascosta dell'altro pannello.
+                        const panelEl = document.getElementById(S.role === 'struttura1' ? 'p-s1' : 'p-s2');
+                        const input = panelEl ? panelEl.querySelector(`#otp-input-${demoCentroTvId}`) : null;
+                        if (input) {
+                            input.value = otp;
+                            verifyConsentOtp(demoCentroTvId);
+                        }
+                    }, 500);
+                }
+                showDemoGuide(26, TOTAL,
+                    'Consenso firmato: si può partire',
+                    'Consentement signé : on peut démarrer',
+                    'Con il consenso firmato, il pulsante "Avvia" si attiva: anche qui niente avviene finché il paziente non ha davvero accettato e firmato.',
+                    'Une fois le consentement signé, le bouton "Démarrer" s\'active : ici aussi, rien ne se passe avant que le patient n\'ait vraiment accepté et signé.');
+                highlightDemoEl('#card-sched-section');
+            });
+
+            scheduleDemo(222000, () => {
+                if (demoCentroTvId) startVisit(demoCentroTvId);
+                showDemoGuide(27, TOTAL,
+                    'Videochiamata della Televisita Centro',
+                    'Visioconférence de la Télévisite Centre',
+                    'Stessa identica videochiamata vista finora, con cartella clinica del paziente sempre a fianco: l\'unica differenza, invisibile al paziente, è che questa visita resta una faccenda interna a questa sola struttura.',
+                    'Exactement la même visioconférence que jusqu\'ici, avec le dossier clinique du patient toujours à côté : la seule différence, invisible pour le patient, est que cette visite reste une affaire interne à cet établissement seul.');
+            });
+
+            scheduleDemo(231500, () => {
+                endCall();
+                showDemoGuide(28, TOTAL,
+                    'Fine della Televisita Centro',
+                    'Fin de la Télévisite Centre',
+                    'Il medico chiude la videochiamata e la televisita passa a "Completata", come sempre. Durante tutto il percorso, però, questa visita non è mai comparsa sul cruscotto dell\'altra struttura: è rimasta una scelta tutta interna a questa sola struttura.',
+                    'Le médecin termine la visioconférence et la télévisite passe à "Terminée", comme toujours. Mais pendant tout le parcours, cette visite n\'est jamais apparue sur le tableau de bord de l\'autre établissement : c\'est resté un choix entièrement interne à cet établissement.');
+            });
+
+            scheduleDemo(239500, () => {
+                showDemoGuide(29, TOTAL,
                     'Demo completata!',
                     'Démo terminée !',
-                    'Hai visto entrambi i percorsi: una televisita normale, con consenso letto e firmato dal paziente con codice OTP, e una televisita urgente, con consenso firmato automaticamente per non perdere tempo. In entrambi i casi: consulto video, diagnosi, firma digitale con valore legale e consegna del referto al paziente. Puoi ripetere la demo in qualsiasi momento.',
-                    'Vous avez vu les deux parcours : une télévisite normale, avec un consentement lu et signé par le patient via un code OTP, et une télévisite urgente, avec un consentement signé automatiquement pour ne pas perdre de temps. Dans les deux cas : consultation vidéo, diagnostic, signature numérique à valeur légale et remise du rapport au patient. Vous pouvez relancer la démo à tout moment.');
+                    'Hai visto tre percorsi: una televisita normale, con consenso letto e firmato dal paziente con codice OTP; una televisita urgente, con consenso firmato automaticamente per non perdere tempo; e una Televisita Centro, gestita da una sola struttura senza coinvolgere l\'altra. In tutti i casi: consulto video, diagnosi, firma digitale con valore legale e consegna del referto al paziente. Puoi ripetere la demo in qualsiasi momento.',
+                    'Vous avez vu trois parcours : une télévisite normale, avec un consentement lu et signé par le patient via un code OTP ; une télévisite urgente, avec un consentement signé automatiquement pour ne pas perdre de temps ; et une Télévisite Centre, gérée par un seul établissement sans impliquer l\'autre. Dans tous les cas : consultation vidéo, diagnostic, signature numérique à valeur légale et remise du rapport au patient. Vous pouvez relancer la démo à tout moment.');
             });
         }
 
