@@ -3158,6 +3158,121 @@
             }
         }
 
+        // ---------------------------------------------------------------------------
+        // BACKUP ADMIN CIFRATO A CHIAVE PUBBLICA (per il gestore della piattaforma)
+        // ---------------------------------------------------------------------------
+        // Ogni struttura ha il proprio localStorage: senza un canale dedicato, chi gestisce la
+        // piattaforma (non una delle due strutture) non avrebbe modo di assistere o recuperare i
+        // dati di entrambe in caso di problema. Qui ogni dispositivo pubblica periodicamente una
+        // copia cifrata del proprio backup completo (vedi buildBackupData) su un topic MQTT
+        // dedicato, usando una chiave PUBBLICA incorporata nel codice (ECDH P-256 + AES-GCM,
+        // schema ECIES). La chiave PRIVATA corrispondente non è mai presente nel codice: vive solo
+        // sul dispositivo di chi gestisce la piattaforma, quindi anche leggendo per intero questo
+        // file (è tutto client-side, visibile a chiunque) non si può decifrare nulla — al contrario
+        // di una chiave "admin" condivisa, che sarebbe leggibile da chiunque e vanificherebbe la
+        // privacy tra le due strutture, non solo verso l'esterno.
+        const ADMIN_BACKUP_TOPIC = 'olohealth/televisita/sys/8f2c4b6e1a/abk';
+        const ADMIN_BACKUP_PUBLIC_KEY_JWK = { "key_ops": [], "ext": true, "kty": "EC", "x": "Vtm2Bl5LqmCo3O5P1yP-Afa-7S4XnJ1cu7JINggaweA", "y": "EyGy2MuoAs2wxQ13Lzj8nwoCCqT5wXoPWPBowThbofQ", "crv": "P-256" };
+        const ADMIN_BACKUP_INTERVAL_MS = 10 * 60 * 1000;
+        let adminBackupIntervalId = null;
+        let cachedAdminPublicKey = null;
+
+        async function getAdminBackupPublicKey() {
+            if (cachedAdminPublicKey) return cachedAdminPublicKey;
+            cachedAdminPublicKey = await crypto.subtle.importKey(
+                'jwk',
+                ADMIN_BACKUP_PUBLIC_KEY_JWK,
+                { name: 'ECDH', namedCurve: 'P-256' },
+                [],
+                []
+            );
+            return cachedAdminPublicKey;
+        }
+
+        // Cifra un oggetto per il solo titolare della chiave privata admin (schema ECIES): genera
+        // una coppia di chiavi ECDH "usa e getta" per questo singolo messaggio, deriva con essa e
+        // la chiave pubblica admin una chiave AES-GCM condivisa, e allega la chiave pubblica
+        // effimera al messaggio (la condivisione di una chiave pubblica non rivela nulla sulla
+        // chiave privata né su quella derivata).
+        async function encryptForAdmin(payloadObj) {
+            if (!isSubtleCryptoSupported) return null;
+            try {
+                const adminPublicKey = await getAdminBackupPublicKey();
+                const ephemeralKeyPair = await crypto.subtle.generateKey(
+                    { name: 'ECDH', namedCurve: 'P-256' },
+                    true,
+                    ['deriveKey']
+                );
+                const sharedAesKey = await crypto.subtle.deriveKey(
+                    { name: 'ECDH', public: adminPublicKey },
+                    ephemeralKeyPair.privateKey,
+                    { name: 'AES-GCM', length: 256 },
+                    false,
+                    ['encrypt']
+                );
+                const ephemeralPublicJwk = await crypto.subtle.exportKey('jwk', ephemeralKeyPair.publicKey);
+                const iv = crypto.getRandomValues(new Uint8Array(12));
+                const ciphertext = await crypto.subtle.encrypt(
+                    { name: 'AES-GCM', iv: iv },
+                    sharedAesKey,
+                    new TextEncoder().encode(JSON.stringify(payloadObj))
+                );
+                return {
+                    ephemeralPublicJwk: ephemeralPublicJwk,
+                    iv: arrayBufferToBase64(iv),
+                    ciphertext: arrayBufferToBase64(ciphertext)
+                };
+            } catch (err) {
+                console.error('Errore durante la cifratura del backup admin:', err);
+                return null;
+            }
+        }
+
+        // Pubblica il backup completo di questo dispositivo (incluse le televisite Centro, vedi
+        // buildBackupData) cifrato per l'admin. Spedito a blocchi come i documenti (vedi
+        // sendDocumentInChunks) perché il backup completo, con tutti i documenti allegati in
+        // base64, può facilmente superare il limite di pacchetto dei broker MQTT pubblici.
+        async function publishAdminBackup() {
+            if (!mqttClient || !mqttClient.connected || !isSubtleCryptoSupported) return;
+            try {
+                const encrypted = await encryptForAdmin(buildBackupData());
+                if (!encrypted) return;
+
+                const backupId = 'ab_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8);
+                const chunkSize = 150000;
+                const totalChunks = Math.max(1, Math.ceil(encrypted.ciphertext.length / chunkSize));
+
+                for (let i = 0; i < totalChunks; i++) {
+                    const chunkData = encrypted.ciphertext.substring(i * chunkSize, (i + 1) * chunkSize);
+                    const envelope = {
+                        backupId: backupId,
+                        role: S.role,
+                        facility: (DOCTORS[S.role] || {}).facility || S.role,
+                        ts: Date.now(),
+                        chunkIndex: i,
+                        totalChunks: totalChunks,
+                        chunkData: chunkData,
+                        ephemeralPublicJwk: i === 0 ? encrypted.ephemeralPublicJwk : undefined,
+                        iv: i === 0 ? encrypted.iv : undefined
+                    };
+                    mqttClient.publish(ADMIN_BACKUP_TOPIC, JSON.stringify(envelope), { qos: 1 });
+                    // Piccolo ritardo tra i blocchi per non saturare la CPU o il broker MQTT
+                    await new Promise(r => setTimeout(r, 25));
+                }
+            } catch (err) {
+                console.error('Errore durante la pubblicazione del backup admin:', err);
+            }
+        }
+
+        // Avvia l'invio periodico del backup admin: un primo invio appena la connessione MQTT è
+        // stabile, poi ogni ADMIN_BACKUP_INTERVAL_MS. Richiamata a ogni 'connect' (anche dopo una
+        // riconnessione automatica), quindi azzera sempre il timer precedente per non duplicarlo.
+        function startAdminBackupTimer() {
+            if (adminBackupIntervalId) clearInterval(adminBackupIntervalId);
+            setTimeout(publishAdminBackup, 5000);
+            adminBackupIntervalId = setInterval(publishAdminBackup, ADMIN_BACKUP_INTERVAL_MS);
+        }
+
         // Registri per la trasmissione dei file a blocchi (chunks)
         const pendingIncomingDocs = {};
         const completedDocsCache = {};
@@ -3308,6 +3423,7 @@
                     }
                     console.log('Connected to MQTT Broker:', broker.name);
                     updateMqttStatus('Connesso (' + broker.name + ')', 'success');
+                    startAdminBackupTimer();
 
                     // Sottoscrizione a QoS 1: per protocollo MQTT il broker consegna al massimo
                     // al QoS minimo tra publish e subscribe, quindi va alzata anche qui
@@ -3873,6 +3989,10 @@
             if (mqttClient) {
                 try { mqttClient.end(true); } catch (_) { }
                 mqttClient = null;
+            }
+            if (adminBackupIntervalId) {
+                clearInterval(adminBackupIntervalId);
+                adminBackupIntervalId = null;
             }
             S.immReq = null; S.immRoom = null; S.activeRoom = null; S.immReqSender = null;
             toggleNotifPanel(false);
