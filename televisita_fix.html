@@ -3974,9 +3974,7 @@
                     if (doc) {
                         doc.base64Data = fullBase64;
                         doc.shared = true;
-                        try {
-                            localStorage.setItem('tv_state', JSON.stringify(getSharedStateForStorage()));
-                        } catch (_) {}
+                        persistTvState(getSharedStateForStorage());
                         renderAll();
 
                         // Se il modale di anteprima è aperto su questo documento, ricarica l'anteprima
@@ -4827,8 +4825,15 @@
                         document.getElementById('emailjs-template-id').value = data.emailjs.templateId || '';
                     }
 
-                    // Salva e sincronizza su BroadcastChannel e MQTT
-                    localStorage.setItem('tv_state', JSON.stringify(getShared()));
+                    // Salva e sincronizza su BroadcastChannel e MQTT. Deve usare
+                    // getSharedStateForStorage() (stato locale completo), NON getShared() (la
+                    // versione filtrata per la trasmissione, che esclude le televisite Centro
+                    // private): altrimenti il ripristino sembra riuscito — lo stato in memoria
+                    // appena assegnato sopra è corretto — ma le televisite Centro tornerebbero a
+                    // sparire silenziosamente al primo ricaricamento della pagina, proprio nel
+                    // momento (un ripristino da backup) in cui l'utente ha più bisogno che i dati
+                    // restino davvero al sicuro.
+                    persistTvState(getSharedStateForStorage());
                     renderAll();
                     syncState({ kind: 'backup_restore' });
 
