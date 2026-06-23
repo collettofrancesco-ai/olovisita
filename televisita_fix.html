@@ -1093,25 +1093,6 @@
                             onkeydown="if(event.key==='Enter')submitLogin()">
                     </div>
 
-                    <div class="text-start mb-3">
-                        <label for="room-code-input" class="form-label small fw-semibold text-muted"
-                            data-i18n="login_room_code">Codice Stanza (Sincronizzazione PC)</label>
-                        <div class="input-group">
-                            <input type="password" id="room-code-input" class="form-control" autocomplete="off"
-                                placeholder="es. cervello-tunisia" value="cervello-tunisia"
-                                onkeydown="if(event.key==='Enter')submitLogin()">
-                            <button type="button" class="btn btn-outline-secondary" tabindex="-1"
-                                onclick="toggleRoomCodeVisibility()" aria-label="Mostra/nascondi codice stanza">
-                                <i class="bi bi-eye" id="room-code-toggle-icon"></i>
-                            </button>
-                        </div>
-                        <div class="text-muted" style="font-size: 0.65rem; margin-top: 2px;"
-                            data-i18n="login_room_code_help">
-                            Usa lo stesso codice su un altro PC per sincronizzare le due schede. È l'unico segreto
-                            che protegge la privacy dei dati: non condividerlo con nessuno fuori dalle due strutture.
-                        </div>
-                    </div>
-
                     <div id="login-error-msg" class="text-danger small mb-3" style="min-height: 1.2em;"></div>
 
                     <button class="btn btn-primary w-100 py-2.5 fw-bold" onclick="submitLogin()">
@@ -2337,8 +2318,6 @@
                 spec_oncologia: "Oncologia",
                 login_btn: "Accedi",
                 pwd_placeholder: "Password",
-                login_room_code: "Codice Stanza (Sincronizzazione PC)",
-                login_room_code_help: "Usa lo stesso codice su un altro PC per sincronizzare le due schede.",
                 notif_title: "Notifiche",
                 notif_clear: "Cancella tutto",
                 no_notifications: "Nessuna notifica",
@@ -2595,8 +2574,6 @@
                 spec_oncologia: "Oncologie",
                 login_btn: "Se connecter",
                 pwd_placeholder: "Mot de passe",
-                login_room_code: "Code de Chambre (Sincronisation PC)",
-                login_room_code_help: "Utilisez le même code sur un autre PC pour synchroniser les deux écrans.",
                 notif_title: "Notifications",
                 notif_clear: "Tout effacer",
                 no_notifications: "Aucune notification",
@@ -3080,7 +3057,15 @@
 
         let mqttClient = null;
         const MQTT_TOPIC_BASE = 'olohealth/televisita/demo/';
-        let currentGroupCode = 'cervello-tunisia';
+        // Unico segreto che protegge davvero la sincronizzazione "Network" tra le due strutture
+        // (da qui derivano sia il topic MQTT che la chiave di cifratura, vedi deriveTopicId e
+        // getCryptoKey): non più digitabile dal personale delle due strutture, per eliminare il
+        // rischio di un mismatch per errore di digitazione che bloccherebbe la sincronizzazione
+        // senza nessun avviso esplicito (vedi decryptPayload). Modificabile SOLO modificando
+        // questa riga nel codice sorgente e ridistribuendo l'app a entrambe le strutture: se lo
+        // cambi, vanno aggiornate insieme, altrimenti smettono di sincronizzarsi tra loro.
+        const FIXED_ROOM_CODE = 'cervello-tunisia';
+        let currentGroupCode = FIXED_ROOM_CODE;
         let currentTopicId = null;
         let lastStateReplyTime = 0;
         const processedEventIds = new Set();
@@ -4301,19 +4286,6 @@
             return sha256Fallback(text);
         }
 
-        // Mostra/nasconde in chiaro il codice stanza: resta nascosto di default perché è
-        // l'unico segreto che protegge davvero la privacy (da lui derivano sia il canale MQTT
-        // che la chiave di cifratura), quindi non deve restare leggibile sullo schermo per chi
-        // guarda di sfuggita o per uno screenshot.
-        function toggleRoomCodeVisibility() {
-            const input = document.getElementById('room-code-input');
-            const icon = document.getElementById('room-code-toggle-icon');
-            if (!input || !icon) return;
-            const reveal = input.type === 'password';
-            input.type = reveal ? 'text' : 'password';
-            icon.className = reveal ? 'bi bi-eye-slash' : 'bi bi-eye';
-        }
-
         async function submitLogin() {
             const username = document.getElementById('user-select').value;
             const pwdEl = document.getElementById('pwd-input');
@@ -4349,8 +4321,7 @@
             document.getElementById('login-overlay').style.display = 'none';
             switchRole(activeFacilityId);
 
-            const roomCode = document.getElementById('room-code-input').value.trim() || 'cervello-tunisia';
-            initMQTT(roomCode);
+            initMQTT(FIXED_ROOM_CODE);
         }
 
         function logout() {
