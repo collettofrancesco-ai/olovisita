@@ -2046,9 +2046,10 @@
                             <span id="auto-backup-status" class="small text-muted" style="font-size:0.7rem;"></span>
                         </div>
                         <p class="text-muted small mb-2 lh-sm" style="font-size:0.7rem;">
-                            Scegli una volta un file: da quel momento questo PC lo riscrive automaticamente ogni 10
+                            Scegli una volta una cartella: da quel momento questo PC vi salva una nuova copia ogni 10
                             minuti con tutti i dati presenti qui (anche le televisite Centro, che non viaggiano
-                            altrove). Funziona solo su Chrome/Edge desktop.
+                            altrove), mantenendo lo storico delle ultime copie invece di sovrascrivere un unico file.
+                            Funziona solo su Chrome/Edge desktop.
                         </p>
                         <div class="d-flex gap-2">
                             <button type="button" id="btn-auto-backup-toggle" class="btn btn-outline-success btn-sm flex-grow-1 py-1.5 fw-semibold"
@@ -4823,12 +4824,17 @@
         // ---------------------------------------------------------------------------
         // BACKUP AUTOMATICO (File System Access API): senza un vero database, i dati di
         // questo PC vivono solo nel suo localStorage. Con un permesso chiesto una volta sola,
-        // l'app può poi riscrivere automaticamente lo stesso file ogni 10 minuti, senza altre
-        // richieste — disponibile solo su Chrome/Edge desktop (Safari/Firefox non supportano
-        // questa API, vedi isFileSystemAccessSupported).
+        // l'app salva una NUOVA copia con timestamp in una cartella scelta dall'utente ogni 10
+        // minuti, mantenendo le ultime AUTO_BACKUP_RETENTION copie (non sovrascrive mai un file
+        // unico): anche se una scrittura va storta o i dati locali sono temporaneamente vuoti,
+        // le copie precedenti restano fisicamente intatte sul disco invece di essere perse.
+        // Disponibile solo su Chrome/Edge desktop (Safari/Firefox non supportano questa API,
+        // vedi isFileSystemAccessSupported).
         // ---------------------------------------------------------------------------
         const AUTO_BACKUP_INTERVAL_MS = 10 * 60 * 1000;
-        let autoBackupFileHandle = null;
+        const AUTO_BACKUP_RETENTION = 30; // ~5 ore di storico a 10 minuti per copia
+        const AUTO_BACKUP_PREFIX = 'backup_televisita_';
+        let autoBackupDirHandle = null;
         let autoBackupIntervalId = null;
         // True solo subito dopo un azzeramento dati VOLUTO e confermato dall'utente
         // (resetAllData): serve a far passare quell'unica scrittura vuota legittima nel
@@ -4837,10 +4843,30 @@
         let allowEmptyBackupOnce = false;
 
         function isFileSystemAccessSupported() {
-            return typeof window.showSaveFilePicker === 'function';
+            return typeof window.showDirectoryPicker === 'function';
         }
 
-        // Il file handle non si può salvare in localStorage (non è una stringa), ma è
+        // Genera un nome file ordinabile per timestamp (così l'elenco della cartella, ordinato
+        // alfabeticamente, è automaticamente anche in ordine cronologico).
+        function autoBackupFilenameFor(date) {
+            const pad = n => String(n).padStart(2, '0');
+            const ts = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}-${pad(date.getMinutes())}-${pad(date.getSeconds())}`;
+            return `${AUTO_BACKUP_PREFIX}${ts}.json`;
+        }
+
+        // Elenca le copie di backup già presenti nella cartella, in ordine cronologico crescente.
+        async function listAutoBackupFiles(dirHandle) {
+            const names = [];
+            for await (const [name, handle] of dirHandle.entries()) {
+                if (handle.kind === 'file' && name.startsWith(AUTO_BACKUP_PREFIX) && name.endsWith('.json')) {
+                    names.push(name);
+                }
+            }
+            names.sort();
+            return names;
+        }
+
+        // Il directory handle non si può salvare in localStorage (non è una stringa), ma è
         // "structured-cloneable": IndexedDB lo accetta e lo restituisce intatto, permettendo di
         // ritrovarlo anche dopo aver chiuso e riaperto il browser.
         function openAutoBackupDb() {
@@ -4856,7 +4882,7 @@
             const db = await openAutoBackupDb();
             return new Promise((resolve, reject) => {
                 const tx = db.transaction('handles', 'readwrite');
-                tx.objectStore('handles').put(handle, 'file');
+                tx.objectStore('handles').put(handle, 'dir');
                 tx.oncomplete = () => resolve();
                 tx.onerror = () => reject(tx.error);
             });
@@ -4866,7 +4892,7 @@
             const db = await openAutoBackupDb();
             return new Promise((resolve, reject) => {
                 const tx = db.transaction('handles', 'readonly');
-                const req = tx.objectStore('handles').get('file');
+                const req = tx.objectStore('handles').get('dir');
                 req.onsuccess = () => resolve(req.result || null);
                 req.onerror = () => reject(req.error);
             });
@@ -4887,33 +4913,36 @@
         }
 
         async function writeAutoBackup() {
-            if (!autoBackupFileHandle) return;
+            if (!autoBackupDirHandle) return;
             try {
                 const newData = buildBackupData();
                 const newCount = (newData.shared.televisite?.length || 0) + (newData.shared.docs?.length || 0);
+                const existingNames = await listAutoBackupFiles(autoBackupDirHandle);
 
-                // Se non c'è più nulla da salvare, prima di scrivere controlla cosa c'era già
-                // nel file: se conteneva dati non banali, NON sovrascriverlo alla cieca. Senza
-                // questo controllo, un medico che cancella per errore la cache del browser (la
-                // sessione riparte vuota) si vedrebbe distruggere anche l'ultima copia buona del
-                // backup al giro successivo, 10 minuti dopo, vanificando lo scopo stesso del
-                // backup. L'unica eccezione voluta è un azzeramento dati confermato dall'utente
-                // (vedi allowEmptyBackupOnce in resetAllData).
-                if (newCount === 0 && !allowEmptyBackupOnce) {
+                // Se non c'è più nulla da salvare, prima di scrivere controlla cosa c'era nella
+                // copia più recente già presente nella cartella: se conteneva dati non banali,
+                // NON aggiungere una nuova copia vuota. Senza questo controllo, un medico che
+                // cancella per errore la cache del browser (la sessione riparte vuota) finirebbe
+                // comunque, copia dopo copia ogni 10 minuti, per far scadere dalla rotazione anche
+                // l'ultima copia buona, vanificando lo scopo stesso del backup. L'unica eccezione
+                // voluta è un azzeramento dati confermato dall'utente (vedi allowEmptyBackupOnce
+                // in resetAllData).
+                if (newCount === 0 && !allowEmptyBackupOnce && existingNames.length > 0) {
                     try {
-                        const existingText = await (await autoBackupFileHandle.getFile()).text();
+                        const lastHandle = await autoBackupDirHandle.getFileHandle(existingNames[existingNames.length - 1]);
+                        const existingText = await (await lastHandle.getFile()).text();
                         const existingData = JSON.parse(existingText);
                         const existingCount = (existingData.shared?.televisite?.length || 0) + (existingData.shared?.docs?.length || 0);
                         if (existingCount > 0) {
-                            updateAutoBackupStatusUI('⛔ Backup sospeso: dati locali vuoti, file precedente protetto');
+                            updateAutoBackupStatusUI('⛔ Backup sospeso: dati locali vuoti, copie precedenti protette');
                             showCenteredAlert(currentLang === 'fr'
-                                ? `La sauvegarde automatique a été <b>suspendue</b> : les données locales sont vides (peut-être un nettoyage accidentel du cache du navigateur), alors que le fichier de sauvegarde en contenait ${existingCount}. Pour ne pas écraser la dernière copie valide, rien n'a été écrit. Vérifiez vos données avant de continuer.`
-                                : `Il backup automatico è stato <b>sospeso</b>: i dati locali risultano vuoti (forse una cancellazione accidentale della cache del browser), mentre il file di backup ne conteneva ${existingCount}. Per non sovrascrivere l'ultima copia valida, non è stato scritto nulla. Controlla i tuoi dati prima di proseguire.`,
+                                ? `La sauvegarde automatique a été <b>suspendue</b> : les données locales sont vides (peut-être un nettoyage accidentel du cache du navigateur), alors que la dernière copie de sauvegarde en contenait ${existingCount}. Pour ne pas créer une nouvelle copie vide qui finirait par faire disparaître les bonnes copies de la rotation, rien n'a été écrit. Vérifiez vos données avant de continuer.`
+                                : `Il backup automatico è stato <b>sospeso</b>: i dati locali risultano vuoti (forse una cancellazione accidentale della cache del browser), mentre l'ultima copia di backup ne conteneva ${existingCount}. Per non creare una nuova copia vuota che finirebbe per far uscire dalla rotazione le copie buone, non è stato scritto nulla. Controlla i tuoi dati prima di proseguire.`,
                                 'warning');
                             return;
                         }
                     } catch (readErr) {
-                        // Il file esistente non si legge/interpreta: non possiamo confrontare,
+                        // L'ultima copia non si legge/interpreta: non possiamo confrontare,
                         // quindi per prudenza non scriviamo comunque dati vuoti alla cieca.
                         console.error('Errore nel controllo di sicurezza del backup automatico:', readErr);
                         return;
@@ -4921,13 +4950,25 @@
                 }
                 allowEmptyBackupOnce = false;
 
-                const writable = await autoBackupFileHandle.createWritable();
+                const filename = autoBackupFilenameFor(new Date());
+                const fileHandle = await autoBackupDirHandle.getFileHandle(filename, { create: true });
+                const writable = await fileHandle.createWritable();
                 await writable.write(JSON.stringify(newData, null, 2));
                 await writable.close();
+
+                // Rotazione: elimina le copie più vecchie oltre il limite di storico, mai quella
+                // appena scritta. Ogni copia è un file nuovo e immutabile: anche se questo passo
+                // di pulizia fallisse, non rischia di corrompere o perdere il backup appena fatto.
+                const allNames = [...existingNames, filename].sort();
+                const toDelete = allNames.slice(0, Math.max(0, allNames.length - AUTO_BACKUP_RETENTION));
+                for (const name of toDelete) {
+                    try { await autoBackupDirHandle.removeEntry(name); } catch (delErr) { console.error('Errore nella rimozione di una vecchia copia di backup:', delErr); }
+                }
+
                 const now = new Date();
                 updateAutoBackupStatusUI('Ultimo backup: ' + now.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }));
             } catch (err) {
-                // Es. il file è stato spostato/eliminato, o il permesso è stato revocato dal
+                // Es. la cartella è stata spostata/eliminata, o il permesso è stato revocato dal
                 // browser: si segnala soltanto, senza fermare il timer (un disco esterno
                 // momentaneamente scollegato si potrebbe ricollegare prima del prossimo giro).
                 console.error('Errore nel backup automatico:', err);
@@ -4960,27 +5001,24 @@
             }
 
             try {
-                // Riusa il file già scelto in precedenza (anche in una sessione passata), se il
-                // permesso è ancora concedibile: richiederlo qui va bene perché questa funzione
+                // Riusa la cartella già scelta in precedenza (anche in una sessione passata), se
+                // il permesso è ancora concedibile: richiederlo qui va bene perché questa funzione
                 // parte sempre da un click reale dell'utente.
-                let handle = autoBackupFileHandle || await loadAutoBackupHandle();
+                let handle = autoBackupDirHandle || await loadAutoBackupHandle();
                 if (handle) {
                     const permission = await handle.requestPermission({ mode: 'readwrite' });
                     if (permission !== 'granted') handle = null;
                 }
                 if (!handle) {
-                    handle = await window.showSaveFilePicker({
-                        suggestedName: 'backup_televisita_auto.json',
-                        types: [{ description: 'Backup TeleVisita', accept: { 'application/json': ['.json'] } }]
-                    });
+                    handle = await window.showDirectoryPicker({ mode: 'readwrite' });
                 }
-                autoBackupFileHandle = handle;
+                autoBackupDirHandle = handle;
                 await saveAutoBackupHandle(handle);
                 startAutoBackupTimer();
-                showToast('🟢 Backup automatico attivato: salva su questo file ogni 10 minuti.', 'success');
+                showToast(`🟢 Backup automatico attivato: salva una nuova copia in questa cartella ogni 10 minuti, mantenendo le ultime ${AUTO_BACKUP_RETENTION}.`, 'success');
             } catch (err) {
-                // L'utente ha chiuso la finestra di selezione del file senza scegliere nulla:
-                // non è un errore da segnalare con un toast.
+                // L'utente ha chiuso la finestra di selezione della cartella senza scegliere
+                // nulla: non è un errore da segnalare con un toast.
                 if (err.name !== 'AbortError') {
                     console.error('Errore nell\'attivazione del backup automatico:', err);
                     showToast('❌ Impossibile attivare il backup automatico.', 'danger');
@@ -4999,7 +5037,7 @@
                 if (!handle) return;
                 const permission = await handle.queryPermission({ mode: 'readwrite' });
                 if (permission === 'granted') {
-                    autoBackupFileHandle = handle;
+                    autoBackupDirHandle = handle;
                     startAutoBackupTimer();
                 } else {
                     // Pulsante direttamente nel toast per riconfermare il permesso in un solo
