@@ -6194,7 +6194,9 @@
                 if (canvas) canvas.style.display = 'block';
                 if (toolbar) toolbar.style.setProperty('display', 'flex', 'important');
                 if (statusDiv) statusDiv.style.display = 'block';
+                const myGen = ++collabInitGeneration;
                 currentPdfReadyPromise.then(() => {
+                    if (myGen !== collabInitGeneration) return;
                     if (pdfRenderFailed) {
                         isCollaborating = false;
                         activeCollabDocId = null;
@@ -6203,7 +6205,7 @@
                         if (statusDiv) statusDiv.style.display = 'none';
                         return;
                     }
-                    initCollabCanvas();
+                    initCollabCanvas(0, myGen);
                 });
             }
 
@@ -6335,6 +6337,14 @@
         // l'altezza del documento non è nota in modo affidabile, quindi la collaborazione non
         // deve attivarsi, per evitare di disegnare su un'altezza diversa da quella dell'altro medico.
         let pdfRenderFailed = false;
+        // Incrementato ogni volta che si pianifica una (ri)inizializzazione "di punta" del
+        // canvas (toggleCollaboration o la riapertura dell'anteprima in viewDocPreview). Se il
+        // PDF è lento a caricare, chiudere e riaprire l'anteprima prima che la prima
+        // currentPdfReadyPromise sia risolta lascia DUE catene .then() in sospeso, entrambe
+        // destinate a chiamare initCollabCanvas(): senza questo token entrambe finirebbero per
+        // clonare e rimisurare il canvas, l'una sull'altra, lasciandolo in uno stato indefinito.
+        // Solo la richiesta più recente (il valore corrente) ha diritto di proseguire.
+        let collabInitGeneration = 0;
         let isCollaborating = false;
         let isIncomingScroll = false;
         let isCollabDrawing = false;
@@ -6359,7 +6369,19 @@
             showToast((currentLang === 'fr' ? 'Couleur du tableau définie : ' : 'Colore lavagna impostato: ') + color, 'info');
         }
 
-        function toggleCollaboration(docId, isHost = true) {
+        // Chi sia "host" (l'unica fonte di verità sulle dimensioni del canvas, vedi i commenti
+        // su isCollabHost) non dipende più da chi clicca prima "Attiva Lavagna": se entrambi i
+        // medici cliccassero quasi insieme, prima che l'uno riceva il messaggio 'start' dell'altro,
+        // ciascuno si sarebbe attivato localmente convinto di essere host, e i due "righelli"
+        // sarebbero tornati a poter differire — lo stesso bug che questa architettura doveva
+        // risolvere. La regola è quindi fissa e identica su entrambi i lati, calcolabile senza
+        // alcuna negoziazione: la Struttura1 è sempre host, indipendentemente da chi ha avviato
+        // la collaborazione o dall'ordine di arrivo dei messaggi.
+        function isDesignatedCollabHost() {
+            return S.role === 'struttura1';
+        }
+
+        function toggleCollaboration(docId) {
             const canvas = document.getElementById('collab-canvas');
             const toolbar = document.getElementById('collab-toolbar');
             const statusDiv = document.getElementById('collab-sync-status');
@@ -6378,7 +6400,7 @@
                 }
                 // Attiva collaborazione
                 isCollaborating = true;
-                isCollabHost = isHost;
+                isCollabHost = isDesignatedCollabHost();
                 activeCollabDocId = docId;
                 if (canvas) canvas.style.display = 'block';
                 if (toolbar) toolbar.style.setProperty('display', 'flex', 'important');
@@ -6394,7 +6416,9 @@
 
                 // Inizializza i listener sul canvas, aspettando prima che il PDF (se in corso
                 // di caricamento) abbia finito di renderizzare e l'altezza reale sia nota
+                const myGen = ++collabInitGeneration;
                 currentPdfReadyPromise.then(() => {
+                    if (myGen !== collabInitGeneration) return;
                     if (pdfRenderFailed) {
                         // Il rendering è fallito: niente canvas su un'altezza inaffidabile.
                         // Disattiva di nuovo la collaborazione, qui e sull'altro PC.
@@ -6410,7 +6434,7 @@
                         if (mqttClient && mqttClient.connected) sendMQTTMessage({ type: 'collab_action', action: stopAction });
                         return;
                     }
-                    initCollabCanvas();
+                    initCollabCanvas(0, myGen);
                 });
 
                 // Notifica l'altro PC dell'inizio collaborazione
@@ -6434,6 +6458,8 @@
                 lastAgreedCanvasWidth = 0;
                 lastAgreedCanvasHeight = 0;
                 lastAgreedScrollTop = 0;
+                collabInitGeneration++; // invalida ogni init del canvas ancora in sospeso
+                abortCollabDrawing();
                 if (canvas) canvas.style.display = 'none';
                 if (toolbar) toolbar.style.setProperty('display', 'none', 'important');
                 if (statusDiv) statusDiv.style.display = 'none';
@@ -6464,12 +6490,12 @@
                 viewDocPreview(docId);
                 setTimeout(() => {
                     if (!isCollaborating) {
-                        toggleCollaboration(docId, false);
+                        toggleCollaboration(docId);
                     }
                 }, 400); // tempo di rendering del modal
             } else {
                 if (!isCollaborating) {
-                    toggleCollaboration(docId, false);
+                    toggleCollaboration(docId);
                 }
             }
         }
@@ -6486,6 +6512,9 @@
                     pendingIncomingDraws = [];
                     lastAgreedCanvasWidth = 0;
                     lastAgreedCanvasHeight = 0;
+                    lastAgreedScrollTop = 0;
+                    collabInitGeneration++; // invalida ogni init del canvas ancora in sospeso
+                    abortCollabDrawing();
                     const canvas = document.getElementById('collab-canvas');
                     const toolbar = document.getElementById('collab-toolbar');
                     const statusDiv = document.getElementById('collab-sync-status');
@@ -6661,8 +6690,12 @@
             }
         }
 
-        function initCollabCanvas(retryCount) {
+        function initCollabCanvas(retryCount, gen) {
             retryCount = retryCount || 0;
+            // Se nel frattempo è stata pianificata una (ri)inizializzazione più recente
+            // (vedi collabInitGeneration), questa chiamata è superata: meglio fermarsi che
+            // clonare/rimisurare il canvas in competizione con l'altra, lasciandolo a metà.
+            if (gen !== undefined && gen !== collabInitGeneration) return;
             const canvas = document.getElementById('collab-canvas');
             if (!canvas) return;
 
@@ -6697,7 +6730,7 @@
             // "congelare" un canvas a dimensione zero: altrimenti ogni tratto, locale o in arrivo,
             // verrebbe normalizzato su un riferimento sbagliato.
             if ((newCanvas.width === 0 || newCanvas.height === 0) && retryCount < 20) {
-                requestAnimationFrame(() => initCollabCanvas(retryCount + 1));
+                requestAnimationFrame(() => initCollabCanvas(retryCount + 1, gen));
                 return;
             }
             // Esauriti i tentativi: ultima rete di sicurezza per non restare bloccati a 0x0.
@@ -6816,23 +6849,52 @@
         // Applica al canvas (già esistente nel DOM) le dimensioni concordate con l'host e segna
         // la lavagna pronta. Cambiare width/height svuota il bitmap del canvas: se c'era già un
         // disegno in corso (es. dopo un cambio di zoom) lo si salva e lo si ridisegna scalato
-        // sulle nuove dimensioni, stessa tecnica già usata in changeCollabZoom.
+        // sulle nuove dimensioni.
+        //
+        // Il salvataggio passa da un canvas offscreen (drawImage da canvas a canvas), NON da
+        // toDataURL()+Image+onload come nella prima versione di questa funzione: quel giro passa
+        // per una codifica/decodifica PNG asincrona, e markCollabCanvasReady() veniva chiamata
+        // PRIMA che il ripristino fosse davvero completo. Un tratto arrivato da MQTT/BroadcastChannel
+        // in quella finestra (anche solo pochi millisecondi) verrebbe disegnato per primo sul
+        // canvas appena svuotato, e poi ricoperto dal vecchio disegno ripristinato sopra di lui,
+        // facendolo sparire. drawImage(canvas, ...) copia i pixel già decodificati in memoria:
+        // è sincrono, quindi quando markCollabCanvasReady() viene chiamata il ripristino è già
+        // concluso per davvero, senza finestre in cui un tratto nuovo possa perdersi.
         function applyCollabCanvasSize(canvas, width, height) {
             if (canvas.width === width && canvas.height === height) {
                 markCollabCanvasReady();
                 return;
             }
-            const savedImage = collabCanvasReady ? canvas.toDataURL() : null;
+            let snapshot = null;
+            if (collabCanvasReady && canvas.width > 0 && canvas.height > 0) {
+                snapshot = document.createElement('canvas');
+                snapshot.width = canvas.width;
+                snapshot.height = canvas.height;
+                snapshot.getContext('2d').drawImage(canvas, 0, 0);
+            }
             canvas.width = width;
             canvas.height = height;
-            if (savedImage) {
-                const img = new Image();
-                img.onload = function () {
-                    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-                };
-                img.src = savedImage;
+            if (snapshot) {
+                canvas.getContext('2d').drawImage(snapshot, 0, 0, width, height);
             }
             markCollabCanvasReady();
+        }
+
+        // Azzera lo stato di un tratto eventualmente in corso quando la collaborazione finisce
+        // (localmente o perché l'altro medico l'ha disattivata). Senza questo, se la lavagna si
+        // ferma mentre il mouse è ancora premuto (es. l'altro medico clicca "Disattiva" mentre sto
+        // disegnando), isCollabDrawing resta true: i listener globali su window continuano a
+        // chiamare collabDraw() a ogni movimento, disegnando su un canvas ormai nascosto e
+        // continuando a inviare 'draw_batch' a vuoto ogni 60ms (drawFlushInterval) finché non si
+        // rilascia il pulsante del mouse, anche con la lavagna ormai spenta su entrambi i lati.
+        function abortCollabDrawing() {
+            isCollabDrawing = false;
+            pendingDrawSegments = [];
+            currentStrokeSegments = [];
+            if (drawFlushInterval) {
+                clearInterval(drawFlushInterval);
+                drawFlushInterval = null;
+            }
         }
 
         function startCollabDraw(e) {
