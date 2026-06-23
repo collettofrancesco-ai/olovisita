@@ -7514,6 +7514,38 @@
             const newDate = document.getElementById(`${pfx}-date`).value;
             const newTime = document.getElementById(`${pfx}-time`).value;
 
+            // L'attributo "required" sui campi data/ora blocca la sottomissione solo in un vero
+            // submit del form: chiamare questa funzione in altro modo lo bypassa, e una data/ora
+            // vuota produce un "Invalid Date" che supera silenziosamente sia il controllo sul
+            // passato che quello dei conflitti qui sotto (i confronti con NaN sono sempre falsi),
+            // creando una televisita fantasma senza data né ora. Stessa rete di sicurezza già
+            // usata più sotto per visitMode.
+            if (!newDate || !newTime) {
+                const dateEl = document.getElementById(`${pfx}-date`);
+                const timeEl = document.getElementById(`${pfx}-time`);
+                [dateEl, timeEl].forEach(el => { if (el) { el.classList.add('is-invalid'); setTimeout(() => el.classList.remove('is-invalid'), 3000); } });
+                showCenteredAlert(currentLang === 'fr'
+                    ? '⚠️ Indiquez la date et l\'heure de la télévisite.'
+                    : '⚠️ Indica data e ora della televisita.', 'warning');
+                return;
+            }
+
+            // L'attributo "min" sui campi data è solo un suggerimento dell'interfaccia: non
+            // impedisce davvero un valore nel passato (autofill del browser, incolla manuale,
+            // strumenti di sviluppo). Senza un controllo qui, una televisita "fantasma" datata
+            // nel passato entrerebbe silenziosamente nell'agenda senza nessun avviso.
+            if (new Date(`${newDate}T${newTime}`) < new Date(`${todayStr()}T00:00`)) {
+                const dateEl = document.getElementById(`${pfx}-date`);
+                if (dateEl) {
+                    dateEl.classList.add('is-invalid');
+                    setTimeout(() => dateEl.classList.remove('is-invalid'), 3000);
+                }
+                showCenteredAlert(currentLang === 'fr'
+                    ? '⚠️ Impossible de programmer une télévisite dans le passé. Vérifiez la date choisie.'
+                    : '⚠️ Non è possibile programmare una televisita nel passato. Controlla la data scelta.', 'warning');
+                return;
+            }
+
             // Controlla conflitti di data/ora (escluse visite completate o rifiutate)
             const conflict = S.televisite.find(tv =>
                 tv.status !== 'completata' &&
