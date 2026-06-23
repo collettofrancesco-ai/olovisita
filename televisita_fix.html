@@ -4830,6 +4830,11 @@
         const AUTO_BACKUP_INTERVAL_MS = 10 * 60 * 1000;
         let autoBackupFileHandle = null;
         let autoBackupIntervalId = null;
+        // True solo subito dopo un azzeramento dati VOLUTO e confermato dall'utente
+        // (resetAllData): serve a far passare quell'unica scrittura vuota legittima nel
+        // controllo di sicurezza di writeAutoBackup (vedi più sotto), che altrimenti la
+        // tratterebbe come un probabile incidente (cache cancellata per errore) e la bloccherebbe.
+        let allowEmptyBackupOnce = false;
 
         function isFileSystemAccessSupported() {
             return typeof window.showSaveFilePicker === 'function';
@@ -4884,8 +4889,40 @@
         async function writeAutoBackup() {
             if (!autoBackupFileHandle) return;
             try {
+                const newData = buildBackupData();
+                const newCount = (newData.shared.televisite?.length || 0) + (newData.shared.docs?.length || 0);
+
+                // Se non c'è più nulla da salvare, prima di scrivere controlla cosa c'era già
+                // nel file: se conteneva dati non banali, NON sovrascriverlo alla cieca. Senza
+                // questo controllo, un medico che cancella per errore la cache del browser (la
+                // sessione riparte vuota) si vedrebbe distruggere anche l'ultima copia buona del
+                // backup al giro successivo, 10 minuti dopo, vanificando lo scopo stesso del
+                // backup. L'unica eccezione voluta è un azzeramento dati confermato dall'utente
+                // (vedi allowEmptyBackupOnce in resetAllData).
+                if (newCount === 0 && !allowEmptyBackupOnce) {
+                    try {
+                        const existingText = await (await autoBackupFileHandle.getFile()).text();
+                        const existingData = JSON.parse(existingText);
+                        const existingCount = (existingData.shared?.televisite?.length || 0) + (existingData.shared?.docs?.length || 0);
+                        if (existingCount > 0) {
+                            updateAutoBackupStatusUI('⛔ Backup sospeso: dati locali vuoti, file precedente protetto');
+                            showCenteredAlert(currentLang === 'fr'
+                                ? `La sauvegarde automatique a été <b>suspendue</b> : les données locales sont vides (peut-être un nettoyage accidentel du cache du navigateur), alors que le fichier de sauvegarde en contenait ${existingCount}. Pour ne pas écraser la dernière copie valide, rien n'a été écrit. Vérifiez vos données avant de continuer.`
+                                : `Il backup automatico è stato <b>sospeso</b>: i dati locali risultano vuoti (forse una cancellazione accidentale della cache del browser), mentre il file di backup ne conteneva ${existingCount}. Per non sovrascrivere l'ultima copia valida, non è stato scritto nulla. Controlla i tuoi dati prima di proseguire.`,
+                                'warning');
+                            return;
+                        }
+                    } catch (readErr) {
+                        // Il file esistente non si legge/interpreta: non possiamo confrontare,
+                        // quindi per prudenza non scriviamo comunque dati vuoti alla cieca.
+                        console.error('Errore nel controllo di sicurezza del backup automatico:', readErr);
+                        return;
+                    }
+                }
+                allowEmptyBackupOnce = false;
+
                 const writable = await autoBackupFileHandle.createWritable();
-                await writable.write(JSON.stringify(buildBackupData(), null, 2));
+                await writable.write(JSON.stringify(newData, null, 2));
                 await writable.close();
                 const now = new Date();
                 updateAutoBackupStatusUI('Ultimo backup: ' + now.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }));
@@ -4965,9 +5002,14 @@
                     autoBackupFileHandle = handle;
                     startAutoBackupTimer();
                 } else {
-                    showToast(currentLang === 'fr'
-                        ? 'La sauvegarde automatique était active : cliquez à nouveau sur "Activer la sauvegarde automatique" dans les Paramètres pour la confirmer sur ce PC.'
-                        : 'Il backup automatico era attivo: clicca di nuovo "Attiva Backup Automatico" in Impostazioni per confermarlo su questo PC.', 'warning', 8000);
+                    // Pulsante direttamente nel toast per riconfermare il permesso in un solo
+                    // click: il browser, per sicurezza, richiede un gesto reale dell'utente per
+                    // richiederlo di nuovo, ma non deve essere necessariamente fatto dalla pagina
+                    // Impostazioni. Il file resta lo stesso già scelto in precedenza.
+                    const msg = currentLang === 'fr'
+                        ? 'La sauvegarde automatique était active sur ce PC. <button type="button" class="btn btn-warning btn-sm fw-semibold ms-1 mt-1" style="pointer-events:auto;" onclick="event.stopPropagation(); toggleAutoBackup(); this.closest(\'.toast\').remove();">Confirmer maintenant</button>'
+                        : 'Il backup automatico era attivo su questo PC. <button type="button" class="btn btn-warning btn-sm fw-semibold ms-1 mt-1" style="pointer-events:auto;" onclick="event.stopPropagation(); toggleAutoBackup(); this.closest(\'.toast\').remove();">Conferma ora</button>';
+                    showToast(msg, 'warning', 0);
                 }
             } catch (err) {
                 console.error('Errore nel ripristino del backup automatico:', err);
@@ -9129,6 +9171,11 @@
             S.jitsiApi = null;
 
             try { localStorage.removeItem('tv_state'); } catch (_) { }
+
+            // Azzeramento voluto e confermato: il prossimo backup automatico (se attivo) deve
+            // poter scrivere questo stato vuoto invece di essere bloccato dal controllo di
+            // sicurezza pensato per le cancellazioni accidentali (vedi writeAutoBackup).
+            allowEmptyBackupOnce = true;
 
             renderAll();
             syncState(null);
