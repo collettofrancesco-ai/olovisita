@@ -3064,7 +3064,7 @@
         // senza nessun avviso esplicito (vedi decryptPayload). Modificabile SOLO modificando
         // questa riga nel codice sorgente e ridistribuendo l'app a entrambe le strutture: se lo
         // cambi, vanno aggiornate insieme, altrimenti smettono di sincronizzarsi tra loro.
-        const FIXED_ROOM_CODE = 'cervello-tunisia';
+        const FIXED_ROOM_CODE = 'Olovisita_palermo_tunisia';
         let currentGroupCode = FIXED_ROOM_CODE;
         let currentTopicId = null;
         let lastStateReplyTime = 0;
@@ -3700,7 +3700,7 @@
             }
 
             cachedCryptoKey = null;
-            currentGroupCode = groupCode || 'cervello-tunisia';
+            currentGroupCode = groupCode || FIXED_ROOM_CODE;
             currentTopicId = await deriveTopicId(currentGroupCode);
             const topic = MQTT_TOPIC_BASE + currentTopicId;
 
