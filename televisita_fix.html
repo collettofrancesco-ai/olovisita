@@ -5907,13 +5907,12 @@
             // pubblica del paziente (initPatientReportView, senza login né validazione) oltre
             // che dai campi liberi del modulo di prenotazione (luogo di nascita, codice
             // fiscale): vanno sempre sanificati, anche se in pratica contengono quasi sempre
-            // solo testo semplice. fmtDate() non sanifica da sola una stringa non valida, quindi
-            // anche dob va escapato PRIMA di passarci attraverso.
+            // solo testo semplice. dob passa per fmtDate(), che sanifica già il proprio risultato.
             const docId = escapeHtml(d.id || '');
             const at = escapeHtml(d.at || '');
             const doctorName = escapeHtml(d.doctorName || '');
             const verificationCode = escapeHtml(d.verificationCode || '');
-            const dob = escapeHtml(d.patientDob || '');
+            const dob = d.patientDob || '';
             const pob = escapeHtml(d.patientPob || '');
             const cf = escapeHtml(d.patientCf || '');
             const isFr = currentLang === 'fr';
@@ -9749,8 +9748,14 @@
 
         function fmtDate(s) {
             if (!s) return '';
+            // Il risultato finisce quasi sempre interpolato direttamente in innerHTML. Per una
+            // data valida (sempre nel formato AAAA-MM-GG, senza caratteri speciali HTML) questo
+            // escape è un no-op; ma "s" arriva da un <input type="date"> il cui valore può essere
+            // forzato a qualunque stringa bypassando il selettore nativo del browser (automazione,
+            // strumenti di sviluppo): senza sanificare qui, un valore non valido passerebbe intatto
+            // attraverso lo split/riassemblaggio sottostante, che non sanifica nulla da solo.
             const [y, m, d] = s.split('-');
-            return `${d}/${m}/${y}`;
+            return escapeHtml(`${d}/${m}/${y}`);
         }
 
         function fmtSize(b) {
