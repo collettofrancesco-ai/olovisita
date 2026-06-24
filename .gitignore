@@ -7,3 +7,4 @@ manuale/
 # Cartelle di backup automatico locale: contengono dati sanitari reali, non vanno mai committate
 Backup Televisita/
 backup_televisita_*.json
+__pycache__/
