@@ -1220,6 +1220,44 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="row g-4 mt-1">
+                    <div class="col-12">
+                        <div class="login-card" style="cursor:default; max-width:none;">
+                            <h6 class="fw-bold mb-1">
+                                <i class="bi bi-key-fill me-1"></i>Resetta Password di un Utente Esistente
+                            </h6>
+                            <div class="row g-2">
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-semibold text-muted">Utente</label>
+                                    <select id="resetpw-user" class="form-select form-select-sm"></select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small fw-semibold text-muted">Nuova Password</label>
+                                    <input type="text" id="resetpw-password" class="form-control form-control-sm" placeholder="Password temporanea">
+                                </div>
+                                <div class="col-md-5 d-flex align-items-end">
+                                    <button class="btn btn-primary btn-sm" onclick="generateResetPasswordCode()">
+                                        <i class="bi bi-code-slash me-1"></i>Genera Codice
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="resetpw-error" class="text-danger small mt-2" style="min-height:1.2em;"></div>
+                            <div id="resetpw-result" class="mt-3" style="display:none;">
+                                <label class="form-label small fw-semibold text-muted">
+                                    Sostituisci nel sorgente la riga esistente di
+                                    <span id="resetpw-result-username"></span> con questa
+                                    (stessa struttura, stesso ordine: solo passwordHash cambia)
+                                </label>
+                                <textarea id="resetpw-code" class="form-control font-monospace" rows="3" readonly style="font-size:0.78rem;"></textarea>
+                                <button class="btn btn-outline-secondary btn-sm mt-2" onclick="copyResetPasswordCode()">
+                                    <i class="bi bi-clipboard me-1"></i>Copia
+                                </button>
+                                <span id="resetpw-copied" class="text-success small ms-2" style="display:none;">Copiato!</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -3466,6 +3504,9 @@
             document.getElementById('admin-key-section').style.display = 'none';
             document.getElementById('admin-dashboard-section').style.display = 'block';
             connectAdminMqtt(0);
+            // Ricontrolla l'eventuale dato "vecchio" ogni minuto, non solo quando arriva un nuovo
+            // backup: è proprio l'assenza di nuovi backup che questo avviso deve far notare.
+            setInterval(refreshAllAdminStaleness, 60 * 1000);
         }
 
         function updateAdminMqttStatus(text, type) {
@@ -3554,6 +3595,37 @@
             return div.innerHTML;
         }
 
+        // Una struttura pubblica un nuovo backup admin ogni ADMIN_BACKUP_INTERVAL_MS (10 minuti):
+        // se non arriva nulla di nuovo per molto più di quell'intervallo, il dispositivo di quella
+        // struttura probabilmente non è connesso (browser chiuso, MQTT bloccato, computer spento),
+        // proprio nel momento in cui il canale di continuità operativa servirebbe di più. La soglia
+        // è abbondante (2-3 cicli mancati) per non far scattare falsi allarmi su un singolo ritardo
+        // occasionale del broker pubblico.
+        const ADMIN_STALE_THRESHOLD_MS = 25 * 60 * 1000;
+
+        // Aggiorna solo la riga di stato (testo + colore) in base a quanto è vecchio l'ultimo
+        // backup ricevuto, senza toccare il resto del pannello: richiamata sia subito dopo aver
+        // ricevuto un nuovo backup, sia periodicamente da un timer, per far scattare l'avviso anche
+        // se da una struttura non arriva più nulla (renderAdminDashboard, altrimenti, verrebbe
+        // richiamata solo all'arrivo di un backup nuovo - cioè mai, nel caso che vogliamo segnalare).
+        function updateAdminStaleness(role) {
+            const entry = adminReceivedBackups[role];
+            const statusEl = document.getElementById('admin-status-' + role);
+            if (!entry || !statusEl) return;
+            const ageMs = Date.now() - entry.ts;
+            const isStale = ageMs > ADMIN_STALE_THRESHOLD_MS;
+            const ageMinutes = Math.round(ageMs / 60000);
+            statusEl.textContent = (isStale ? '⚠️ ' : '') + entry.facility + ' — ultimo aggiornamento: '
+                + new Date(entry.ts).toLocaleString('it-IT')
+                + (isStale ? ` (nessun dato da ${ageMinutes} minuti, verifica la connessione)` : '');
+            statusEl.className = 'small mb-3 ' + (isStale ? 'text-warning fw-semibold' : 'text-muted');
+        }
+
+        function refreshAllAdminStaleness() {
+            updateAdminStaleness('struttura1');
+            updateAdminStaleness('struttura2');
+        }
+
         function renderAdminDashboard(role) {
             const entry = adminReceivedBackups[role];
             if (!entry) return;
@@ -3561,7 +3633,7 @@
             const contentEl = document.getElementById('admin-content-' + role);
             if (!statusEl || !contentEl) return;
 
-            statusEl.textContent = entry.facility + ' — ultimo aggiornamento: ' + new Date(entry.ts).toLocaleString('it-IT');
+            updateAdminStaleness(role);
             const downloadBtn = document.getElementById('admin-download-' + role);
             if (downloadBtn) downloadBtn.disabled = false;
 
@@ -3675,7 +3747,65 @@
             });
         }
 
+        // Riempie il menu "Resetta Password" con tutti gli utenti di entrambe le strutture: il
+        // valore è "struttura1|username" perché lo stesso username, in teoria, potrebbe ripetersi
+        // su entrambe le strutture (sono due elenchi indipendenti) e il ruolo va comunque scelto
+        // per sapere in quale FACILITIES[...].users andrà a finire la riga sostitutiva.
+        function populateResetPasswordSelect() {
+            const select = document.getElementById('resetpw-user');
+            if (!select || select.children.length > 0) return;
+            ['struttura1', 'struttura2'].forEach(role => {
+                FACILITIES[role].users.forEach(u => {
+                    const opt = document.createElement('option');
+                    opt.value = role + '|' + u.username;
+                    opt.textContent = u.name + ' (' + FACILITIES[role].name + ')';
+                    select.appendChild(opt);
+                });
+            });
+        }
+
+        // Genera la riga AGGIORNATA (stessi dati, solo passwordHash nuovo) di un utente già
+        // esistente, da incollare al posto di quella attuale nel sorgente: non esiste un vero
+        // database, quindi anche un "reset password" passa comunque da una modifica del codice e
+        // una ripubblicazione, non da un salvataggio immediato.
+        async function generateResetPasswordCode() {
+            const errEl = document.getElementById('resetpw-error');
+            errEl.textContent = '';
+
+            const selected = document.getElementById('resetpw-user').value;
+            const password = document.getElementById('resetpw-password').value;
+            if (!selected || !password) {
+                errEl.textContent = 'Scegli un utente e indica la nuova password prima di generare il codice.';
+                return;
+            }
+
+            const [role, username] = selected.split('|');
+            const user = FACILITIES[role].users.find(u => u.username === username);
+            if (!user) {
+                errEl.textContent = 'Utente non trovato.';
+                return;
+            }
+
+            const passwordHash = await sha256Hex(password);
+            const code = `{ username: '${user.username}', name: '${user.name.replace(/'/g, "\\'")}', spec: '${user.spec.replace(/'/g, "\\'")}', avatar: '${user.avatar}', color: '${user.color}', bg: '${user.bg}', passwordHash: '${passwordHash}' },`;
+
+            document.getElementById('resetpw-result-username').textContent = user.username;
+            document.getElementById('resetpw-code').value = code;
+            document.getElementById('resetpw-result').style.display = 'block';
+            document.getElementById('resetpw-copied').style.display = 'none';
+        }
+
+        function copyResetPasswordCode() {
+            const codeEl = document.getElementById('resetpw-code');
+            navigator.clipboard.writeText(codeEl.value).then(() => {
+                const copiedEl = document.getElementById('resetpw-copied');
+                copiedEl.style.display = 'inline';
+                setTimeout(() => { copiedEl.style.display = 'none'; }, 2000);
+            });
+        }
+
         function initAdminView() {
+            populateResetPasswordSelect();
             const jwk = getStoredAdminPrivateKeyJwk();
             if (jwk) {
                 startAdminView(jwk);
