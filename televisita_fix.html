@@ -4741,6 +4741,7 @@
         function buildBackupData() {
             const emailJsConfig = localStorage.getItem('tv_emailjs_config');
             return {
+                role: S.role,
                 shared: getSharedStateForStorage(),
                 emailjs: emailJsConfig ? JSON.parse(emailJsConfig) : null,
                 exportDate: new Date().toISOString()
@@ -4776,6 +4777,24 @@
                     const data = JSON.parse(e.target.result);
                     if (!data.shared || !data.shared.televisite) {
                         throw new Error('Formato backup non valido.');
+                    }
+
+                    // I backup creati dopo questa versione portano il ruolo ('struttura1'/'struttura2')
+                    // di chi li ha generati. Se non corrisponde a questo PC, è quasi certamente un
+                    // backup scaricato dal pannello admin (o ricevuto da un collega) per la struttura
+                    // sbagliata: importarlo senza accorgersene sovrascriverebbe i dati di questa
+                    // struttura con quelli dell'altra. I backup più vecchi (senza il campo "role")
+                    // non hanno questa informazione e vengono importati come prima, senza avviso.
+                    if (data.role && data.role !== S.role) {
+                        const dataFacility = (DOCTORS[data.role] || {}).facility || data.role;
+                        const thisFacility = (DOCTORS[S.role] || {}).facility || S.role;
+                        const warnMsg = currentLang === 'fr'
+                            ? `ATTENTION : ce fichier de sauvegarde appartient à « ${dataFacility} », mais vous êtes connecté comme « ${thisFacility} ». Continuer remplacera les données de CET établissement par celles de l'autre. Continuer quand même ?`
+                            : `ATTENZIONE: questo file di backup appartiene a “${dataFacility}”, ma sei collegato come “${thisFacility}”. Continuando, i dati di QUESTA struttura verranno sovrascritti con quelli dell'altra. Procedere comunque?`;
+                        if (!confirm(warnMsg)) {
+                            event.target.value = '';
+                            return;
+                        }
                     }
 
                     // Ripristina lo stato condiviso
