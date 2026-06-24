@@ -7583,10 +7583,18 @@
                 return;
             }
 
-            // Controlla conflitti di data/ora (escluse visite completate o rifiutate)
+            // Controlla conflitti di data/ora (escluse visite completate o rifiutate), ma solo
+            // contro le televisite dello STESSO medico: due medici diversi (anche della stessa
+            // struttura, vedi FACILITIES[...].users) possono benissimo avere ciascuno un proprio
+            // paziente nello stesso orario, perché la visita la svolge ciascuno per conto proprio.
+            // Senza questo controllo sul nome del medico, prenotare per le 16:00 con un account
+            // bloccava per errore anche un secondo account che non aveva nulla a che fare con
+            // quella prenotazione.
+            const currentDoctorName = S.currentDoctor ? S.currentDoctor.name : DOCTORS[S.role].name;
             const conflict = S.televisite.find(tv =>
                 tv.status !== 'completata' &&
                 tv.status !== 'rifiutata' &&
+                tv.createdByName === currentDoctorName &&
                 minutesBetweenVisits(tv.date, tv.time, newDate, newTime) < MIN_VISIT_GAP_MINUTES
             );
             if (conflict) {
@@ -9374,11 +9382,15 @@
         // trascurabile già dalla seconda esecuzione della demo.
         function findFreeDemoTime() {
             const today = todayStr();
+            // Stessa regola di scheduleVisit(): il conflitto conta solo contro le televisite
+            // dello stesso medico attualmente loggato (vedi commento lì per il motivo).
+            const currentDoctorName = S.currentDoctor ? S.currentDoctor.name : DOCTORS[S.role].name;
             for (let attempt = 0; attempt < 50; attempt++) {
                 const candidate = `${String(10 + Math.floor(Math.random() * 8)).padStart(2, '0')}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')}`;
                 const conflict = S.televisite.some(tv =>
                     tv.status !== 'completata' &&
                     tv.status !== 'rifiutata' &&
+                    tv.createdByName === currentDoctorName &&
                     minutesBetweenVisits(tv.date, tv.time, today, candidate) < MIN_VISIT_GAP_MINUTES
                 );
                 if (!conflict) return candidate;
