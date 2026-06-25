@@ -16,6 +16,7 @@ ROOT = Path(__file__).parent
 SRC = ROOT / "televisita_fix.html"
 BUILD_SCRIPT = ROOT / "build_minified.py"
 MANAGE_USERS_SRC = ROOT / "manage_users.py"
+MANAGE_EMAILJS_SRC = ROOT / "manage_emailjs.py"
 VENDOR_SRC = ROOT / "vendor"
 
 
@@ -77,6 +78,76 @@ def _find_js_block(text: str, pattern: str, start: int = 0) -> tuple:
             if depth == 0:
                 return brace_pos, i + 1
     raise ValueError(f"Blocco JS non chiuso: {pattern[:60]}")
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Credenziali EmailJS
+# ──────────────────────────────────────────────────────────────────────────────
+
+def ask_emailjs_for(facility_label: str) -> list:
+    """Chiede interattivamente le credenziali EmailJS per una struttura.
+    Restituisce una lista di dict (principale + eventuale fallback), o lista vuota se si salta."""
+    print(f"\n  EmailJS per {facility_label}")
+    print("  (lascia vuoto il Public Key per saltare e configurare dopo con manage_emailjs.py)")
+    public_key = input("  Public Key:  ").strip()
+    if not public_key:
+        return []
+    service_id  = input("  Service ID:  ").strip()
+    template_id = input("  Template ID: ").strip()
+    if not service_id or not template_id:
+        print("  Service ID e Template ID obbligatori se si inserisce il Public Key — salto.")
+        return []
+    chain = [{'publicKey': public_key, 'serviceId': service_id, 'templateId': template_id}]
+    if input("  Vuoi aggiungere un account di fallback? (s/n): ").strip().lower() == 's':
+        pk2 = input("  Fallback Public Key:  ").strip()
+        si2 = input("  Fallback Service ID:  ").strip()
+        ti2 = input("  Fallback Template ID: ").strip()
+        if pk2 and si2 and ti2:
+            chain.append({'publicKey': pk2, 'serviceId': si2, 'templateId': ti2})
+    return chain
+
+
+def replace_emailjs_configs(text: str, s1_chain: list, s2_chain: list) -> str:
+    """Sostituisce l'intero blocco DEFAULT_EMAILJS_CONFIGS con le catene per struttura fornite.
+    Se una catena è vuota, mette un segnaposto con stringhe vuote (l'app non manda email
+    finché non si configura con manage_emailjs.py, senza usare accidentalmente gli account
+    di fabbrica delle strutture originali)."""
+    def fmt_item(cfg: dict) -> str:
+        esc = lambda s: s.replace("'", "\\'")
+        return (f"{{ publicKey: '{esc(cfg['publicKey'])}', "
+                f"serviceId: '{esc(cfg['serviceId'])}', "
+                f"templateId: '{esc(cfg['templateId'])}' }}")
+
+    def fmt_chain(chain: list, indent: str) -> str:
+        if not chain:
+            return f'[\n{indent}    {{ publicKey: \'\', serviceId: \'\', templateId: \'\' }}\n{indent}]'
+        items = f',\n{indent}    '.join(fmt_item(c) for c in chain)
+        return f'[\n{indent}    {items}\n{indent}]'
+
+    m = re.search(r'([ \t]*)const\s+DEFAULT_EMAILJS_CONFIGS\s*=\s*\{', text)
+    if not m:
+        raise ValueError("Non trovo DEFAULT_EMAILJS_CONFIGS nel sorgente.")
+    indent = m.group(1)
+    brace_start = text.index('{', m.start())
+    depth = 0
+    end = brace_start
+    for i in range(brace_start, len(text)):
+        if text[i] == '{': depth += 1
+        elif text[i] == '}':
+            depth -= 1
+            if depth == 0:
+                end = i + 1
+                if end < len(text) and text[end] == ';':
+                    end += 1
+                break
+
+    new_block = (
+        f'{indent}const DEFAULT_EMAILJS_CONFIGS = {{\n'
+        f'{indent}    struttura1: {fmt_chain(s1_chain, indent + "    ")},\n'
+        f'{indent}    struttura2: {fmt_chain(s2_chain, indent + "    ")},\n'
+        f'{indent}}};'
+    )
+    return text[:m.start()] + new_block + text[end:]
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -232,6 +303,10 @@ def main():
     print(f"\nSlug del progetto (nel codice stanza MQTT) [{default_slug}]: ", end='')
     slug = input().strip() or default_slug
 
+    print("\nConfigurazione EmailJS (le email ai pazienti partono dall'account di ogni struttura).")
+    s1_email_chain = ask_emailjs_for(s1_name)
+    s2_email_chain = ask_emailjs_for(s2_name)
+
     desktop = Path.home() / "Desktop"
     folder_name = f"Olovisita {short_name(s1_name)}-{short_name(s2_name)}"
     default_dir = desktop / folder_name
@@ -239,9 +314,12 @@ def main():
     dir_input = input().strip()
     out_dir = Path(dir_input).expanduser().resolve() if dir_input else default_dir
 
+    def email_status(chain): return f"{len(chain)} account configurati" if chain else "⚠ non configurato (da fare con manage_emailjs.py)"
     print(f"\n── Riepilogo ───────────────────────────────────────")
     print(f"  Struttura 1  : {s1_name}  (avatar: {make_avatar(s1_name)})")
+    print(f"  EmailJS S1   : {email_status(s1_email_chain)}")
     print(f"  Struttura 2  : {s2_name}  (avatar: {make_avatar(s2_name)})")
+    print(f"  EmailJS S2   : {email_status(s2_email_chain)}")
     print(f"  Codice stanza: Olovisita_{slug}")
     print(f"  Output       : {out_dir}")
     print(f"────────────────────────────────────────────────────")
@@ -265,6 +343,7 @@ def main():
     text = replace_translations(text, s1_name, s2_name)
     text = replace_admin_dropdown(text, s1_name, s2_name)
     text = replace_login_html(text, s1_name, s2_name)
+    text = replace_emailjs_configs(text, s1_email_chain, s2_email_chain)
     print("  OK")
 
     # ── Prepara la cartella di output ─────────────────────────────────────────
@@ -279,6 +358,14 @@ def main():
     mu_text = update_manage_users(mu_text, s1_name, s2_name)
     (out_dir / MANAGE_USERS_SRC.name).write_text(mu_text, encoding='utf-8')
 
+    me_text = MANAGE_EMAILJS_SRC.read_text(encoding='utf-8')
+    me_text = re.sub(
+        r'FACILITIES\s*=\s*\{[^}]*\}',
+        f'FACILITIES = {{"struttura1": "{s1_name}", "struttura2": "{s2_name}"}}',
+        me_text, count=1
+    )
+    (out_dir / MANAGE_EMAILJS_SRC.name).write_text(me_text, encoding='utf-8')
+
     if VENDOR_SRC.is_dir():
         shutil.copytree(VENDOR_SRC, out_dir / "vendor", dirs_exist_ok=True)
 
@@ -290,6 +377,21 @@ def main():
     print("  OK")
 
     # ── Istruzioni ───────────────────────────────────────────────────────────
+    email_pending = (not s1_email_chain) or (not s2_email_chain)
+    email_step = ""
+    if email_pending:
+        missing = []
+        if not s1_email_chain: missing.append(s1_name)
+        if not s2_email_chain: missing.append(s2_name)
+        email_step = f"""
+  2) Configura l'account email ({', '.join(missing)}):
+       cd "{out_dir}"
+       python3 manage_emailjs.py
+"""
+        pub_step = "3"
+    else:
+        pub_step = "2"
+
     print(f"""
 ╔══════════════════════════════════════════════════════════════╗
   Deployment creato in:
@@ -300,8 +402,8 @@ def main():
   1) Aggiungi i medici:
        cd "{out_dir}"
        python3 manage_users.py
-
-  2) Pubblica su GitHub Pages:
+{email_step}
+  {pub_step}) Pubblica su GitHub Pages:
        cd "{out_dir}"
        git init
        git add -A
