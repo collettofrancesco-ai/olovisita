@@ -1181,6 +1181,29 @@
                 <div class="row g-4 mt-1">
                     <div class="col-12">
                         <div class="login-card" style="cursor:default; max-width:none;">
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                <h6 class="fw-bold mb-0">
+                                    <i class="bi bi-hdd-fill me-1"></i>Backup Automatico su Disco
+                                </h6>
+                                <span id="admin-auto-backup-status" class="small text-muted" style="font-size:0.7rem;"></span>
+                            </div>
+                            <p class="text-muted small mb-2 lh-sm" style="font-size:0.7rem;">
+                                Scegli una volta una cartella su questo PC: da quel momento ogni nuovo dato ricevuto
+                                dalle due strutture viene salvato lì in una nuova copia, mantenendo lo storico delle
+                                ultime copie. Così un refresh della pagina (o i medici che chiudono il browser) non fa
+                                più perdere quello che era già arrivato. Funziona solo su Chrome/Edge desktop.
+                            </p>
+                            <button type="button" id="btn-admin-auto-backup-toggle" class="btn btn-outline-success btn-sm fw-semibold"
+                                onclick="toggleAdminAutoBackup()" style="font-size:0.75rem;">
+                                <i class="bi bi-play-fill me-1"></i> Attiva Backup Automatico
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-4 mt-1">
+                    <div class="col-12">
+                        <div class="login-card" style="cursor:default; max-width:none;">
                             <h6 class="fw-bold mb-1">
                                 <i class="bi bi-person-plus-fill me-1"></i>Crea Nuovo Utente Medico
                             </h6>
@@ -3519,6 +3542,7 @@
             // Ricontrolla l'eventuale dato "vecchio" ogni minuto, non solo quando arriva un nuovo
             // backup: è proprio l'assenza di nuovi backup che questo avviso deve far notare.
             setInterval(refreshAllAdminStaleness, 60 * 1000);
+            tryResumeAdminAutoBackup();
         }
 
         function updateAdminMqttStatus(text, type) {
@@ -3571,6 +3595,201 @@
             }
         }
 
+        // ---------------------------------------------------------------------------
+        // BACKUP AUTOMATICO DEL PANNELLO ADMIN (File System Access API): adminReceivedBackups
+        // vive solo in memoria. Senza questo, un refresh della pagina (o un riavvio del browser)
+        // perde tutti i dati delle due strutture finché non arriva un nuovo backup MQTT — che può
+        // volerci fino a ADMIN_BACKUP_INTERVAL_MS, o non arrivare affatto se in quel momento i
+        // medici hanno il browser chiuso. Stessa infrastruttura (cartella scelta una volta, ripresa
+        // tramite IndexedDB) del backup automatico lato medico, ma scrive a ogni nuovo dato
+        // ricevuto (vedi handleAdminBackupMessage) invece che su un timer fisso, perché qui non
+        // serve aspettare: l'evento che conta davvero è "è arrivato qualcosa di nuovo".
+        // ---------------------------------------------------------------------------
+        const ADMIN_AUTO_BACKUP_RETENTION = 30;
+        const ADMIN_AUTO_BACKUP_PREFIX = 'admin_backup_';
+        let adminAutoBackupDirHandle = null;
+        let adminAutoBackupActive = false;
+
+        function adminAutoBackupFilenameFor(date) {
+            const pad = n => String(n).padStart(2, '0');
+            const ts = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}-${pad(date.getMinutes())}-${pad(date.getSeconds())}`;
+            return `${ADMIN_AUTO_BACKUP_PREFIX}${ts}.json`;
+        }
+
+        async function listAdminAutoBackupFiles(dirHandle) {
+            const names = [];
+            for await (const [name, handle] of dirHandle.entries()) {
+                if (handle.kind === 'file' && name.startsWith(ADMIN_AUTO_BACKUP_PREFIX) && name.endsWith('.json')) {
+                    names.push(name);
+                }
+            }
+            names.sort();
+            return names;
+        }
+
+        // Database IndexedDB separato da quello del backup automatico lato medico (tv_autobackup_db):
+        // questa è una cartella scelta sul PC dell'amministratore della piattaforma, concettualmente
+        // un dispositivo diverso da quello di un medico, anche se tecnicamente lo stesso codice
+        // potrebbe girare nello stesso browser.
+        function openAdminAutoBackupDb() {
+            return new Promise((resolve, reject) => {
+                const req = indexedDB.open('tv_admin_autobackup_db', 1);
+                req.onupgradeneeded = () => { req.result.createObjectStore('handles'); };
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        async function saveAdminAutoBackupHandle(handle) {
+            const db = await openAdminAutoBackupDb();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction('handles', 'readwrite');
+                tx.objectStore('handles').put(handle, 'dir');
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => reject(tx.error);
+            });
+        }
+
+        async function loadAdminAutoBackupHandle() {
+            const db = await openAdminAutoBackupDb();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction('handles', 'readonly');
+                const req = tx.objectStore('handles').get('dir');
+                req.onsuccess = () => resolve(req.result || null);
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        function updateAdminAutoBackupStatusUI(text) {
+            const el = document.getElementById('admin-auto-backup-status');
+            if (el) el.textContent = text || '';
+            const btn = document.getElementById('btn-admin-auto-backup-toggle');
+            if (!btn) return;
+            if (adminAutoBackupActive) {
+                btn.innerHTML = '<i class="bi bi-stop-fill me-1"></i> Disattiva Backup Automatico';
+                btn.className = 'btn btn-outline-danger btn-sm fw-semibold';
+            } else {
+                btn.innerHTML = '<i class="bi bi-play-fill me-1"></i> Attiva Backup Automatico';
+                btn.className = 'btn btn-outline-success btn-sm fw-semibold';
+            }
+        }
+
+        // Stessa forma di buildBackupData() per ciascuna struttura (data.role, data.shared, ...),
+        // così un file salvato qui resta direttamente re-importabile da un medico tramite "Importa
+        // Backup" se servisse davvero ricostruire tutto da zero su un PC nuovo.
+        function buildAdminAutoBackupSnapshot() {
+            const snapshot = { exportDate: new Date().toISOString() };
+            for (const role of ['struttura1', 'struttura2']) {
+                const entry = adminReceivedBackups[role];
+                if (entry) snapshot[role] = { facility: entry.facility, ts: entry.ts, data: entry.data };
+            }
+            return snapshot;
+        }
+
+        async function writeAdminAutoBackup() {
+            if (!adminAutoBackupDirHandle) return;
+            try {
+                const newData = buildAdminAutoBackupSnapshot();
+                const newCount = ['struttura1', 'struttura2'].filter(r => newData[r]).length;
+                const existingNames = await listAdminAutoBackupFiles(adminAutoBackupDirHandle);
+
+                // Stessa protezione del backup automatico lato medico: se al momento non c'è
+                // ancora nessun dato (es. pannello appena aperto, prima che arrivi il primo
+                // backup MQTT) ma una copia precedente ne aveva, non scrivere una copia vuota che
+                // finirebbe per far uscire dalla rotazione le copie buone.
+                if (newCount === 0 && existingNames.length > 0) {
+                    try {
+                        const lastHandle = await adminAutoBackupDirHandle.getFileHandle(existingNames[existingNames.length - 1]);
+                        const existingText = await (await lastHandle.getFile()).text();
+                        const existingData = JSON.parse(existingText);
+                        const existingCount = ['struttura1', 'struttura2'].filter(r => existingData[r]).length;
+                        if (existingCount > 0) {
+                            updateAdminAutoBackupStatusUI('⛔ Backup sospeso: nessun dato ancora in questa sessione');
+                            return;
+                        }
+                    } catch (readErr) {
+                        console.error('Errore nel controllo di sicurezza del backup automatico admin:', readErr);
+                        return;
+                    }
+                }
+
+                const filename = adminAutoBackupFilenameFor(new Date());
+                const fileHandle = await adminAutoBackupDirHandle.getFileHandle(filename, { create: true });
+                const writable = await fileHandle.createWritable();
+                await writable.write(JSON.stringify(newData, null, 2));
+                await writable.close();
+
+                const allNames = [...existingNames, filename].sort();
+                const toDelete = allNames.slice(0, Math.max(0, allNames.length - ADMIN_AUTO_BACKUP_RETENTION));
+                for (const name of toDelete) {
+                    try { await adminAutoBackupDirHandle.removeEntry(name); } catch (delErr) { console.error('Errore nella rimozione di una vecchia copia di backup admin:', delErr); }
+                }
+
+                const now = new Date();
+                updateAdminAutoBackupStatusUI('Ultimo salvataggio: ' + now.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }));
+            } catch (err) {
+                console.error('Errore nel backup automatico admin:', err);
+                updateAdminAutoBackupStatusUI('⚠️ Errore nell\'ultimo salvataggio automatico');
+            }
+        }
+
+        async function toggleAdminAutoBackup() {
+            if (!isFileSystemAccessSupported()) {
+                showToast('Il backup automatico richiede Chrome o Edge su desktop.', 'warning');
+                return;
+            }
+
+            if (adminAutoBackupActive) {
+                adminAutoBackupActive = false;
+                updateAdminAutoBackupStatusUI('Backup automatico disattivato');
+                return;
+            }
+
+            try {
+                let handle = adminAutoBackupDirHandle || await loadAdminAutoBackupHandle();
+                if (handle) {
+                    const permission = await handle.requestPermission({ mode: 'readwrite' });
+                    if (permission !== 'granted') handle = null;
+                }
+                if (!handle) {
+                    handle = await window.showDirectoryPicker({ mode: 'readwrite' });
+                }
+                adminAutoBackupDirHandle = handle;
+                await saveAdminAutoBackupHandle(handle);
+                adminAutoBackupActive = true;
+                updateAdminAutoBackupStatusUI('Backup automatico attivo');
+                writeAdminAutoBackup(); // primo salvataggio subito, con quello che già c'è ora
+                showToast(`🟢 Backup automatico attivato: ogni nuovo dato ricevuto viene salvato in questa cartella, mantenendo le ultime ${ADMIN_AUTO_BACKUP_RETENTION} copie.`, 'success');
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    console.error('Errore nell\'attivazione del backup automatico admin:', err);
+                    showToast('❌ Impossibile attivare il backup automatico.', 'danger');
+                }
+            }
+        }
+
+        // Al rientro nel pannello admin (dopo aver inserito la chiave privata), ritenta di
+        // riprendere un backup automatico già configurato in una sessione precedente, esattamente
+        // come tryResumeAutoBackup lato medico.
+        async function tryResumeAdminAutoBackup() {
+            if (!isFileSystemAccessSupported()) return;
+            try {
+                const handle = await loadAdminAutoBackupHandle();
+                if (!handle) return;
+                const permission = await handle.queryPermission({ mode: 'readwrite' });
+                if (permission === 'granted') {
+                    adminAutoBackupDirHandle = handle;
+                    adminAutoBackupActive = true;
+                    updateAdminAutoBackupStatusUI('Backup automatico attivo');
+                } else {
+                    const msg = 'Il backup automatico del pannello admin era attivo su questo PC. <button type="button" class="btn btn-warning btn-sm fw-semibold ms-1 mt-1" style="pointer-events:auto;" onclick="event.stopPropagation(); toggleAdminAutoBackup(); this.closest(\'.toast\').remove();">Conferma ora</button>';
+                    showToast(msg, 'warning', 0);
+                }
+            } catch (err) {
+                console.error('Errore nel tentativo di ripresa del backup automatico admin:', err);
+            }
+        }
+
         // Decifra un blocco completo (schema ECIES, lato decifratura): deriva la chiave AES
         // condivisa con la propria chiave privata e la chiave pubblica effimera ricevuta nel
         // primo blocco del backup, esattamente come fa admin_listener.js lato Node.
@@ -3620,6 +3839,7 @@
 
                 adminReceivedBackups[entry.role] = { data: backupData, ts: entry.ts, facility: entry.facility };
                 renderAdminDashboard(entry.role);
+                writeAdminAutoBackup();
             } catch (err) {
                 console.error('Errore nella gestione di un backup admin:', err);
             }
