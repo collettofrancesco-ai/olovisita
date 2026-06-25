@@ -3224,24 +3224,36 @@
         // di partire fino al rinnovo. Con più account in lista (stesso template ricreato su ciascuno),
         // quando il primo rifiuta la richiesta (quota esaurita, o qualsiasi altro errore del server) si
         // passa automaticamente al successivo, invece di arrendersi al primo che si esaurisce.
-        const DEFAULT_EMAILJS_CONFIGS = [
-            { publicKey: 'v1V2lLUF0sjTkVbgE', serviceId: 'service_ekiv0hd', templateId: 'template_p95rg2w' },
-            { publicKey: '04BE8AhCLG8lWjVMd', serviceId: 'service_feob0mr', templateId: 'template_7o9cgm9' }
-        ];
+        // Catena di account EmailJS per struttura: ogni struttura usa la propria coppia
+        // (principale + fallback) così le email ai pazienti partono dall'indirizzo
+        // corretto (es. centretunisie@… per struttura1, ematologia@… per struttura2).
+        // Finché una struttura non ha ancora le proprie credenziali reali, restano qui
+        // gli account di fabbrica condivisi come placeholder — da sostituire con
+        // manage_emailjs.py non appena si hanno le caselle definitive.
+        const DEFAULT_EMAILJS_CONFIGS = {
+            struttura1: [
+                { publicKey: 'v1V2lLUF0sjTkVbgE', serviceId: 'service_ekiv0hd', templateId: 'template_p95rg2w' },
+                { publicKey: '04BE8AhCLG8lWjVMd', serviceId: 'service_feob0mr', templateId: 'template_7o9cgm9' }
+            ],
+            struttura2: [
+                { publicKey: 'v1V2lLUF0sjTkVbgE', serviceId: 'service_ekiv0hd', templateId: 'template_p95rg2w' },
+                { publicKey: '04BE8AhCLG8lWjVMd', serviceId: 'service_feob0mr', templateId: 'template_7o9cgm9' }
+            ],
+        };
 
-        // Legge la catena di configurazioni EmailJS da provare in ordine: quella salvata da un medico in
-        // Impostazioni se presente (sostituisce per intero la catena di default: è una scelta esplicita
-        // di usare proprio quell'account, non un fallback a sorpresa su un altro), altrimenti la catena
-        // di default di fabbrica qui sopra.
+        // Legge la catena di configurazioni EmailJS da usare per la struttura corrente.
+        // Se il medico ha salvato un override nelle Impostazioni, quello prende il sopravvento
+        // sull'intera catena di default (è una scelta esplicita, non un fallback a sorpresa).
         function getEmailJsConfigs() {
+            const role = S.role || 'struttura1';
             try {
-                const raw = localStorage.getItem('tv_emailjs_config');
+                const raw = localStorage.getItem('tv_emailjs_config_' + role);
                 if (raw) {
                     const stored = JSON.parse(raw);
                     if (stored && stored.serviceId && stored.templateId && stored.publicKey) return [stored];
                 }
             } catch (_) { }
-            return DEFAULT_EMAILJS_CONFIGS;
+            return DEFAULT_EMAILJS_CONFIGS[role] || DEFAULT_EMAILJS_CONFIGS.struttura1;
         }
 
         let mqttClient = null;
@@ -5274,13 +5286,15 @@
         }
 
         function openEmailSettingsModal() {
+            const role = S.role || 'struttura1';
             let override = null;
             try {
-                const raw = localStorage.getItem('tv_emailjs_config');
+                const raw = localStorage.getItem('tv_emailjs_config_' + role);
                 if (raw) override = JSON.parse(raw);
             } catch (_) { }
 
-            const config = override || DEFAULT_EMAILJS_CONFIGS[0];
+            const defaultChain = DEFAULT_EMAILJS_CONFIGS[role] || DEFAULT_EMAILJS_CONFIGS.struttura1;
+            const config = override || defaultChain[0];
             document.getElementById('emailjs-public-key').value = config.publicKey || '';
             document.getElementById('emailjs-service-id').value = config.serviceId || '';
             document.getElementById('emailjs-template-id').value = config.templateId || '';
@@ -5289,8 +5303,8 @@
             if (sourceEl) {
                 if (override) {
                     sourceEl.textContent = '🔧 Configurazione personalizzata, salvata su questo browser.';
-                } else if (DEFAULT_EMAILJS_CONFIGS.length > 1) {
-                    sourceEl.textContent = `✓ Configurazione predefinita di fabbrica (account 1 di ${DEFAULT_EMAILJS_CONFIGS.length} nella catena di riserva): già attiva, valida su qualunque dispositivo o dominio senza bisogno di impostarla.`;
+                } else if (defaultChain.length > 1) {
+                    sourceEl.textContent = `✓ Configurazione predefinita di fabbrica (account 1 di ${defaultChain.length} nella catena di riserva): già attiva, valida su qualunque dispositivo o dominio senza bisogno di impostarla.`;
                 } else {
                     sourceEl.textContent = '✓ Configurazione predefinita di fabbrica: già attiva, valida su qualunque dispositivo o dominio senza bisogno di impostarla.';
                 }
@@ -5301,6 +5315,8 @@
         }
 
         function saveEmailSettings() {
+            const role = S.role || 'struttura1';
+            const lsKey = 'tv_emailjs_config_' + role;
             const publicKey = document.getElementById('emailjs-public-key').value.trim();
             const serviceId = document.getElementById('emailjs-service-id').value.trim();
             const templateId = document.getElementById('emailjs-template-id').value.trim();
@@ -5308,11 +5324,11 @@
             if (!publicKey && !serviceId && !templateId) {
                 // Campi vuoti: si rimuove la personalizzazione e si torna al default di fabbrica,
                 // invece di salvare una configurazione vuota che bloccherebbe l'invio.
-                localStorage.removeItem('tv_emailjs_config');
+                localStorage.removeItem(lsKey);
                 showToast('Configurazione personalizzata rimossa: si torna al default di fabbrica.', 'success');
             } else {
                 const config = { publicKey, serviceId, templateId };
-                localStorage.setItem('tv_emailjs_config', JSON.stringify(config));
+                localStorage.setItem(lsKey, JSON.stringify(config));
                 showToast('Configurazione e-mail salvata correttamente.', 'success');
             }
 
@@ -5325,11 +5341,12 @@
         // PC, comprese le Centro: non hanno nessun'altra copia altrove, sono il dato più a rischio
         // in caso di cache del browser svuotata o macchina sostituita.
         function buildBackupData() {
-            const emailJsConfig = localStorage.getItem('tv_emailjs_config');
+            const role = S.role || 'struttura1';
+            const emailJsRaw = localStorage.getItem('tv_emailjs_config_' + role);
             return {
                 role: S.role,
                 shared: getSharedStateForStorage(),
-                emailjs: emailJsConfig ? JSON.parse(emailJsConfig) : null,
+                emailjs: emailJsRaw ? JSON.parse(emailJsRaw) : null,
                 exportDate: new Date().toISOString()
             };
         }
@@ -5395,7 +5412,8 @@
 
                     // Ripristina configurazione EmailJS se presente
                     if (data.emailjs) {
-                        localStorage.setItem('tv_emailjs_config', JSON.stringify(data.emailjs));
+                        const restoreRole = data.role || S.role || 'struttura1';
+                        localStorage.setItem('tv_emailjs_config_' + restoreRole, JSON.stringify(data.emailjs));
                         document.getElementById('emailjs-public-key').value = data.emailjs.publicKey || '';
                         document.getElementById('emailjs-service-id').value = data.emailjs.serviceId || '';
                         document.getElementById('emailjs-template-id').value = data.emailjs.templateId || '';
