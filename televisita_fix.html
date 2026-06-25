@@ -8742,7 +8742,12 @@
         function initComuniAutocomplete() {
             ['f-pob', 'f2-pob', 'u-pob'].forEach(id => {
                 const el = document.getElementById(id);
-                if (el) el.addEventListener('input', () => updateComuniSuggestions(el));
+                if (!el) return;
+                el.addEventListener('input', () => updateComuniSuggestions(el));
+                el.addEventListener('change', () => {
+                    const datalist = document.getElementById('comuni-list');
+                    if (datalist) datalist.innerHTML = '';
+                });
             });
         }
         function calculateItalianCF(fullName, dobStr, gender, pobStr) {
