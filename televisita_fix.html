@@ -3013,7 +3013,8 @@
                 users: [
                     { username: 'aurelio.maggio', name: 'Prof. Aurelio Maggio', spec: 'Ematologia', avatar: 'AM', color: '#00796b', bg: '#e0f2f1', passwordHash: '59c7c3326613ad512ba1da2a43c473bce87871d5f2c72d1a2ca6ba9a4141d966' },
                     { username: 'simona.raso', name: 'Dr.ssa Simona Raso', spec: 'Ematologia', avatar: 'SR', color: '#004d40', bg: '#b2dfdb', passwordHash: 'f17db51f4de23a968634ea2b89478a71f835ceadaaa209d4f7ba39258f76b1f7' },
-                    { username: 'francesco.colletto', name: 'Dr. Francesco Colletto', spec: 'Ematologia', avatar: 'FC', color: '#00796b', bg: '#e0f2f1', passwordHash: '795240d0380d916cd60c47ef12c225edfd6a0c5fa4db33f2992df9f6b596cf0c' }
+                    { username: 'francesco.colletto', name: 'Dr. Francesco Colletto', spec: 'Ematologia', avatar: 'FC', color: '#00796b', bg: '#e0f2f1', passwordHash: '795240d0380d916cd60c47ef12c225edfd6a0c5fa4db33f2992df9f6b596cf0c' },
+                    { username: 'fabio.pileri', name: 'Fabio Pileri', spec: 'Cardiologia', avatar: 'FP', color: '#00796b', bg: '#e0f2f1', passwordHash: '4c8cb8f2dcf58c783ea98e456cbd3622f3ed8fe12fd53b0a19dc08a31c55ac10' }
                 ]
             }
         };
@@ -4027,6 +4028,13 @@
                     // Canale separato (non cifrato, non porta dati sanitari) su cui il pannello
                     // admin può chiedere un backup immediato senza aspettare i 10 minuti.
                     mqttClient.subscribe(ADMIN_BACKUP_REQUEST_TOPIC, { qos: 1 });
+
+                    // Sottoscrizione con wildcard "+" a TUTTE le conferme di consenso (vedi
+                    // consentConfirmTopicSuffix/publishPatientMqttMessage): essendo pubblicate dal
+                    // paziente con retain:true, il broker le riconsegna anche se ci si iscrive solo
+                    // ora, cioè anche se il medico era offline nel momento esatto in cui il paziente
+                    // ha firmato. Senza questo, quella conferma andrebbe persa per sempre.
+                    mqttClient.subscribe(topic + '/consent/+', { qos: 1 });
                 });
 
                 mqttClient.on('message', (topic, message) => {
@@ -4292,6 +4300,12 @@
                         showToast(t('toast_consent_signed'), 'success');
                         addNotif('bi-check-circle-fill', t('email_simulated_title', { patient: tv.patient }), t('toast_consent_signed'), 'incoming');
                         flashBell();
+                    }
+                    // Una volta recepita la firma, non serve più tenerla "in attesa" sul broker: un
+                    // messaggio vuoto con retain:true cancella quello precedente (vedi
+                    // consentConfirmTopicSuffix), così non si accumulano per sempre conferme già lette.
+                    if (mqttClient && mqttClient.connected) {
+                        mqttClient.publish(MQTT_TOPIC_BASE + currentTopicId + consentConfirmTopicSuffix(data.tvId), '', { qos: 1, retain: true });
                     }
                 } else if (tv.consentStatus === 'inviato' && !tv.consentOtp) {
                     tv.consentOtp = data.otp;
@@ -5766,10 +5780,10 @@
         // Connessione MQTT "usa e getta": pubblica un singolo messaggio e si disconnette.
         // Non riusa mqttClient/initMQTT perché quelli pilotano l'interfaccia del cruscotto medico,
         // qui invece serve solo una pubblicazione minima dalla pagina pubblica del paziente.
-        async function publishPatientMqttMessage(room, envelope) {
+        async function publishPatientMqttMessage(room, envelope, options = {}) {
             const topicId = await deriveTopicId(room);
             return new Promise((resolve) => {
-                const topic = MQTT_TOPIC_BASE + topicId;
+                const topic = MQTT_TOPIC_BASE + topicId + (options.topicSuffix || '');
                 const broker = MQTT_BROKERS[0];
                 let settled = false;
                 const finish = () => {
@@ -5790,11 +5804,22 @@
                     return;
                 }
                 client.on('connect', () => {
-                    client.publish(topic, JSON.stringify(envelope), { qos: 1 }, () => finish());
+                    client.publish(topic, JSON.stringify(envelope), { qos: 1, retain: !!options.retain }, () => finish());
                 });
                 client.on('error', () => finish());
                 setTimeout(finish, 6000);
             });
+        }
+
+        // Topic dedicato, separato per ogni televisita, su cui viaggiano (con retain:true) le
+        // conferme del paziente legate al consenso: se il medico era offline (sessione chiusa,
+        // browser chiuso) nel preciso istante in cui il paziente firma, un messaggio "normale" su
+        // MQTT andrebbe perso per sempre — nessuno lo starebbe ascoltando in quel momento. Con
+        // retain:true il broker conserva l'ultimo messaggio di QUESTO topic e lo riconsegna a
+        // chiunque si iscriva anche solo più tardi (vedi la sottoscrizione con wildcard "+" in
+        // initMQTT), quindi il medico lo recupera comunque al rientro.
+        function consentConfirmTopicSuffix(tvId) {
+            return '/consent/' + tvId;
         }
 
         async function patientAcceptConsent() {
@@ -5817,7 +5842,11 @@
             try {
                 const encrypted = await encryptPayload({ type: 'consent_event', tvId: ctx.tvId, otp: otp }, ctx.room);
                 if (encrypted) {
-                    await publishPatientMqttMessage(ctx.room, { sender: 'patient', iv: encrypted.iv, ciphertext: encrypted.ciphertext });
+                    await publishPatientMqttMessage(
+                        ctx.room,
+                        { sender: 'patient', iv: encrypted.iv, ciphertext: encrypted.ciphertext },
+                        { topicSuffix: consentConfirmTopicSuffix(ctx.tvId), retain: true }
+                    );
                 }
             } catch (err) {
                 console.error('Errore notifica MQTT dalla vista paziente:', err);
@@ -5859,7 +5888,11 @@
             try {
                 const encrypted = await encryptPayload({ type: 'consent_event', action: 'sign', tvId: ctx.tvId, otp: ctx.otp }, ctx.room);
                 if (encrypted) {
-                    await publishPatientMqttMessage(ctx.room, { sender: 'patient', iv: encrypted.iv, ciphertext: encrypted.ciphertext });
+                    await publishPatientMqttMessage(
+                        ctx.room,
+                        { sender: 'patient', iv: encrypted.iv, ciphertext: encrypted.ciphertext },
+                        { topicSuffix: consentConfirmTopicSuffix(ctx.tvId), retain: true }
+                    );
                 }
             } catch (err) {
                 console.error('Errore notifica MQTT di firma dalla vista paziente:', err);
