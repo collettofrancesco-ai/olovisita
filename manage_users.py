@@ -130,6 +130,53 @@ def remove_user(text, username):
     return new_text, username
 
 
+def edit_user_info(text, username, new_name=None, new_spec=None):
+    """Modifica nome e/o specializzazione di un utente esistente, lasciando invariati
+    username, colori e password. Se il nome cambia, ricalcola anche l'avatar (iniziali),
+    con la stessa logica usata dal pannello admin per i nuovi utenti. Restituisce il nuovo
+    testo."""
+    line_pattern = re.compile(
+        r"[ \t]*\{[^\n]*username:\s*'" + re.escape(username) + r"'[^\n]*\},?[ \t]*\n"
+    )
+    match = line_pattern.search(text)
+    if not match:
+        raise ValueError(f"Non trovo nessun utente esistente con username '{username}'.")
+
+    old_line = match.group(0)
+    indent = re.match(r"[ \t]*", old_line).group(0)
+    trailing_comma = "," if old_line.rstrip().endswith(",") else ""
+
+    def get_field(field):
+        m = re.search(r"\b" + field + r":\s*'([^']*)'", old_line)
+        return m.group(1) if m else ""
+
+    name = new_name.strip() if new_name else get_field("name")
+    spec = new_spec.strip() if new_spec else get_field("spec")
+    color = get_field("color")
+    bg = get_field("bg")
+    password_hash = get_field("passwordHash")
+
+    if new_name:
+        name_for_initials = re.sub(r"^(dr|prof)\.?(ssa)?\.?\s+", "", name, flags=re.I)
+        words = [w for w in name_for_initials.split() if w]
+        initials = "".join(w[0].upper() for w in words[:2]) or "??"
+    else:
+        initials = get_field("avatar")
+
+    name_escaped = name.replace("'", "\\'")
+    spec_escaped = spec.replace("'", "\\'")
+
+    new_line = (
+        indent
+        + "{ username: '" + username + "', name: '" + name_escaped + "', spec: '" + spec_escaped
+        + "', avatar: '" + initials + "', color: '" + color + "', bg: '" + bg
+        + "', passwordHash: '" + password_hash + "' }" + trailing_comma + "\n"
+    )
+
+    new_text = text[: match.start()] + new_line + text[match.end():]
+    return new_text, username
+
+
 def run(cmd, **kwargs):
     print("$", " ".join(cmd))
     subprocess.run(cmd, cwd=ROOT, check=True, **kwargs)
@@ -141,8 +188,9 @@ def main():
     print("2) Resetta la password di un utente esistente")
     print("3) Elimina un utente esistente")
     print("4) Elenco utenti esistenti")
-    choice = input("Scegli (1/2/3/4): ").strip()
-    if choice not in ("1", "2", "3", "4"):
+    print("5) Modifica nome/specializzazione di un utente esistente")
+    choice = input("Scegli (1/2/3/4/5): ").strip()
+    if choice not in ("1", "2", "3", "4", "5"):
         sys.exit("Scelta non valida.")
 
     text = SRC.read_text(encoding="utf-8")
@@ -178,7 +226,7 @@ def main():
         except ValueError as e:
             sys.exit(str(e))
         action_desc = f"Resetto la password dell'utente {username}"
-    else:
+    elif choice == "3":
         username = input("\nUsername dell'utente da eliminare: ").strip()
         if not username:
             sys.exit("Username vuoto.")
@@ -189,6 +237,20 @@ def main():
         print(f"\nATTENZIONE: stai per eliminare definitivamente l'utente '{username}'.")
         print("Non potrà più accedere finché non lo ricrei da capo (con una password nuova).")
         action_desc = f"Elimino l'utente {username}"
+    else:
+        username = input("\nUsername dell'utente da modificare: ").strip()
+        if not username:
+            sys.exit("Username vuoto.")
+        print("\nLascia vuoto un campo per non modificarlo.")
+        new_name = input("Nuovo nome (es. 'Dr. Mario Rossi'): ").strip()
+        new_spec = input("Nuova specializzazione: ").strip()
+        if not new_name and not new_spec:
+            sys.exit("Nessuna modifica indicata.")
+        try:
+            new_text, username = edit_user_info(text, username, new_name or None, new_spec or None)
+        except ValueError as e:
+            sys.exit(str(e))
+        action_desc = f"Modifico i dati dell'utente {username}"
 
     print(f"\n{action_desc}.")
     confirm = input("Confermi e applico la modifica al sorgente? (s/n): ").strip().lower()
