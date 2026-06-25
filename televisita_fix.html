@@ -5026,7 +5026,7 @@
                 </div>
                 ${tv.phone || tv.email ? `<p class="text-muted small mt-1 mb-1">${tv.phone ? `<i class="bi bi-phone me-1"></i>${escapeHtml(tv.phone)}` : ''}${tv.phone && tv.email ? ' · ' : ''}${tv.email ? `<i class="bi bi-envelope me-1"></i>${escapeHtml(tv.email)}` : ''}</p>` : ''}
                 ${tv.notes ? `<p class="text-muted small mt-1 mb-1">${escapeHtml(tv.notes)}</p>` : '<div class="mb-1"></div>'}
-                ${tv.createdByName ? `<p class="mb-2" style="font-size:0.7rem; color:#78909c;"><i class="bi bi-person-badge me-1"></i>${currentLang === 'fr' ? 'Réservée par' : 'Prenotata da'} <strong>${escapeHtml(tv.createdByName)}</strong></p>` : '<div class="mb-2"></div>'}
+                ${(tv.createdByName || tv.scheduledBy) ? `<p class="mb-2" style="font-size:0.7rem; color:#78909c;"><i class="bi bi-person-badge me-1"></i>${currentLang === 'fr' ? 'Réservée par' : 'Prenotata da'} <strong>${escapeHtml(tv.createdByName || (FACILITIES[tv.scheduledBy] ? FACILITIES[tv.scheduledBy].name : tv.scheduledBy))}</strong></p>` : '<div class="mb-2"></div>'}
                 
                 ${consentSectionHTML(tv, scheduledByMe)}
  
@@ -9157,7 +9157,7 @@
                                     <div class="text-muted small d-flex flex-wrap gap-3">
                                         <span><i class="bi bi-calendar2-event me-1"></i>${fmtDate(tv.date)}</span>
                                         <span><i class="bi bi-clock me-1"></i>${tv.time}</span>
-                                        ${tv.createdByName ? `<span><i class="bi bi-person-badge me-1"></i>${escapeHtml(tv.createdByName)}</span>` : ''}
+                                        ${(tv.createdByName || tv.scheduledBy) ? `<span><i class="bi bi-person-badge me-1"></i>${escapeHtml(tv.createdByName || (FACILITIES[tv.scheduledBy] ? FACILITIES[tv.scheduledBy].name : tv.scheduledBy))}</span>` : ''}
                                     </div>
                                 </div>
                                 <div class="ms-3 flex-shrink-0 d-flex gap-2">
