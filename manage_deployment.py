@@ -45,6 +45,21 @@ def make_avatar(name: str) -> str:
     return ''.join(w[0].upper() for w in words[:2]) or name[:2].upper()
 
 
+def short_name(name: str) -> str:
+    """Estrae la parola più distintiva dal nome completo per il titolo della cartella.
+    Rimuove tipi istituzionali e particelle, prende l'ultima parola rimasta
+    (di solito il nome del luogo o l'identificativo finale)."""
+    institution = r'\b(ospedale|ospedaliera|centro|clinica|presidio|polo|azienda|asl|irccs|istituto|policlinico|struttura|unità|reparto|divisione|civico|civile|generale|universitario|universitaria|mroe)\b'
+    specialty   = r'\b(ematologia|oncologia|cardiologia|pediatria|neurologia|chirurgia|medicina|geriatria|radiologia|urologia|ortopedia|ginecologia|dermatologia|pneumologia|reumatologia|nefrologia)\b'
+    particles    = r'\b(di|della|del|degli|delle|dei|il|la|lo|le|e|a)\b'
+    clean = re.sub(institution, ' ', name,  flags=re.I)
+    clean = re.sub(specialty,   ' ', clean, flags=re.I)
+    clean = re.sub(particles,   ' ', clean, flags=re.I)
+    clean = re.sub(r'[-–()/]',  ' ', clean)
+    words = [w for w in clean.split() if len(w) > 1]
+    return words[-1].capitalize() if words else name.split()[0].capitalize()
+
+
 def _find_js_block(text: str, pattern: str, start: int = 0) -> tuple:
     """Trova il blocco JS delimitato da {} che inizia dove fa match il pattern.
     Restituisce (start_brace, end_brace_exclusive)."""
@@ -217,7 +232,9 @@ def main():
     print(f"\nSlug del progetto (nel codice stanza MQTT) [{default_slug}]: ", end='')
     slug = input().strip() or default_slug
 
-    default_dir = ROOT.parent / f"Olovisita_{slug}"
+    desktop = Path.home() / "Desktop"
+    folder_name = f"Olovisita {short_name(s1_name)}-{short_name(s2_name)}"
+    default_dir = desktop / folder_name
     print(f"Cartella di output [{default_dir}]: ", end='')
     dir_input = input().strip()
     out_dir = Path(dir_input).expanduser().resolve() if dir_input else default_dir
