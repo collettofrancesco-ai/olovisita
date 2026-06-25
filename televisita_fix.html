@@ -3069,7 +3069,14 @@
         // Usata ovunque in UI si elenchino/contino le televisite, per non far "trapelare" una
         // televisita Centro nelle statistiche o nei menu a tendina dell'altra struttura.
         function visibleTelevisite() {
-            return S.televisite.filter(tv => tv.visitMode !== 'centro' || tv.scheduledBy === S.role);
+            // Più recente prima: l'ordine "naturale" dell'array (quello in cui le televisite sono
+            // state create/ricevute) non corrisponde a quello cronologico della visita stessa, es.
+            // dopo una sincronizzazione con l'altra struttura o un cambio di stato. tv.date è in
+            // formato AAAA-MM-GG (ordinabile come testo), tv.time in HH:MM: concatenati formano una
+            // chiave ordinabile correttamente anche su mesi/anni diversi.
+            return S.televisite
+                .filter(tv => tv.visitMode !== 'centro' || tv.scheduledBy === S.role)
+                .sort((a, b) => `${b.date}T${b.time}`.localeCompare(`${a.date}T${a.time}`));
         }
 
         // ---------------------------------------------------------------------------
