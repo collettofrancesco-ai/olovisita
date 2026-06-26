@@ -1,0 +1,120 @@
+[PASS] Caricamento | T01 — App si carica senza errori JS critici
+[PASS] Caricamento | T02 — Login overlay visibile all'apertura
+[PASS] Caricamento | T03 — Titolo pagina contiene 'OLOVISITA' | titolo: OLOVISITA — Piattaforma Televisite Mediche
+[PASS] Caricamento | T04 — Schermata mostra Centro Tunisia
+[PASS] Caricamento | T05 — Schermata mostra Ospedale Cervello
+[PASS] Caricamento | T06 — Lingua default è italiano | lingua: it
+[PASS] Caricamento | T07 — Funzioni MQTT definite
+[PASS] Caricamento | T08 — Stato applicazione S inizializzato
+[PASS] Autenticazione | T09 — Click struttura1 mostra dropdown medici
+[PASS] Autenticazione | T10 — Dropdown medici ha opzioni | 3 opzioni
+[PASS] Autenticazione | T11 — Campo password visibile
+[PASS] Autenticazione | T12 — Password errata mantiene overlay login
+[PASS] Autenticazione | T13 — Login riuscito nasconde overlay
+[PASS] Autenticazione | T14 — Pannello struttura1 visibile dopo login
+[PASS] Autenticazione | T15 — Logout mostra overlay login
+[PASS] Dashboard | T16 — Header applicazione presente
+[PASS] Dashboard | T17 — Pannello struttura1 visibile
+[PASS] Dashboard | T18 — Pannello struttura2 nascosto per struttura1
+[PASS] Dashboard | T19 — Indicatore stato MQTT presente
+[PASS] Dashboard | T20 — Avatar medico visibile nell'header
+[PASS] Dashboard | T21 — Pulsante cambio tema presente
+[PASS] Dashboard | T22 — Toggle tema attiva dark mode | data-theme='dark'
+[PASS] Dashboard | T23 — Secondo toggle riporta a light mode
+[PASS] Dashboard | T24 — Campana notifiche presente nell'header
+[PASS] Dashboard | T25 — Area statistiche visite presente
+[PASS] Programmazione | T26 — Campo nome paziente presente
+[PASS] Programmazione | T27 — Campo email paziente presente
+[PASS] Programmazione | T28 — Campo 'Tipo di Televisita' presente
+[PASS] Programmazione | T29 — Opzione 'Network' disponibile
+[PASS] Programmazione | T30 — Opzione 'Centro' disponibile
+[PASS] Programmazione | T31 — Campo data appuntamento presente
+[PASS] Programmazione | T32 — Campo ora appuntamento presente
+[PASS] Programmazione | T33 — Form vuoto non aggiunge visite | visite: 0→0
+[PASS] Programmazione | T34 — Visita Network aggiunta alla lista | lista: 0→1
+[PASS] Programmazione | T35 — Visita Centro aggiunta alla lista
+[PASS] Programmazione | T36 — Visita Network ha stato 'programmata' iniziale
+[PASS] Programmazione | T37 — Visita Centro ha stato 'accettata' immediato
+[PASS] Programmazione | T38 — Badge 'Centro' visibile nella lista visite | 6 badge trovati
+[PASS] Coordinamento | T39 — Visite Network visibili per struttura1
+[PASS] Coordinamento | T40 — Visita Centro NON inclusa in getShared() | visita centro in shared: 0
+[PASS] Coordinamento | T41 — Visita Network inclusa in getShared() | visite network in shared: 2
+[PASS] Coordinamento | T42 — Funzione acceptSched() definita
+[PASS] Coordinamento | T43 — Funzione rejectSched() definita
+[PASS] Coordinamento | T44 — acceptSched() cambia status in 'accettata'
+[PASS] Coordinamento | T45 — rejectSched() cambia status in 'rifiutata'
+[PASS] Coordinamento | T46 — Visite ordinate dalla più recente alla più vecchia | posizione Nuovo=8053, Vecchio=10560
+[PASS] Consenso | T47 — Funzione sendConsentEmail() definita
+[PASS] Consenso | T48 — buildPatientConsentUrl() genera URL con tvId
+[PASS] Consenso | T49 — URL consenso NON espone roomCode in chiaro | SECURITY CHECK
+[PASS] Consenso | T50 — Pulsante 'Invia Consenso' visibile nella lista visite
+[PASS] Consenso | T51 — Funzione initPatientConsentView() definita (lato paziente)
+[PASS] Consenso | T52 — Funzione patientAcceptConsent() definita
+[PASS] Consenso | T53 — Funzione patientVerifyOtp() definita
+[PASS] Consenso | T54 — Funzione unlockConsentOtp() definita (verifica OTP medico)
+[PASS] Consenso | T55 — Funzione downloadConsentPDF() definita
+[PASS] Documenti | T56 — Pannello documenti clinici presente
+[PASS] Documenti | T57 — Tab 'Paziente Corrente' presente
+[PASS] Documenti | T58 — Tab 'Condividi' presente
+[PASS] Documenti | T59 — Tab 'Bozze Locali' presente
+[PASS] Documenti | T60 — Funzione uploadFiles() definita
+[PASS] Documenti | T61 — Funzione shareDoc() definita
+[PASS] Documenti | T62 — Funzione deleteDoc() definita
+[PASS] Documenti | T63 — Funzione downloadDoc() definita
+[PASS] Documenti | T64 — getDocCategory() restituisce una categoria
+[PASS] Documenti | T65 — Documento privato di visita Centro NON incluso in getShared() | docs in shared: 0
+[PASS] Sicurezza | T66 — Room code NON esposto nel DOM lista visite | SECURITY CHECK
+[PASS] Sicurezza | T67 — Codice stanza NON visibile come testo nei card visite | SECURITY CHECK
+[PASS] Sicurezza | T68 — Funzioni crittografia E2E (AES-GCM) definite
+[PASS] Sicurezza | T69 — Topic MQTT derivato da hash, non dal roomCode raw | SECURITY CHECK
+[PASS] Sicurezza | T70 — buildPatientConsentUrl non espone roomCode nell'URL | SECURITY CHECK
+[PASS] Sicurezza | T71 — escapeHtml() previene XSS input utente
+[PASS] Sicurezza | T72 — xorEncryptDecryptBytes() è simmetrica (round-trip)
+[PASS] Lingua | T73 — Lingua corrente è 'it' di default | lingua: it
+[PASS] Lingua | T74 — Funzione changeLang() definita
+[PASS] Lingua | T75 — changeLang('fr') imposta currentLang='fr' | lingua: fr
+[PASS] Lingua | T76 — DOM aggiornato con testo in francese dopo switch | verifica testo fr nel DOM
+[PASS] Lingua | T77 — changeLang('it') ripristina lingua italiana
+[PASS] Lingua | T78 — Funzione t() di traduzione funzionante
+[PASS] Notifiche | T79 — Pannello notifiche nascosto di default
+[PASS] Notifiche | T80 — Funzione addNotif() definita
+[PASS] Notifiche | T81 — addNotif() aggiunge notifica a N.items | N.items.length=1
+[PASS] Notifiche | T82 — Click campana apre pannello notifiche
+[PASS] Notifiche | T83 — clearNotifs() svuota N.items
+[PASS] Backup | T84 — buildBackupData() restituisce oggetto con shared.televisite
+[PASS] Backup | T85 — Backup include campo 'role'
+[PASS] Backup | T86 — Backup include metadati (exportDate)
+[PASS] Backup | T87 — Backup include roomCode per ripristino corretto
+[PASS] Backup | T88 — Funzione importDataBackup() definita
+[PASS] Backup | T89 — Funzione exportDataBackup() definita
+[PASS] Backup | T90 — isFileSystemAccessSupported() restituisce boolean
+[PASS] EMR/Video | T91 — Funzione renderActiveEMR() definita
+[PASS] EMR/Video | T92 — Funzione saveEMRNotes() definita
+[PASS] EMR/Video | T93 — Funzione selectActiveEMRPatient() definita
+[PASS] EMR/Video | T94 — Funzione startVisit() definita
+[PASS] EMR/Video | T95 — Funzione launchJitsi() definita
+[PASS] EMR/Video | T96 — Funzione endCall() definita
+[PASS] EMR/Video | T97 — Funzione joinVideo() definita
+[PASS] EMR/Video | T98 — Funzione openDoctorSignatureModal() definita
+[PASS] EMR/Video | T99 — Canvas firma digitale presente nel DOM
+[PASS] EMR/Video | T100 — Funzione publishCallStatus() definita
+[PASS] Strumenti | T101 — calculateItalianCF() genera codice fiscale 16 caratteri
+[PASS] Strumenti | T102 — generateMockCF() genera CF valido (16 caratteri)
+[PASS] Strumenti | T103 — minutesBetweenVisits() calcola differenza in minuti
+[PASS] Strumenti | T104 — fmtDate() formatta correttamente una data ISO
+[PASS] Strumenti | T105 — statusInfo() restituisce oggetto per status 'pending'
+[PASS] Strumenti | T106 — fmtSize() formatta dimensione file in MB
+[PASS] Strumenti | T107 — Funzione requestImmediate() definita
+[PASS] Strumenti | T108 — Funzione acceptImmediate() definita
+[PASS] Strumenti | T109 — Funzione showStatsDetail() definita
+[PASS] Strumenti | T110 — visibleTelevisite() restituisce tutte le visite per struttura1
+[PASS] Lavagna | T111 — Funzione toggleCollaboration() definita
+[PASS] Lavagna | T112 — Funzione startCollabDraw() definita
+[PASS] Lavagna | T113 — Funzione drawOnCanvas() definita
+[PASS] Lavagna | T114 — Funzione clearCollabBoard() definita
+[PASS] Lavagna | T115 — Funzione applyCollabCanvasSize() definita
+[PASS] Lavagna | T116 — Funzione isDesignatedCollabHost() definita
+[PASS] Lavagna | T117 — Funzione setCollabColor() definita
+[PASS] Lavagna | T118 — Funzione downloadAnnotatedDoc() definita
+[PASS] Lavagna | T119 — Funzione changeCollabZoom() definita
+[FAIL] Lavagna | T120 — Canvas lavagna: elemento HTML canvas presente nel DOM | atteso: assente prima dell'apertura di un documento (comportamento corretto)

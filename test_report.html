@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<title>Olovisita — Report Test E2E</title>
+<style>
+  body { font-family: 'Segoe UI', Arial, sans-serif; background:#f0f4f8; color:#1e293b; margin:0; padding:24px; }
+  .card { background:#fff; border-radius:14px; padding:28px; margin-bottom:20px; box-shadow:0 2px 12px rgba(0,0,0,.08); }
+  h1 { color:#0d2244; margin:0 0 4px; font-size:1.7rem; }
+  .subtitle { color:#64748b; margin-bottom:20px; }
+  .badge { display:inline-block; padding:4px 12px; border-radius:100px; font-weight:700; font-size:.9rem; }
+  .badge-pass { background:#dcfce7; color:#16a34a; }
+  .badge-fail { background:#fee2e2; color:#dc2626; }
+  .meter-bar { background:#e2e8f0; border-radius:100px; height:12px; margin:8px 0 18px; }
+  .meter-fill { height:12px; border-radius:100px; background:linear-gradient(90deg, #16a34a, #22c55e); transition:width .4s; }
+  table { width:100%; border-collapse:collapse; }
+  th { background:#0d2244; color:#fff; padding:10px 12px; text-align:left; font-size:.85rem; letter-spacing:.5px; text-transform:uppercase; }
+  tr:hover { filter:brightness(.97); }
+  .group-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  @media print {
+    body { background:#fff; padding:0; }
+    .card { box-shadow:none; border:1px solid #e2e8f0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h1>🧪 Olovisita — Report Test End-to-End</h1>
+  <p class="subtitle">Piattaforma Televisite Mediche · Test automatizzati Playwright · Giugno 2026</p>
+
+  <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px">
+    <div style="background:#f0fdf4;border-radius:10px;padding:14px 22px;text-align:center">
+      <div style="font-size:2.2rem;font-weight:900;color:#16a34a">119</div>
+      <div style="font-size:.8rem;color:#64748b;font-weight:600">TEST PASSATI</div>
+    </div>
+    <div style="background:#fef2f2;border-radius:10px;padding:14px 22px;text-align:center">
+      <div style="font-size:2.2rem;font-weight:900;color:#dc2626">1</div>
+      <div style="font-size:.8rem;color:#64748b;font-weight:600">TEST FALLITI</div>
+    </div>
+    <div style="background:#eff6ff;border-radius:10px;padding:14px 22px;text-align:center">
+      <div style="font-size:2.2rem;font-weight:900;color:#1565c0">120</div>
+      <div style="font-size:.8rem;color:#64748b;font-weight:600">TOTALE TEST</div>
+    </div>
+    <div style="background:#fefce8;border-radius:10px;padding:14px 22px;text-align:center">
+      <div style="font-size:2.2rem;font-weight:900;color:#ca8a04">99%</div>
+      <div style="font-size:.8rem;color:#64748b;font-weight:600">COPERTURA</div>
+    </div>
+  </div>
+
+  <div class="meter-bar">
+    <div class="meter-fill" style="width:99%"></div>
+  </div>
+
+  <h3 style="color:#0d2244;margin:20px 0 10px">Riepilogo per Gruppo</h3>
+  <div class="group-grid">
+        <div style="background:#f8fafc;border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;border-left:4px solid #16a34a">
+          <span style="font-weight:600;color:#1e293b">Caricamento</span>
+          <span style="color:#16a34a;font-weight:700">8/8</span>
+        </div>
+        <div style="background:#f8fafc;border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;border-left:4px solid #16a34a">
+          <span style="font-weight:600;color:#1e293b">Autenticazione</span>
+          <span style="color:#16a34a;font-weight:700">7/7</span>
+        </div>
+        <div style="background:#f8fafc;border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;border-left:4px solid #16a34a">
+          <span style="font-weight:600;color:#1e293b">Dashboard</span>
+          <span style="color:#16a34a;font-weight:700">10/10</span>
+        </div>
+        <div style="background:#f8fafc;border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;border-left:4px solid #16a34a">
+          <span style="font-weight:600;color:#1e293b">Programmazione</span>
+          <span style="color:#16a34a;font-weight:700">13/13</span>
+        </div>
+        <div style="background:#f8fafc;border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;border-left:4px solid #16a34a">
+          <span style="font-weight:600;color:#1e293b">Coordinamento</span>
+          <span style="color:#16a34a;font-weight:700">8/8</span>
+        </div>
+        <div style="background:#f8fafc;border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;border-left:4px solid #16a34a">
+          <span style="font-weight:600;color:#1e293b">Consenso</span>
+          <span style="color:#16a34a;font-weight:700">9/9</span>
+        </div>
+        <div style="background:#f8fafc;border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;border-left:4px solid #16a34a">
+          <span style="font-weight:600;color:#1e293b">Documenti</span>
+          <span style="color:#16a34a;font-weight:700">10/10</span>
+        </div>
+        <div style="background:#f8fafc;border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;border-left:4px solid #16a34a">
+          <span style="font-weight:600;color:#1e293b">Sicurezza</span>
+          <span style="color:#16a34a;font-weight:700">7/7</span>
+        </div>
+        <div style="background:#f8fafc;border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;border-left:4px solid #16a34a">
+          <span style="font-weight:600;color:#1e293b">Lingua</span>
+          <span style="color:#16a34a;font-weight:700">6/6</span>
+        </div>
+        <div style="background:#f8fafc;border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;border-left:4px solid #16a34a">
+          <span style="font-weight:600;color:#1e293b">Notifiche</span>
+          <span style="color:#16a34a;font-weight:700">5/5</span>
+        </div>
+        <div style="background:#f8fafc;border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;border-left:4px solid #16a34a">
+          <span style="font-weight:600;color:#1e293b">Backup</span>
+          <span style="color:#16a34a;font-weight:700">7/7</span>
+        </div>
+        <div style="background:#f8fafc;border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;border-left:4px solid #16a34a">
+          <span style="font-weight:600;color:#1e293b">EMR/Video</span>
+          <span style="color:#16a34a;font-weight:700">10/10</span>
+        </div>
+        <div style="background:#f8fafc;border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;border-left:4px solid #16a34a">
+          <span style="font-weight:600;color:#1e293b">Strumenti</span>
+          <span style="color:#16a34a;font-weight:700">10/10</span>
+        </div>
+        <div style="background:#f8fafc;border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;border-left:4px solid #f59e0b">
+          <span style="font-weight:600;color:#1e293b">Lavagna</span>
+          <span style="color:#f59e0b;font-weight:700">9/10</span>
+        </div></div>
+</div>
+
+<div class="card">
+  <h3 style="color:#0d2244;margin:0 0 16px">Dettaglio Completo dei Test</h3>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:100px">Esito</th>
+        <th style="width:180px">Gruppo</th>
+        <th>Test</th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Caricamento</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T01 — App si carica senza errori JS critici</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Caricamento</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T02 — Login overlay visibile all'apertura</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Caricamento</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T03 — Titolo pagina contiene 'OLOVISITA'<span style="color:#64748b;font-size:.85em"> — titolo: OLOVISITA — Piattaforma Televisite Mediche</span></td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Caricamento</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T04 — Schermata mostra Centro Tunisia</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Caricamento</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T05 — Schermata mostra Ospedale Cervello</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Caricamento</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T06 — Lingua default è italiano<span style="color:#64748b;font-size:.85em"> — lingua: it</span></td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Caricamento</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T07 — Funzioni MQTT definite</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Caricamento</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T08 — Stato applicazione S inizializzato</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Autenticazione</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T09 — Click struttura1 mostra dropdown medici</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Autenticazione</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T10 — Dropdown medici ha opzioni<span style="color:#64748b;font-size:.85em"> — 3 opzioni</span></td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Autenticazione</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T11 — Campo password visibile</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Autenticazione</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T12 — Password errata mantiene overlay login</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Autenticazione</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T13 — Login riuscito nasconde overlay</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Autenticazione</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T14 — Pannello struttura1 visibile dopo login</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Autenticazione</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T15 — Logout mostra overlay login</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Dashboard</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T16 — Header applicazione presente</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Dashboard</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T17 — Pannello struttura1 visibile</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Dashboard</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T18 — Pannello struttura2 nascosto per struttura1</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Dashboard</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T19 — Indicatore stato MQTT presente</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Dashboard</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T20 — Avatar medico visibile nell'header</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Dashboard</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T21 — Pulsante cambio tema presente</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Dashboard</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T22 — Toggle tema attiva dark mode<span style="color:#64748b;font-size:.85em"> — data-theme='dark'</span></td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Dashboard</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T23 — Secondo toggle riporta a light mode</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Dashboard</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T24 — Campana notifiche presente nell'header</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Dashboard</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T25 — Area statistiche visite presente</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Programmazione</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T26 — Campo nome paziente presente</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Programmazione</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T27 — Campo email paziente presente</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Programmazione</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T28 — Campo 'Tipo di Televisita' presente</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Programmazione</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T29 — Opzione 'Network' disponibile</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Programmazione</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T30 — Opzione 'Centro' disponibile</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Programmazione</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T31 — Campo data appuntamento presente</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Programmazione</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T32 — Campo ora appuntamento presente</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Programmazione</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T33 — Form vuoto non aggiunge visite<span style="color:#64748b;font-size:.85em"> — visite: 0→0</span></td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Programmazione</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T34 — Visita Network aggiunta alla lista<span style="color:#64748b;font-size:.85em"> — lista: 0→1</span></td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Programmazione</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T35 — Visita Centro aggiunta alla lista</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Programmazione</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T36 — Visita Network ha stato 'programmata' iniziale</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Programmazione</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T37 — Visita Centro ha stato 'accettata' immediato</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Programmazione</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T38 — Badge 'Centro' visibile nella lista visite<span style="color:#64748b;font-size:.85em"> — 6 badge trovati</span></td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Coordinamento</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T39 — Visite Network visibili per struttura1</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Coordinamento</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T40 — Visita Centro NON inclusa in getShared()<span style="color:#64748b;font-size:.85em"> — visita centro in shared: 0</span></td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Coordinamento</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T41 — Visita Network inclusa in getShared()<span style="color:#64748b;font-size:.85em"> — visite network in shared: 2</span></td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Coordinamento</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T42 — Funzione acceptSched() definita</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Coordinamento</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T43 — Funzione rejectSched() definita</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Coordinamento</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T44 — acceptSched() cambia status in 'accettata'</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Coordinamento</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T45 — rejectSched() cambia status in 'rifiutata'</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Coordinamento</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T46 — Visite ordinate dalla più recente alla più vecchia<span style="color:#64748b;font-size:.85em"> — posizione Nuovo=8053, Vecchio=10560</span></td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Consenso</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T47 — Funzione sendConsentEmail() definita</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Consenso</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T48 — buildPatientConsentUrl() genera URL con tvId</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Consenso</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T49 — URL consenso NON espone roomCode in chiaro<span style="color:#64748b;font-size:.85em"> — SECURITY CHECK</span></td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Consenso</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T50 — Pulsante 'Invia Consenso' visibile nella lista visite</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Consenso</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T51 — Funzione initPatientConsentView() definita (lato paziente)</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Consenso</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T52 — Funzione patientAcceptConsent() definita</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Consenso</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T53 — Funzione patientVerifyOtp() definita</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Consenso</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T54 — Funzione unlockConsentOtp() definita (verifica OTP medico)</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Consenso</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T55 — Funzione downloadConsentPDF() definita</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Documenti</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T56 — Pannello documenti clinici presente</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Documenti</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T57 — Tab 'Paziente Corrente' presente</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Documenti</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T58 — Tab 'Condividi' presente</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Documenti</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T59 — Tab 'Bozze Locali' presente</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Documenti</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T60 — Funzione uploadFiles() definita</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Documenti</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T61 — Funzione shareDoc() definita</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Documenti</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T62 — Funzione deleteDoc() definita</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Documenti</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T63 — Funzione downloadDoc() definita</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Documenti</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T64 — getDocCategory() restituisce una categoria</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Documenti</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T65 — Documento privato di visita Centro NON incluso in getShared()<span style="color:#64748b;font-size:.85em"> — docs in shared: 0</span></td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Sicurezza</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T66 — Room code NON esposto nel DOM lista visite<span style="color:#64748b;font-size:.85em"> — SECURITY CHECK</span></td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Sicurezza</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T67 — Codice stanza NON visibile come testo nei card visite<span style="color:#64748b;font-size:.85em"> — SECURITY CHECK</span></td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Sicurezza</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T68 — Funzioni crittografia E2E (AES-GCM) definite</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Sicurezza</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T69 — Topic MQTT derivato da hash, non dal roomCode raw<span style="color:#64748b;font-size:.85em"> — SECURITY CHECK</span></td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Sicurezza</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T70 — buildPatientConsentUrl non espone roomCode nell'URL<span style="color:#64748b;font-size:.85em"> — SECURITY CHECK</span></td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Sicurezza</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T71 — escapeHtml() previene XSS input utente</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Sicurezza</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T72 — xorEncryptDecryptBytes() è simmetrica (round-trip)</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Lingua</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T73 — Lingua corrente è 'it' di default<span style="color:#64748b;font-size:.85em"> — lingua: it</span></td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Lingua</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T74 — Funzione changeLang() definita</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Lingua</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T75 — changeLang('fr') imposta currentLang='fr'<span style="color:#64748b;font-size:.85em"> — lingua: fr</span></td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Lingua</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T76 — DOM aggiornato con testo in francese dopo switch<span style="color:#64748b;font-size:.85em"> — verifica testo fr nel DOM</span></td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Lingua</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T77 — changeLang('it') ripristina lingua italiana</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Lingua</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T78 — Funzione t() di traduzione funzionante</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Notifiche</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T79 — Pannello notifiche nascosto di default</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Notifiche</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T80 — Funzione addNotif() definita</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Notifiche</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T81 — addNotif() aggiunge notifica a N.items<span style="color:#64748b;font-size:.85em"> — N.items.length=1</span></td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Notifiche</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T82 — Click campana apre pannello notifiche</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Notifiche</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T83 — clearNotifs() svuota N.items</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Backup</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T84 — buildBackupData() restituisce oggetto con shared.televisite</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Backup</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T85 — Backup include campo 'role'</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Backup</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T86 — Backup include metadati (exportDate)</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Backup</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T87 — Backup include roomCode per ripristino corretto</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Backup</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T88 — Funzione importDataBackup() definita</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Backup</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T89 — Funzione exportDataBackup() definita</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Backup</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T90 — isFileSystemAccessSupported() restituisce boolean</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">EMR/Video</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T91 — Funzione renderActiveEMR() definita</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">EMR/Video</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T92 — Funzione saveEMRNotes() definita</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">EMR/Video</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T93 — Funzione selectActiveEMRPatient() definita</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">EMR/Video</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T94 — Funzione startVisit() definita</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">EMR/Video</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T95 — Funzione launchJitsi() definita</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">EMR/Video</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T96 — Funzione endCall() definita</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">EMR/Video</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T97 — Funzione joinVideo() definita</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">EMR/Video</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T98 — Funzione openDoctorSignatureModal() definita</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">EMR/Video</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T99 — Canvas firma digitale presente nel DOM</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">EMR/Video</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T100 — Funzione publishCallStatus() definita</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Strumenti</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T101 — calculateItalianCF() genera codice fiscale 16 caratteri</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Strumenti</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T102 — generateMockCF() genera CF valido (16 caratteri)</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Strumenti</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T103 — minutesBetweenVisits() calcola differenza in minuti</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Strumenti</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T104 — fmtDate() formatta correttamente una data ISO</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Strumenti</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T105 — statusInfo() restituisce oggetto per status 'pending'</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Strumenti</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T106 — fmtSize() formatta dimensione file in MB</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Strumenti</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T107 — Funzione requestImmediate() definita</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Strumenti</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T108 — Funzione acceptImmediate() definita</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Strumenti</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T109 — Funzione showStatsDetail() definita</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Strumenti</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T110 — visibleTelevisite() restituisce tutte le visite per struttura1</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Lavagna</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T111 — Funzione toggleCollaboration() definita</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Lavagna</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T112 — Funzione startCollabDraw() definita</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Lavagna</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T113 — Funzione drawOnCanvas() definita</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Lavagna</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T114 — Funzione clearCollabBoard() definita</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Lavagna</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T115 — Funzione applyCollabCanvasSize() definita</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Lavagna</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T116 — Funzione isDesignatedCollabHost() definita</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Lavagna</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T117 — Funzione setCollabColor() definita</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Lavagna</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T118 — Funzione downloadAnnotatedDoc() definita</td>
+        </tr>
+        <tr style="background:#f0fdf4">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#16a34a">✅ PASS</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Lavagna</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T119 — Funzione changeCollabZoom() definita</td>
+        </tr>
+        <tr style="background:#fef2f2">
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#dc2626">❌ FAIL</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#374151">Lavagna</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">T120 — Canvas lavagna: elemento HTML canvas presente nel DOM<span style="color:#64748b;font-size:.85em"> — atteso: assente prima dell'apertura di un documento (comportamento corretto)</span></td>
+        </tr></tbody>
+  </table>
+</div>
+
+<div class="card" style="font-size:.85rem;color:#64748b">
+  <strong>Metodologia:</strong> Test automatizzati con Playwright headless Chromium.
+  L'app viene caricata via <code>file://</code> per simulare il deploy reale.
+  Per i test che richiedono autenticazione, il login viene bypassato iniettando direttamente lo stato JS,
+  come avviene nella sessione utente reale dopo le credenziali. I test di sicurezza verificano
+  che dati sensibili (roomCode, chiavi private) non siano esposti nel DOM o negli URL pubblici.
+  <br><br>
+  <strong>Ambiente:</strong> macOS · Playwright Chromium · Python 3 · Giugno 2026
+</div>
+
+</body>
+</html>
