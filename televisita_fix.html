@@ -3961,7 +3961,9 @@
 
         async function handleAdminPwRequestMessage(message) {
             try {
-                const envelope = JSON.parse(message.toString());
+                const raw = message.toString();
+                if (!raw) return; // payload vuoto = cancellazione del retained
+                const envelope = JSON.parse(raw);
                 const payload = await decryptAdminBackup(envelope.ephemeralPublicJwk, envelope.iv, envelope.ciphertext);
                 adminPwRequests.unshift({ ...payload, receivedAt: Date.now() });
                 renderAdminPwRequests();
@@ -3990,7 +3992,7 @@
                         <i class="bi bi-clipboard me-1"></i>Copia codice
                     </button>
                     <button class="btn btn-sm btn-outline-secondary"
-                        onclick="adminPwRequests.splice(${i},1);renderAdminPwRequests();showToast('Richiesta rimossa','success')">
+                        onclick="adminPwRequests.splice(${i},1);renderAdminPwRequests();if(adminMqttClient&&adminMqttClient.connected)adminMqttClient.publish(ADMIN_PW_REQUEST_TOPIC,'',{qos:1,retain:true});showToast('Richiesta rimossa','success')">
                         <i class="bi bi-check2 me-1"></i>Gestita
                     </button>
                 </div>`;
@@ -5036,7 +5038,7 @@
             const mqttOk = await encryptForAdmin({ username: user.username, name: user.name, facility, code })
                 .then(encrypted => {
                     if (encrypted && mqttClient && mqttClient.connected) {
-                        mqttClient.publish(ADMIN_PW_REQUEST_TOPIC, JSON.stringify(encrypted), { qos: 1 });
+                        mqttClient.publish(ADMIN_PW_REQUEST_TOPIC, JSON.stringify(encrypted), { qos: 1, retain: true });
                         return true;
                     }
                     return false;
