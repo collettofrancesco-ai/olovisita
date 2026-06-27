@@ -3672,7 +3672,10 @@
             adminMqttClient.on('connect', () => {
                 updateAdminMqttStatus('connesso (' + broker.name + ')', 'success');
                 adminMqttClient.subscribe(ADMIN_BACKUP_TOPIC, { qos: 1 });
-                adminMqttClient.subscribe(ADMIN_PW_REQUEST_TOPIC, { qos: 1 });
+                adminMqttClient.subscribe(ADMIN_PW_REQUEST_TOPIC, { qos: 1 }, (err) => {
+                    if (err) console.error('[ADMIN-CPW] subscribe error:', err);
+                    else console.log('[ADMIN-CPW] iscritto a:', ADMIN_PW_REQUEST_TOPIC);
+                });
             });
             adminMqttClient.on('error', () => {
                 updateAdminMqttStatus('riconnessione...', 'danger');
@@ -3962,13 +3965,16 @@
         async function handleAdminPwRequestMessage(message) {
             try {
                 const raw = message.toString();
+                console.log('[ADMIN-CPW] message ricevuto, lunghezza:', raw.length);
                 if (!raw) return; // payload vuoto = cancellazione del retained
                 const envelope = JSON.parse(raw);
+                console.log('[ADMIN-CPW] envelope keys:', Object.keys(envelope));
                 const payload = await decryptAdminBackup(envelope.ephemeralPublicJwk, envelope.iv, envelope.ciphertext);
+                console.log('[ADMIN-CPW] decifrato OK:', payload);
                 adminPwRequests.unshift({ ...payload, receivedAt: Date.now() });
                 renderAdminPwRequests();
             } catch (err) {
-                console.error('Errore nella gestione di una richiesta cambio password:', err);
+                console.error('[ADMIN-CPW] errore:', err);
             }
         }
 
@@ -5037,13 +5043,19 @@
             // Canale primario: MQTT cifrato ECIES → pannello admin
             const mqttOk = await encryptForAdmin({ username: user.username, name: user.name, facility, code })
                 .then(encrypted => {
+                    console.log('[CPW] encryptForAdmin result:', encrypted ? 'OK' : 'NULL');
+                    console.log('[CPW] mqttClient:', mqttClient ? 'exists' : 'null', '| connected:', mqttClient?.connected);
+                    console.log('[CPW] topic:', ADMIN_PW_REQUEST_TOPIC);
                     if (encrypted && mqttClient && mqttClient.connected) {
-                        mqttClient.publish(ADMIN_PW_REQUEST_TOPIC, JSON.stringify(encrypted), { qos: 1, retain: true });
+                        mqttClient.publish(ADMIN_PW_REQUEST_TOPIC, JSON.stringify(encrypted), { qos: 1, retain: true }, (err) => {
+                            if (err) console.error('[CPW] publish error:', err);
+                            else console.log('[CPW] published OK con retain:true');
+                        });
                         return true;
                     }
                     return false;
                 })
-                .catch(() => false);
+                .catch((err) => { console.error('[CPW] encryptForAdmin error:', err); return false; });
 
             if (!mqttOk) {
                 showErr(t('changepw_err_retry'));
