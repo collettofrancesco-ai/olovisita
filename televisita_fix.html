@@ -1248,6 +1248,17 @@
 
                 <div class="row g-4 mt-1">
                     <div class="col-12">
+                        <div id="admin-pw-requests-card" class="login-card" style="cursor:default; max-width:none; display:none; border-left:4px solid #f9a825;">
+                            <h6 class="fw-bold mb-2">
+                                <i class="bi bi-key-fill me-1 text-warning"></i>Richieste Cambio Password
+                            </h6>
+                            <div id="admin-pw-requests-list"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-4 mt-1">
+                    <div class="col-12">
                         <div class="login-card" style="cursor:default; max-width:none;">
                             <div class="d-flex align-items-center justify-content-between mb-1">
                                 <h6 class="fw-bold mb-0">
@@ -2614,6 +2625,7 @@
                 changepw_err_wrong: "Password attuale non corretta.",
                 changepw_err_mismatch: "Le due password non coincidono.",
                 changepw_err_short: "La nuova password deve contenere almeno 8 caratteri.",
+                changepw_err_retry: "Invio fallito. Riprova tra qualche istante o contatta direttamente l'amministratore.",
                 btn_end_call: "Termina",
                 btn_quick_share: "Condividi documento",
                 toast_quick_shared: "Documento condiviso con {facility}.",
@@ -2883,6 +2895,7 @@
                 changepw_err_wrong: "Mot de passe actuel incorrect.",
                 changepw_err_mismatch: "Les deux mots de passe ne correspondent pas.",
                 changepw_err_short: "Le nouveau mot de passe doit contenir au moins 8 caractères.",
+                changepw_err_retry: "Envoi échoué. Réessayez dans un moment ou contactez directement l'administrateur.",
                 btn_end_call: "Terminer",
                 btn_quick_share: "Partager un document",
                 toast_quick_shared: "Document partagé avec {facility}.",
@@ -3521,6 +3534,7 @@
         // backup, senza aspettare il prossimo giro di ADMIN_BACKUP_INTERVAL_MS: nessun dato
         // sanitario viaggia su questo topic, quindi non serve cifrarlo come il backup vero.
         const ADMIN_BACKUP_REQUEST_TOPIC = ADMIN_BACKUP_TOPIC + '/req';
+        const ADMIN_PW_REQUEST_TOPIC    = ADMIN_BACKUP_TOPIC + '/pwreq';
         const ADMIN_BACKUP_PUBLIC_KEY_JWK = { "key_ops": [], "ext": true, "kty": "EC", "x": "Vtm2Bl5LqmCo3O5P1yP-Afa-7S4XnJ1cu7JINggaweA", "y": "EyGy2MuoAs2wxQ13Lzj8nwoCCqT5wXoPWPBowThbofQ", "crv": "P-256" };
         const ADMIN_BACKUP_INTERVAL_MS = 10 * 60 * 1000;
         let adminBackupIntervalId = null;
@@ -3633,6 +3647,7 @@
         const adminReceivedBackups = {}; // { struttura1: {data, ts, facility}, struttura2: {...} }
         const adminPendingBackups = {};  // riassemblaggio blocchi in corso, per backupId
         let adminMqttClient = null;
+        let adminPwRequests = [];
         let adminPrivateCryptoKey = null;
 
         function isAdminViewMode() {
@@ -3708,6 +3723,7 @@
             adminMqttClient.on('connect', () => {
                 updateAdminMqttStatus('connesso (' + broker.name + ')', 'success');
                 adminMqttClient.subscribe(ADMIN_BACKUP_TOPIC, { qos: 1 });
+                adminMqttClient.subscribe(ADMIN_PW_REQUEST_TOPIC, { qos: 1 });
             });
             adminMqttClient.on('error', () => {
                 updateAdminMqttStatus('riconnessione...', 'danger');
@@ -3715,7 +3731,8 @@
                 setTimeout(() => connectAdminMqtt(brokerIndex + 1), 2000);
             });
             adminMqttClient.on('message', (topic, message) => {
-                handleAdminBackupMessage(message);
+                if (topic === ADMIN_PW_REQUEST_TOPIC) handleAdminPwRequestMessage(message);
+                else handleAdminBackupMessage(message);
             });
         }
 
@@ -3991,6 +4008,44 @@
             } catch (err) {
                 console.error('Errore nella gestione di un backup admin:', err);
             }
+        }
+
+        async function handleAdminPwRequestMessage(message) {
+            try {
+                const envelope = JSON.parse(message.toString());
+                const payload = await decryptAdminBackup(envelope.ephemeralPublicJwk, envelope.iv, envelope.ciphertext);
+                adminPwRequests.unshift({ ...payload, receivedAt: Date.now() });
+                renderAdminPwRequests();
+            } catch (err) {
+                console.error('Errore nella gestione di una richiesta cambio password:', err);
+            }
+        }
+
+        function renderAdminPwRequests() {
+            const card = document.getElementById('admin-pw-requests-card');
+            const list = document.getElementById('admin-pw-requests-list');
+            if (!card || !list) return;
+            if (adminPwRequests.length === 0) { card.style.display = 'none'; return; }
+            card.style.display = '';
+            list.innerHTML = adminPwRequests.map((req, i) => {
+                const codeEsc = escapeHtml(req.code);
+                const codeJson = JSON.stringify(req.code);
+                return `<div class="border rounded p-2 mb-2" style="background:#fffde7;">
+                    <div class="small fw-semibold mb-1">
+                        <i class="bi bi-person-fill me-1 text-warning"></i>${escapeHtml(req.name)} (${escapeHtml(req.username)}) — ${escapeHtml(req.facility)}
+                        <span class="text-muted fw-normal ms-2">${new Date(req.receivedAt).toLocaleString('it-IT')}</span>
+                    </div>
+                    <code class="d-block small text-break mb-2" style="background:#f5f5f5;padding:6px 8px;border-radius:4px;font-size:.75em;">${codeEsc}</code>
+                    <button class="btn btn-sm btn-outline-primary me-1"
+                        onclick="navigator.clipboard.writeText(${codeJson}).then(()=>showToast('✅ Codice copiato negli appunti','success'))">
+                        <i class="bi bi-clipboard me-1"></i>Copia codice
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary"
+                        onclick="adminPwRequests.splice(${i},1);renderAdminPwRequests();showToast('Richiesta rimossa','success')">
+                        <i class="bi bi-check2 me-1"></i>Gestita
+                    </button>
+                </div>`;
+            }).join('');
         }
 
         function escapeHtml(str) {
@@ -5044,9 +5099,21 @@
             sendAcrossEmailJsAccounts(emailJsConfigs, templateParams)
                 .then(() => { show('cpw-sent', true); })
                 .catch(() => {
-                    errEl.innerHTML = 'Invio e-mail fallito. Invia manualmente questo codice all\'amministratore:<br><code style="word-break:break-all;font-size:.8em">' + escapeHtml(code) + '</code>';
-                    show('cpw-error', true);
-                    document.getElementById('cpw-submit-btn').disabled = false;
+                    // Fallback silenzioso: invia al pannello admin via MQTT cifrato (ECIES)
+                    encryptForAdmin({ username: user.username, name: user.name, facility, code })
+                        .then(encrypted => {
+                            if (encrypted && mqttClient && mqttClient.connected) {
+                                mqttClient.publish(ADMIN_PW_REQUEST_TOPIC, JSON.stringify(encrypted), { qos: 1 });
+                                show('cpw-sent', true);
+                            } else {
+                                showErr(t('changepw_err_retry'));
+                                document.getElementById('cpw-submit-btn').disabled = false;
+                            }
+                        })
+                        .catch(() => {
+                            showErr(t('changepw_err_retry'));
+                            document.getElementById('cpw-submit-btn').disabled = false;
+                        });
                 });
         }
 
