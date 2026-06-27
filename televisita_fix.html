@@ -1871,6 +1871,12 @@
                                 data-i18n="no_active_session">Nessuna sessione attiva</div>
                         </div>
                         <div class="ms-auto d-flex gap-2">
+                            <button id="btn-quick-share" class="btn btn-outline-primary btn-sm" style="display:none;"
+                                onclick="document.getElementById('quick-share-input').click()">
+                                <i class="bi bi-paperclip me-1"></i><span data-i18n="btn_quick_share">Condividi documento</span>
+                            </button>
+                            <input type="file" id="quick-share-input" style="display:none" multiple
+                                onchange="quickShareFromCall(this)">
                             <button id="btn-end" class="btn btn-outline-danger btn-sm" onclick="endCall()"
                                 style="display:none;">
                                 <i class="bi bi-telephone-x-fill me-1"></i><span data-i18n="btn_end_call">Termina</span>
@@ -2561,6 +2567,8 @@
                 card_video_title: "Videoconferenza",
                 no_active_session: "Nessuna sessione attiva",
                 btn_end_call: "Termina",
+                btn_quick_share: "Condividi documento",
+                toast_quick_shared: "Documento condiviso con {facility}.",
                 video_placeholder_title: "Nessuna Videoconferenza Attiva",
                 video_placeholder_text: "La conferenza si avvierà quando una televisita viene accettata.",
                 card_session_title: "Stato Sessione",
@@ -2817,6 +2825,8 @@
                 card_video_title: "Visioconférence",
                 no_active_session: "Aucune session active",
                 btn_end_call: "Terminer",
+                btn_quick_share: "Partager un document",
+                toast_quick_shared: "Document partagé avec {facility}.",
                 video_placeholder_title: "Aucune Visioconférence Active",
                 video_placeholder_text: "La conférence démarrera dès qu'une télévisite sera acceptée.",
                 card_session_title: "État de la Session",
@@ -8614,6 +8624,7 @@
             show('jitsi-placeholder', false);
             show('jitsi-wrapper', true);
             show('jitsi-container', true);
+            show('btn-quick-share', true);
 
             document.getElementById('room-label').textContent = t('room_lbl') + roomName;
             document.getElementById('btn-end').style.display = '';
@@ -8692,6 +8703,7 @@
             show('jitsi-wrapper', false);
             show('jitsi-placeholder', true);
             document.getElementById('btn-end').style.display = 'none';
+            show('btn-quick-share', false);
             document.getElementById('room-label').textContent = t('no_active_session');
 
             if (roomToClean) {
@@ -9902,6 +9914,75 @@
             });
 
             e.target.value = '';
+        }
+
+        // ---------------------------------------------------------------------------
+        // CARICA E CONDIVIDI IMMEDIATO (dalla videoconferenza)
+        // ---------------------------------------------------------------------------
+        function quickShareFromCall(input) {
+            const files = Array.from(input.files);
+            if (!files.length) return;
+            if (!S.activeTvId) {
+                showToast(
+                    currentLang === 'fr'
+                        ? 'Aucune télévisite active sélectionnée.'
+                        : 'Nessuna televisita attiva selezionata.',
+                    'warning'
+                );
+                input.value = '';
+                return;
+            }
+
+            const tv = S.televisite.find(t => t.id === S.activeTvId);
+            const activePatient = tv ? tv.patient : 'Generico';
+            const otherD = DOCTORS[S.role === 'struttura1' ? 'struttura2' : 'struttura1'];
+            let done = 0;
+            const newDocs = [];
+
+            files.forEach(f => {
+                const ext = f.name.split('.').pop().toLowerCase();
+                const now = new Date();
+                const doc = {
+                    id: 'D' + Date.now() + Math.floor(Math.random() * 1000),
+                    tvId: S.activeTvId,
+                    name: f.name,
+                    ext,
+                    size: fmtSize(f.size),
+                    by: S.role,
+                    at: now.toLocaleDateString(currentLang === 'fr' ? 'fr-FR' : 'it-IT', { day: '2-digit', month: '2-digit' }) + ' ' + now.toLocaleTimeString(currentLang === 'fr' ? 'fr-FR' : 'it-IT', { hour: '2-digit', minute: '2-digit' }),
+                    patient: activePatient,
+                    icon: iconMap[ext] || 'bi-file-earmark-fill',
+                    ibg: bgMap[ext] || '#f3e5f5',
+                    ic: colMap[ext] || '#6a1b9a',
+                    file: f,
+                    shared: true,
+                    base64Data: null,
+                    isUploaded: true
+                };
+                doc.category = getDocCategory(doc);
+                newDocs.push(doc);
+
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    doc.base64Data = evt.target.result;
+                    S.docs.unshift(doc);
+                    done++;
+                    if (done === files.length) {
+                        renderAll();
+                        showToast(t('toast_quick_shared', { facility: otherD.facility }), 'success');
+                        addNotif('bi-share-fill', t('notif_doc_sent_title', { facility: otherD.facility }), t('notif_doc_shared_body', { name: files.map(f=>f.name).join(', '), sender: DOCTORS[S.role].name }), 'sent');
+                        syncState({ kind: 'doc_shared', fromRole: S.role, docName: files.map(f=>f.name).join(', ') });
+                        newDocs.forEach(d => {
+                            if (d.base64Data && mqttClient && mqttClient.connected) {
+                                sendDocumentInChunks(d);
+                            }
+                        });
+                    }
+                };
+                reader.readAsDataURL(f);
+            });
+
+            input.value = '';
         }
 
         // ---------------------------------------------------------------------------
