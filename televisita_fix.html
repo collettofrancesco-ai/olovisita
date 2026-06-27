@@ -1464,6 +1464,10 @@
                 <button class="btn btn-sm btn-outline-secondary" onclick="runDemo()">
                     <i class="bi bi-play-circle me-1"></i><span data-i18n="demo_btn">Demo Flusso Completo</span>
                 </button>
+                <button class="btn btn-sm btn-outline-secondary" onclick="openChangePwModal()"
+                    data-i18n-title="changepw_btn_title" title="Cambia password">
+                    <i class="bi bi-key"></i>
+                </button>
                 <button class="btn btn-sm btn-outline-danger" onclick="logout()">
                     <i class="bi bi-box-arrow-right me-1"></i><span data-i18n="logout_btn">Logout</span>
                 </button>
@@ -2105,6 +2109,39 @@
         </div>
     </div>
 
+    <!-- Modal Cambio Password -->
+    <div class="modal fade" id="changePwModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-radius:16px;overflow:hidden;">
+                <div class="modal-header border-0 pb-0" style="background:#f8faff;">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-key-fill me-2 text-secondary"></i><span data-i18n="changepw_title">Richiedi cambio password</span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small mb-3" data-i18n="changepw_desc">Inserisci la password attuale e quella nuova. Verrà inviata una e-mail all'amministratore con il codice pronto da applicare.</p>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" data-i18n="changepw_current">Password attuale</label>
+                        <input type="password" id="cpw-current" class="form-control" autocomplete="current-password">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" data-i18n="changepw_new">Nuova password</label>
+                        <input type="password" id="cpw-new" class="form-control" autocomplete="new-password">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" data-i18n="changepw_confirm">Conferma nuova password</label>
+                        <input type="password" id="cpw-confirm" class="form-control" autocomplete="new-password">
+                    </div>
+                    <div id="cpw-error" class="alert alert-danger py-2 small" style="display:none;"></div>
+                    <div id="cpw-sent" class="alert alert-success py-2 small" style="display:none;" data-i18n="changepw_sent">Richiesta inviata all'amministratore. Riceverai conferma quando la password sarà aggiornata.</div>
+                </div>
+                <div class="modal-footer border-0 pt-0" style="background:#f8faff;">
+                    <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal" data-i18n="cancel_btn">Annulla</button>
+                    <button class="btn btn-primary btn-sm" id="cpw-submit-btn" onclick="submitPasswordChangeRequest()" data-i18n="changepw_send">Invia richiesta</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal conferma condivisione documento -->
     <div class="modal fade" id="shareModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
@@ -2566,6 +2603,17 @@
                 imm_started_text: "Hai accettato. La sala è pronta.",
                 card_video_title: "Videoconferenza",
                 no_active_session: "Nessuna sessione attiva",
+                changepw_btn_title: "Cambia password",
+                changepw_title: "Richiedi cambio password",
+                changepw_desc: "Inserisci la password attuale e quella nuova. Verrà inviata una e-mail all'amministratore con il codice pronto da applicare.",
+                changepw_current: "Password attuale",
+                changepw_new: "Nuova password",
+                changepw_confirm: "Conferma nuova password",
+                changepw_send: "Invia richiesta",
+                changepw_sent: "Richiesta inviata all'amministratore. Riceverai conferma quando la password sarà aggiornata.",
+                changepw_err_wrong: "Password attuale non corretta.",
+                changepw_err_mismatch: "Le due password non coincidono.",
+                changepw_err_short: "La nuova password deve contenere almeno 8 caratteri.",
                 btn_end_call: "Termina",
                 btn_quick_share: "Condividi documento",
                 toast_quick_shared: "Documento condiviso con {facility}.",
@@ -2824,6 +2872,17 @@
                 imm_started_text: "Vous avez accepté. La salle est prête.",
                 card_video_title: "Visioconférence",
                 no_active_session: "Aucune session active",
+                changepw_btn_title: "Changer le mot de passe",
+                changepw_title: "Demander un changement de mot de passe",
+                changepw_desc: "Saisissez votre mot de passe actuel et le nouveau. Un e-mail sera envoyé à l'administrateur avec le code prêt à appliquer.",
+                changepw_current: "Mot de passe actuel",
+                changepw_new: "Nouveau mot de passe",
+                changepw_confirm: "Confirmer le nouveau mot de passe",
+                changepw_send: "Envoyer la demande",
+                changepw_sent: "Demande envoyée à l'administrateur. Vous recevrez une confirmation lorsque le mot de passe sera mis à jour.",
+                changepw_err_wrong: "Mot de passe actuel incorrect.",
+                changepw_err_mismatch: "Les deux mots de passe ne correspondent pas.",
+                changepw_err_short: "Le nouveau mot de passe doit contenir au moins 8 caractères.",
                 btn_end_call: "Terminer",
                 btn_quick_share: "Partager un document",
                 toast_quick_shared: "Document partagé avec {facility}.",
@@ -4929,6 +4988,66 @@
             switchRole(activeFacilityId);
 
             initMQTT(atob('T2xvdmlzaXRhX3BhbGVybW9fdHVuaXNpYQ=='));
+        }
+
+        // ---------------------------------------------------------------------------
+        // CAMBIO PASSWORD (richiesta via email all'admin)
+        // ---------------------------------------------------------------------------
+        function openChangePwModal() {
+            ['cpw-current','cpw-new','cpw-confirm'].forEach(id => document.getElementById(id).value = '');
+            show('cpw-error', false);
+            show('cpw-sent', false);
+            document.getElementById('cpw-submit-btn').disabled = false;
+            new bootstrap.Modal(document.getElementById('changePwModal')).show();
+        }
+
+        async function submitPasswordChangeRequest() {
+            const currentPw  = document.getElementById('cpw-current').value.trim();
+            const newPw      = document.getElementById('cpw-new').value;
+            const confirmPw  = document.getElementById('cpw-confirm').value;
+            const errEl      = document.getElementById('cpw-error');
+
+            const showErr = msg => { errEl.textContent = msg; show('cpw-error', true); };
+            show('cpw-error', false);
+            show('cpw-sent', false);
+
+            if (newPw.length < 8) { showErr(t('changepw_err_short')); return; }
+            if (newPw !== confirmPw) { showErr(t('changepw_err_mismatch')); return; }
+
+            // Verifica password attuale
+            const user = FACILITIES[S.role].users.find(u => u.username === S.username);
+            if (!user) return;
+            const currentHash = await sha256Hex(currentPw);
+            if (currentHash !== user.passwordHash) { showErr(t('changepw_err_wrong')); return; }
+
+            // Genera codice pronto da incollare in manage_users.py
+            const newHash = await sha256Hex(newPw);
+            const code = `{ username: '${user.username}', name: '${user.name.replace(/'/g,"\\'")}', spec: '${user.spec.replace(/'/g,"\\'")}', avatar: '${user.avatar}', color: '${user.color}', bg: '${user.bg}', passwordHash: '${newHash}' },`;
+
+            // Email all'amministratore
+            const facility = DOCTORS[S.role].facility;
+            const subject  = `[Olovisita] Cambio password — ${user.name} (${facility})`;
+            const message  = `Richiesta cambio password da ${user.name} (${user.username}) — ${facility}.\n\nCodice da usare con manage_users.py (opzione 2 — Resetta password):\n\n${code}`;
+
+            const emailJsConfigs = getEmailJsConfigs();
+            const templateParams = {
+                to_email:     'colletto.francesco@gmail.com',
+                to_name:      'Francesco',
+                subject:      subject,
+                message:      message,
+                invite_url:   '',
+                action_label: '',
+                otp_code:     ''
+            };
+
+            document.getElementById('cpw-submit-btn').disabled = true;
+            sendAcrossEmailJsAccounts(emailJsConfigs, templateParams)
+                .then(() => { show('cpw-sent', true); })
+                .catch(() => {
+                    errEl.innerHTML = 'Invio e-mail fallito. Invia manualmente questo codice all\'amministratore:<br><code style="word-break:break-all;font-size:.8em">' + escapeHtml(code) + '</code>';
+                    show('cpw-error', true);
+                    document.getElementById('cpw-submit-btn').disabled = false;
+                });
         }
 
         function logout() {
