@@ -2145,7 +2145,7 @@
                     <div id="cpw-sent" class="alert alert-success py-2 small" style="display:none;" data-i18n="changepw_sent">Richiesta inviata all'amministratore. Riceverai conferma quando la password sarà aggiornata.</div>
                 </div>
                 <div class="modal-footer border-0 pt-0" style="background:#f8faff;">
-                    <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal" data-i18n="cancel_btn">Annulla</button>
+                    <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal" data-i18n="btn_cancel">Annulla</button>
                     <button class="btn btn-primary btn-sm" id="cpw-submit-btn" onclick="submitPasswordChangeRequest()" data-i18n="changepw_send">Invia richiesta</button>
                 </div>
             </div>
@@ -5020,7 +5020,7 @@
             if (newPw !== confirmPw) { showErr(t('changepw_err_mismatch')); return; }
 
             // Verifica password attuale
-            const user = FACILITIES[S.role].users.find(u => u.username === S.username);
+            const user = FACILITIES[S.role].users.find(u => u.username === S.currentDoctor?.username);
             if (!user) return;
             const currentHash = await sha256Hex(currentPw);
             if (currentHash !== user.passwordHash) { showErr(t('changepw_err_wrong')); return; }
