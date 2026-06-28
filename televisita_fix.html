@@ -1166,6 +1166,12 @@
                     <button class="btn btn-primary w-100 py-2.5 fw-bold" onclick="submitLogin()">
                         <i class="bi bi-box-arrow-in-right me-2"></i><span data-i18n="login_btn">Accedi</span>
                     </button>
+
+                    <div class="text-center mt-3">
+                        <button type="button" class="btn btn-link btn-sm text-muted p-0"
+                            style="font-size:0.8rem;" onclick="openForgotPwModal()"
+                            data-i18n="forgot_pw_link">Password dimenticata?</button>
+                    </div>
                 </div>
             </div>
 
@@ -2152,6 +2158,31 @@
         </div>
     </div>
 
+    <!-- Modal Password Dimenticata -->
+    <div class="modal fade" id="forgotPwModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-radius:16px;overflow:hidden;">
+                <div class="modal-header border-0 pb-0" style="background:#f8faff;">
+                    <h5 class="modal-title fw-bold">
+                        <i class="bi bi-question-circle-fill me-2 text-warning"></i>
+                        <span data-i18n="forgot_pw_title">Password dimenticata</span>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body py-3">
+                    <p class="text-muted small mb-3" data-i18n="forgot_pw_desc">Invieremo una richiesta di reset all'amministratore. Verrai contattato con le nuove credenziali.</p>
+                    <div id="fpw-user-info" class="alert alert-secondary py-2 small mb-3"></div>
+                    <div id="fpw-error" class="alert alert-danger py-2 small" style="display:none;" data-i18n="forgot_pw_err">Connessione non disponibile. Contatta l'amministratore direttamente.</div>
+                    <div id="fpw-sent" class="alert alert-success py-2 small" style="display:none;" data-i18n="forgot_pw_sent">Richiesta inviata. L'amministratore ti contatterà presto con le nuove credenziali.</div>
+                </div>
+                <div class="modal-footer border-0 pt-0" style="background:#f8faff;">
+                    <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal" data-i18n="btn_cancel">Annulla</button>
+                    <button class="btn btn-warning btn-sm fw-semibold" id="fpw-submit-btn" onclick="submitForgotPasswordRequest()" data-i18n="forgot_pw_send">Invia richiesta reset</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal conferma condivisione documento -->
     <div class="modal fade" id="shareModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
@@ -2575,6 +2606,12 @@
                 changepw_err_mismatch: "Le due password non coincidono.",
                 changepw_err_short: "La nuova password deve contenere almeno 8 caratteri.",
                 changepw_err_retry: "Invio fallito. Riprova tra qualche istante o contatta direttamente l'amministratore.",
+                forgot_pw_link: "Password dimenticata?",
+                forgot_pw_title: "Password dimenticata",
+                forgot_pw_desc: "Invieremo una richiesta di reset all'amministratore. Verrai contattato con le nuove credenziali.",
+                forgot_pw_send: "Invia richiesta reset",
+                forgot_pw_sent: "Richiesta inviata. L'amministratore ti contatterà presto con le nuove credenziali.",
+                forgot_pw_err: "Connessione non disponibile. Contatta l'amministratore direttamente.",
                 btn_end_call: "Termina",
                 btn_quick_share: "Condividi documento",
                 toast_quick_shared: "Documento condiviso con {facility}.",
@@ -2845,6 +2882,12 @@
                 changepw_err_mismatch: "Les deux mots de passe ne correspondent pas.",
                 changepw_err_short: "Le nouveau mot de passe doit contenir au moins 8 caractères.",
                 changepw_err_retry: "Envoi échoué. Réessayez dans un moment ou contactez directement l'administrateur.",
+                forgot_pw_link: "Mot de passe oublié ?",
+                forgot_pw_title: "Mot de passe oublié",
+                forgot_pw_desc: "Une demande de réinitialisation sera envoyée à l'administrateur. Vous serez contacté avec les nouvelles informations d'accès.",
+                forgot_pw_send: "Envoyer la demande",
+                forgot_pw_sent: "Demande envoyée. L'administrateur vous contactera bientôt avec vos nouvelles informations d'accès.",
+                forgot_pw_err: "Connexion non disponible. Contactez directement l'administrateur.",
                 btn_end_call: "Terminer",
                 btn_quick_share: "Partager un document",
                 toast_quick_shared: "Document partagé avec {facility}.",
@@ -3979,24 +4022,53 @@
             if (adminPwRequests.length === 0) { card.style.display = 'none'; return; }
             card.style.display = '';
             list.innerHTML = adminPwRequests.map((req, i) => {
-                const codeEsc = escapeHtml(req.code);
-                const codeJson = JSON.stringify(req.code);
-                return `<div class="border rounded p-2 mb-2" style="background:#fffde7;">
-                    <div class="small fw-semibold mb-1">
+                const isForgotten = req.type === 'forgotten';
+                const dismiss = `adminPwRequests.splice(${i},1);renderAdminPwRequests();if(adminMqttClient&&adminMqttClient.connected)adminMqttClient.publish(ADMIN_PW_REQUEST_TOPIC,'',{qos:1,retain:true});showToast('Richiesta rimossa','success')`;
+                const badge = isForgotten
+                    ? `<span class="badge bg-warning text-dark ms-1" style="font-size:.65em;">Password dimenticata</span>`
+                    : `<span class="badge bg-secondary ms-1" style="font-size:.65em;">Cambio password</span>`;
+                const body = isForgotten
+                    ? `<div class="d-flex gap-2 align-items-end mb-2">
+                          <div class="flex-grow-1">
+                              <label class="form-label small fw-semibold mb-1">Nuova password temporanea</label>
+                              <input type="text" id="admin-fpw-pw-${i}" class="form-control form-control-sm" placeholder="es. Temp2024!">
+                          </div>
+                          <button class="btn btn-sm btn-warning fw-semibold" onclick="adminGenerateForgotPwCode(${i})">
+                              <i class="bi bi-key me-1"></i>Genera codice
+                          </button>
+                       </div>
+                       <textarea id="admin-fpw-code-${i}" class="form-control form-control-sm text-break mb-2" rows="2" readonly style="display:none;font-size:.72em;font-family:monospace;"></textarea>`
+                    : `<code class="d-block small text-break mb-2" style="background:#f5f5f5;padding:6px 8px;border-radius:4px;font-size:.75em;">${escapeHtml(req.code)}</code>
+                       <button class="btn btn-sm btn-outline-primary me-1"
+                           onclick="navigator.clipboard.writeText(${JSON.stringify(req.code)}).then(()=>showToast('✅ Codice copiato negli appunti','success'))">
+                           <i class="bi bi-clipboard me-1"></i>Copia codice
+                       </button>`;
+                return `<div class="border rounded p-2 mb-2" style="background:${isForgotten ? '#fff8e1' : '#fffde7'};">
+                    <div class="small fw-semibold mb-2">
                         <i class="bi bi-person-fill me-1 text-warning"></i>${escapeHtml(req.name)} (${escapeHtml(req.username)}) — ${escapeHtml(req.facility)}
+                        ${badge}
                         <span class="text-muted fw-normal ms-2">${new Date(req.receivedAt).toLocaleString('it-IT')}</span>
                     </div>
-                    <code class="d-block small text-break mb-2" style="background:#f5f5f5;padding:6px 8px;border-radius:4px;font-size:.75em;">${codeEsc}</code>
-                    <button class="btn btn-sm btn-outline-primary me-1"
-                        onclick="navigator.clipboard.writeText(${codeJson}).then(()=>showToast('✅ Codice copiato negli appunti','success'))">
-                        <i class="bi bi-clipboard me-1"></i>Copia codice
-                    </button>
-                    <button class="btn btn-sm btn-outline-secondary"
-                        onclick="adminPwRequests.splice(${i},1);renderAdminPwRequests();if(adminMqttClient&&adminMqttClient.connected)adminMqttClient.publish(ADMIN_PW_REQUEST_TOPIC,'',{qos:1,retain:true});showToast('Richiesta rimossa','success')">
+                    ${body}
+                    <button class="btn btn-sm btn-outline-secondary" onclick="${dismiss}">
                         <i class="bi bi-check2 me-1"></i>Gestita
                     </button>
                 </div>`;
             }).join('');
+        }
+
+        async function adminGenerateForgotPwCode(index) {
+            const req = adminPwRequests[index];
+            const pwInput = document.getElementById('admin-fpw-pw-' + index);
+            const codeEl = document.getElementById('admin-fpw-code-' + index);
+            if (!req || !pwInput || !codeEl) return;
+            const newPw = pwInput.value.trim();
+            if (newPw.length < 6) { showToast('Password troppo corta (minimo 6 caratteri)', 'warning'); return; }
+            const hash = await sha256Hex(newPw);
+            const code = `{ username: '${req.username}', name: '${req.name.replace(/'/g,"\\'")}', spec: '${req.spec.replace(/'/g,"\\'")}', avatar: '${req.avatar}', color: '${req.color}', bg: '${req.bg}', passwordHash: '${hash}' },`;
+            codeEl.value = code;
+            codeEl.style.display = '';
+            navigator.clipboard.writeText(code).then(() => showToast('✅ Codice copiato negli appunti', 'success'));
         }
 
         function escapeHtml(str) {
@@ -4995,6 +5067,78 @@
             switchRole(activeFacilityId);
 
             initMQTT(atob('T2xvdmlzaXRhX3BhbGVybW9fdHVuaXNpYQ=='));
+        }
+
+        // ---------------------------------------------------------------------------
+        // PASSWORD DIMENTICATA (richiesta reset dal login)
+        // ---------------------------------------------------------------------------
+        function openForgotPwModal() {
+            const userSelect = document.getElementById('user-select');
+            const username = userSelect?.value;
+            const user = username && activeFacilityId ? FACILITIES[activeFacilityId]?.users.find(u => u.username === username) : null;
+            const facility = DOCTORS[activeFacilityId]?.facility || activeFacilityId;
+
+            const infoEl = document.getElementById('fpw-user-info');
+            if (infoEl) infoEl.textContent = user ? `${user.name} — ${facility}` : '—';
+
+            show('fpw-error', false);
+            show('fpw-sent', false);
+            const btn = document.getElementById('fpw-submit-btn');
+            if (btn) { btn.disabled = !user; }
+
+            new bootstrap.Modal(document.getElementById('forgotPwModal')).show();
+        }
+
+        async function submitForgotPasswordRequest() {
+            const userSelect = document.getElementById('user-select');
+            const username = userSelect?.value;
+            const user = username && activeFacilityId ? FACILITIES[activeFacilityId]?.users.find(u => u.username === username) : null;
+            if (!user) return;
+
+            const facility = DOCTORS[activeFacilityId]?.facility || activeFacilityId;
+            const btn = document.getElementById('fpw-submit-btn');
+            if (btn) btn.disabled = true;
+            show('fpw-error', false);
+
+            const encrypted = await encryptForAdmin({
+                type: 'forgotten',
+                username: user.username,
+                name: user.name,
+                spec: user.spec,
+                avatar: user.avatar,
+                color: user.color,
+                bg: user.bg,
+                facility
+            }).catch(() => null);
+
+            if (!encrypted) {
+                show('fpw-error', true);
+                if (btn) btn.disabled = false;
+                return;
+            }
+
+            // Connessione MQTT temporanea (mqttClient non ancora inizializzato al login)
+            const broker = MQTT_BROKERS[0];
+            const tempClient = mqtt.connect(broker.url, { clean: true, connectTimeout: 6000 });
+            const timeout = setTimeout(() => {
+                try { tempClient.end(true); } catch (_) {}
+                show('fpw-error', true);
+                if (btn) btn.disabled = false;
+            }, 8000);
+
+            tempClient.on('connect', () => {
+                tempClient.publish(ADMIN_PW_REQUEST_TOPIC, JSON.stringify(encrypted), { qos: 1, retain: true }, () => {
+                    clearTimeout(timeout);
+                    try { tempClient.end(); } catch (_) {}
+                    show('fpw-sent', true);
+                });
+            });
+            tempClient.on('error', () => {
+                clearTimeout(timeout);
+                try { tempClient.end(true); } catch (_) {}
+                show('fpw-error', true);
+                if (btn) btn.disabled = false;
+            });
         }
 
         // ---------------------------------------------------------------------------
