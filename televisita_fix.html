@@ -4041,8 +4041,7 @@
                        </div>
                        <textarea id="admin-fpw-code-${i}" class="form-control form-control-sm text-break mb-2" rows="2" readonly style="display:none;font-size:.72em;font-family:monospace;"></textarea>`
                     : `<code class="d-block small text-break mb-2" style="background:#f5f5f5;padding:6px 8px;border-radius:4px;font-size:.75em;">${escapeHtml(req.code)}</code>
-                       <button class="btn btn-sm btn-outline-primary me-1"
-                           onclick="navigator.clipboard.writeText(${JSON.stringify(req.code)}).then(()=>showToast('✅ Codice copiato negli appunti','success'))">
+                       <button class="btn btn-sm btn-outline-primary me-1" onclick="copyAdminPwCode(${i})">
                            <i class="bi bi-clipboard me-1"></i>Copia codice
                        </button>`;
                 return `<div class="border rounded p-2 mb-2" style="background:${isForgotten ? '#fff8e1' : '#fffde7'};">
@@ -4057,6 +4056,12 @@
                     </button>
                 </div>`;
             }).join('');
+        }
+
+        function copyAdminPwCode(index) {
+            const code = adminPwRequests[index]?.code;
+            if (!code) return;
+            navigator.clipboard.writeText(code).then(() => showToast('✅ Codice copiato negli appunti', 'success'));
         }
 
         async function adminGenerateForgotPwCode(index) {
