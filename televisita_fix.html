@@ -256,6 +256,21 @@
         .visit-item:hover {
             background: var(--hover-visit);
         }
+        .visit-item.visit-centro {
+            background: #f0fdf4;
+            border-left: 3px solid #4ade80;
+            padding-left: calc(1.5rem - 3px);
+        }
+        .visit-item.visit-network {
+            background: #eff6ff;
+            border-left: 3px solid #60a5fa;
+            padding-left: calc(1.5rem - 3px);
+        }
+        .visit-item.visit-centro.visit-selected,
+        .visit-item.visit-network.visit-selected {
+            border-left: 4px solid #1565c0;
+            padding-left: calc(1.5rem - 4px);
+        }
 
         .visits-scroll {
             max-height: 380px;
@@ -5734,7 +5749,7 @@
             const centroBadge = tv.visitMode === 'centro' ? `<span class="badge bg-info-subtle text-info-emphasis ms-1" style="font-size:0.62rem; font-weight:500;"><i class="bi bi-building-lock me-1"></i>${t('badge_visit_centro')}</span>` : '';
 
             return `
-    <div class="visit-item${isActive ? ' visit-selected' : ''}" onclick="selectPatientContext('${tv.id}')">
+    <div class="visit-item${tv.visitMode === 'centro' ? ' visit-centro' : ' visit-network'}${isActive ? ' visit-selected' : ''}" onclick="selectPatientContext('${tv.id}')">
         <div class="d-flex gap-3">
             <div class="dot mt-1" style="background:${si.color};"></div>
             <div class="flex-grow-1" style="min-width:0;">
