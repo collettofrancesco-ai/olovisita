@@ -259,6 +259,10 @@
             background: #fffde7;
             color: #f57f17;
         }
+        .bs-annullata {
+            background: #fce4ec;
+            color: #880e4f;
+        }
 
         /* Lista delle visite */
         .visit-item {
@@ -2811,10 +2815,16 @@
                 status_programmata: "Programmata",
                 status_accettata: "Accettata",
                 status_rifiutata: "Rifiutata",
+                status_annullata: "Annullata",
                 status_completata: "Completata",
                 status_waiting: "In Attesa",
                 status_accepted: "Accettata",
                 status_rejected: "Rifiutata",
+                toast_visit_cancelled: "Televisita per <strong>{patient}</strong> annullata.",
+                notif_visit_cancelled_title: "Visita annullata",
+                notif_visit_cancelled_body: "La visita di {patient} è stata annullata da {facility}.",
+                confirm_cancel_visit: "Sei sicuro di voler annullare la visita di {patient}? Questa azione non può essere annullata.",
+                btn_cancel_visit: "Annulla visita",
                 no_visits: "Nessuna televisita",
                 no_docs: "Nessun documento",
                 tot_visits: "Televisite totali",
@@ -3088,10 +3098,16 @@
                 status_programmata: "Planifiée",
                 status_accettata: "Acceptée",
                 status_rifiutata: "Refusée",
+                status_annullata: "Annulée",
                 status_completata: "Terminée",
                 status_waiting: "En Attente",
                 status_accepted: "Acceptée",
                 status_rejected: "Refusée",
+                toast_visit_cancelled: "Télévisite pour <strong>{patient}</strong> annulée.",
+                notif_visit_cancelled_title: "Visite annulée",
+                notif_visit_cancelled_body: "La visite de {patient} a été annulée par {facility}.",
+                confirm_cancel_visit: "Êtes-vous sûr de vouloir annuler la visite de {patient} ?",
+                btn_cancel_visit: "Annuler la visite",
                 no_visits: "Aucune télévisite",
                 no_docs: "Aucun document",
                 tot_visits: "Total télévisites",
@@ -5238,6 +5254,13 @@
                 showToast(t('toast_sched_rejected', { patient: event.patient }), 'warning');
                 addNotif('bi-calendar-x-fill', t('notif_sched_rej_title'), t('notif_sched_rej_body', { patient: event.patient }), 'incoming');
             }
+            if (ev === 'visit_cancelled' && event.cancelledBy !== S.role) {
+                const fromD = DOCTORS[event.cancelledBy] || {};
+                const facility = fromD.facility || event.cancelledBy;
+                showToast(t('toast_visit_cancelled', { patient: event.patient }), 'warning');
+                addNotif('bi-x-octagon-fill', t('notif_visit_cancelled_title'), t('notif_visit_cancelled_body', { patient: event.patient, facility }), 'incoming');
+                flashBell();
+            }
             if (ev === 'doc_shared' && event.fromRole !== S.role) {
                 const fromD = DOCTORS[event.fromRole];
                 showToast(`<i class="bi bi-share-fill me-1"></i>${t('toast_doc_received', { name: fromD.name, names: event.docName })}`, 'info');
@@ -5772,7 +5795,7 @@
                 s2TitleEl.textContent = t('received_visits');
             }
 
-            const active = visible.filter(tv => tv.status !== 'completata' && tv.status !== 'rifiutata').length;
+            const active = visible.filter(tv => tv.status !== 'completata' && tv.status !== 'rifiutata' && tv.status !== 'annullata').length;
             document.getElementById('vis-badge').textContent = active + ' ' + t('status_accepted').toLowerCase();
         }
 
@@ -5782,6 +5805,7 @@
             const scheduledByMe = tv.scheduledBy ? tv.scheduledBy === S.role : isS1;
             const canAct = tv.status === 'programmata' && !scheduledByMe;
             const waiting = tv.status === 'programmata' && scheduledByMe;
+            const canCancel = scheduledByMe && (tv.status === 'programmata' || tv.status === 'accettata');
 
             const consentSigned = tv.consentStatus === 'firmato';
             const isUrgent = tv.type === 'urgente';
@@ -5823,8 +5847,10 @@
                     ${canAct ? `<button class="btn btn-outline-success btn-sm py-0" onclick="event.stopPropagation(); acceptSched('${tv.id}')"><i class="bi bi-check me-1"></i>${t('btn_accept')}</button>
                                   <button class="btn btn-outline-danger btn-sm py-0"  onclick="event.stopPropagation(); rejectSched('${tv.id}')"><i class="bi bi-x me-1"></i>${t('btn_reject')}</button>` : ''}
                     ${waiting ? `<span class="text-muted small"><i class="bi bi-hourglass me-1"></i>${t('waiting_confirm')}</span>` : ''}
+                    ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclick="event.stopPropagation(); cancelVisit('${tv.id}')"><i class="bi bi-x-octagon me-1"></i>${t('btn_cancel_visit')}</button>` : ''}
                     ${tv.status === 'completata' ? `<span class="text-muted small"><i class="bi bi-check-all me-1"></i>${t('status_completata')}</span>` : ''}
                     ${tv.status === 'rifiutata' ? `<span class="text-danger small"><i class="bi bi-x-circle me-1"></i>${t('status_rifiutata')}</span>` : ''}
+                    ${tv.status === 'annullata' ? `<span class="small" style="color:#880e4f;"><i class="bi bi-x-octagon me-1"></i>${t('status_annullata')}</span>` : ''}
                 </div>
             </div>
         </div>
@@ -5832,7 +5858,7 @@
         }
 
         function consentSectionHTML(tv, isCreator) {
-            if (tv.status === 'completata' || tv.status === 'rifiutata') {
+            if (tv.status === 'completata' || tv.status === 'rifiutata' || tv.status === 'annullata') {
                 return '';
             }
 
@@ -9109,6 +9135,42 @@
             syncState({ kind: 'visit_rejected', patient: tv.patient, scheduledBy: tv.scheduledBy });
         }
 
+        function cancelVisit(id) {
+            const tv = S.televisite.find(t => t.id === id);
+            if (!tv) return;
+            const overlay = document.createElement('div');
+            overlay.id = 'cancel-visit-confirm';
+            overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(15,23,42,0.5);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;';
+            overlay.innerHTML = `
+                <div style="background:#fff;border:1.5px solid #f48fb1;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.22);max-width:380px;width:90%;overflow:hidden;animation:fadeInScale .2s ease;">
+                    <div style="background:#fce4ec;padding:14px 20px 12px;display:flex;align-items:center;gap:12px;">
+                        <i class="bi bi-x-octagon-fill" style="font-size:1.4rem;color:#880e4f;"></i>
+                        <span style="font-size:0.95rem;font-weight:700;color:#880e4f;">${currentLang === 'fr' ? 'Annuler la visite' : 'Annulla visita'}</span>
+                    </div>
+                    <div style="padding:18px 20px 14px;">
+                        <p style="margin:0 0 8px;font-size:0.92rem;color:#37474f;">${t('confirm_cancel_visit', { patient: escapeHtml(tv.patient) })}</p>
+                        <p style="margin:0;font-size:0.82rem;color:#78909c;">
+                            <i class="bi bi-calendar2 me-1"></i>${fmtDate(tv.date)}
+                            <i class="bi bi-clock ms-3 me-1"></i>${tv.time}
+                        </p>
+                    </div>
+                    <div style="padding:0 20px 16px;display:flex;gap:10px;justify-content:flex-end;">
+                        <button class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('cancel-visit-confirm').remove();">${currentLang === 'fr' ? 'Non, mantieni' : 'No, mantieni'}</button>
+                        <button class="btn btn-danger btn-sm" onclick="document.getElementById('cancel-visit-confirm').remove(); confirmCancelVisit('${id}');"><i class="bi bi-x-octagon me-1"></i>${currentLang === 'fr' ? 'Sì, annulla' : 'Sì, annulla'}</button>
+                    </div>
+                </div>`;
+            document.body.appendChild(overlay);
+        }
+
+        function confirmCancelVisit(id) {
+            const tv = S.televisite.find(t => t.id === id);
+            if (!tv) return;
+            tv.status = 'annullata';
+            renderAll();
+            showToast(t('toast_visit_cancelled', { patient: tv.patient }), 'warning');
+            syncState({ kind: 'visit_cancelled', patient: tv.patient, tvId: id, cancelledBy: S.role });
+        }
+
         function selectPatientContext(id) {
             S.activeTvId = id;
             renderAll();
@@ -11282,6 +11344,7 @@
                 programmata: { label: t('status_programmata'), color: '#1565c0', cls: 'bs-programmata' },
                 accettata: { label: t('status_accettata'), color: '#2e7d32', cls: 'bs-accettata' },
                 rifiutata: { label: t('status_rifiutata'), color: '#c62828', cls: 'bs-rifiutata' },
+                annullata: { label: t('status_annullata'), color: '#880e4f', cls: 'bs-annullata' },
                 'in-corso': { label: t('status_in_corso'), color: '#e65100', cls: 'bs-in-corso' },
                 completata: { label: t('status_completata'), color: '#757575', cls: 'bs-completata' },
                 waiting: { label: t('status_waiting'), color: '#f57f17', cls: 'bs-in-attesa' },
