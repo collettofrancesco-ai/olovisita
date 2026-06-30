@@ -3464,6 +3464,9 @@
         let currentGroupCode = atob('T2xvdmlzaXRhX3BhbGVybW9fdHVuaXNpYQ==');
         let currentTopicId = null;
         let lastStateReplyTime = 0;
+        // true al primo login se localStorage era vuoto (cache svuotata): consente di
+        // accettare una volta sola il proprio messaggio retained come ripristino di stato.
+        let mqttColdStart = false;
         const processedEventIds = new Set();
 
         // ---------------------------------------------------------------------------
@@ -3741,13 +3744,54 @@
             }
         }
 
+        // Pubblica un riepilogo compatto (visite + email, senza documenti base64) con retain:true
+        // su un topic dedicato per struttura. Il pannello admin lo riceve subito al connect,
+        // senza aspettare che la struttura sia online. Il topic full-backup resta non-retain
+        // perché inviato a blocchi (il broker retained conserverebbe solo l'ultimo blocco).
+        async function publishAdminSummary() {
+            if (!mqttClient || !mqttClient.connected || !isSubtleCryptoSupported) return;
+            try {
+                const summaryData = {
+                    role: S.role,
+                    shared: {
+                        televisite: S.televisite.filter(tv => tv.visitMode !== 'centro'),
+                        emails: S.emails,
+                        immReq: S.immReq,
+                        immRoom: S.immRoom,
+                        activeRoom: S.activeRoom
+                    },
+                    exportDate: new Date().toISOString()
+                };
+                const encrypted = await encryptForAdmin(summaryData);
+                if (!encrypted) return;
+                const envelope = {
+                    backupId: 'as_' + Date.now(),
+                    role: S.role,
+                    facility: (DOCTORS[S.role] || {}).facility || S.role,
+                    ts: Date.now(),
+                    chunkIndex: 0,
+                    totalChunks: 1,
+                    chunkData: encrypted.ciphertext,
+                    ephemeralPublicJwk: encrypted.ephemeralPublicJwk,
+                    iv: encrypted.iv
+                };
+                mqttClient.publish(
+                    ADMIN_BACKUP_TOPIC + '/' + S.role,
+                    JSON.stringify(envelope),
+                    { qos: 1, retain: true }
+                );
+            } catch (err) {
+                console.error('Errore durante la pubblicazione del summary admin:', err);
+            }
+        }
+
         // Avvia l'invio periodico del backup admin: un primo invio appena la connessione MQTT è
         // stabile, poi ogni ADMIN_BACKUP_INTERVAL_MS. Richiamata a ogni 'connect' (anche dopo una
         // riconnessione automatica), quindi azzera sempre il timer precedente per non duplicarlo.
         function startAdminBackupTimer() {
             if (adminBackupIntervalId) clearInterval(adminBackupIntervalId);
-            setTimeout(publishAdminBackup, 5000);
-            adminBackupIntervalId = setInterval(publishAdminBackup, ADMIN_BACKUP_INTERVAL_MS);
+            setTimeout(() => { publishAdminBackup(); publishAdminSummary(); }, 5000);
+            adminBackupIntervalId = setInterval(() => { publishAdminBackup(); publishAdminSummary(); }, ADMIN_BACKUP_INTERVAL_MS);
         }
 
         // ---------------------------------------------------------------------------
@@ -3837,6 +3881,9 @@
             adminMqttClient.on('connect', () => {
                 updateAdminMqttStatus('connesso (' + broker.name + ')', 'success');
                 adminMqttClient.subscribe(ADMIN_BACKUP_TOPIC, { qos: 1 });
+                // Sottotopics per struttura con retain:true: consegnati subito al connect
+                // senza che le strutture debbano essere online in quel momento.
+                adminMqttClient.subscribe(ADMIN_BACKUP_TOPIC + '/+', { qos: 1 });
                 adminMqttClient.subscribe(ADMIN_PW_REQUEST_TOPIC, { qos: 1 });
             });
             adminMqttClient.on('error', () => {
@@ -4598,6 +4645,9 @@
                             sendMQTTMessage({
                                 type: 'state_request'
                             });
+                            // Safety: se non arriva alcun retained proprio entro 5s, azzera
+                            // il flag cold start per evitare di processare messaggi propri futuri.
+                            if (mqttColdStart) setTimeout(() => { mqttColdStart = false; }, 5000);
                         } else {
                             console.error('MQTT Subscription Error:', err);
                         }
@@ -4623,10 +4673,18 @@
                     }
                     try {
                         const data = JSON.parse(message.toString());
-                        if (data.sender !== S.role) {
+                        const isSelf = data.sender === S.role;
+                        if (!isSelf || mqttColdStart) {
                             if (data.iv && data.ciphertext) {
                                 decryptPayload(data, currentGroupCode).then(decrypted => {
                                     if (!decrypted) return;
+                                    if (isSelf) {
+                                        // Proprio retained ricevuto in cold start: ripristina lo stato.
+                                        // Azzeriamo subito il flag per non processare i propri messaggi futuri.
+                                        mqttColdStart = false;
+                                        if (decrypted.shared) handleIncomingSync(decrypted);
+                                        return;
+                                    }
                                     console.log('Received E2EE MQTT sync message:', decrypted);
                                     if (decrypted.type === 'state_request') {
                                         const now = Date.now();
@@ -5198,6 +5256,7 @@
             show('backup-modal-btn', true);
             switchRole(activeFacilityId);
 
+            mqttColdStart = !localStorage.getItem('tv_state');
             initMQTT(atob('T2xvdmlzaXRhX3BhbGVybW9fdHVuaXNpYQ=='));
         }
 
