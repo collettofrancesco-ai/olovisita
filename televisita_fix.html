@@ -413,6 +413,11 @@
             animation: demoGuideIn .35s ease-out;
         }
 
+        @keyframes fadeInScale {
+            from { opacity: 0; transform: scale(0.92); }
+            to   { opacity: 1; transform: scale(1); }
+        }
+
         @keyframes demoGuideIn {
             from {
                 opacity: 0;
@@ -4997,7 +5002,7 @@
             // Una televisita "Centro" arriva qui senza event.patient (vedi scheduleVisit): niente da
             // notificare, perché quella visita non deve mai farsi notare dall'altra struttura.
             if (ev === 'visit_scheduled' && event.fromRole !== S.role && event.patient) {
-                showToast(t('toast_sched_created', { patient: event.patient, date: event.date, time: event.time }), 'info');
+                showVisitBookedPopup(event.patient, event.date, event.time, event.fromRole);
                 addNotif('bi-calendar-plus-fill', t('notif_sched_created_title'), t('notif_sched_created_body', { patient: event.patient, date: event.date, time: event.time }), 'incoming');
                 flashBell();
             }
@@ -11038,6 +11043,48 @@
 
         function scrollToVideo() {
             document.getElementById('video-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function showVisitBookedPopup(patient, date, time, fromRole) {
+            const existing = document.getElementById('visit-booked-popup');
+            if (existing) existing.remove();
+
+            const fromD = DOCTORS[fromRole] || {};
+            const facilityName = fromD.facility || fromRole;
+
+            const isIT = currentLang !== 'fr';
+            const title    = isIT ? 'Nuova visita programmata'            : 'Nouvelle visite planifiée';
+            const byLabel  = isIT ? 'Prenotata da'                        : 'Réservée par';
+            const goLabel  = isIT ? 'Vai alla visita'                     : 'Voir la visite';
+            const closeLabel = isIT ? 'Chiudi'                            : 'Fermer';
+
+            const overlay = document.createElement('div');
+            overlay.id = 'visit-booked-popup';
+            overlay.style.cssText = 'position:fixed;inset:0;z-index:99998;background:rgba(15,23,42,0.45);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;';
+            overlay.innerHTML = `
+                <div style="background:#fff;border:1.5px solid #90caf9;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.22);max-width:400px;width:90%;overflow:hidden;animation:fadeInScale .2s ease;">
+                    <div style="background:#e3f2fd;padding:14px 20px 12px;display:flex;align-items:center;gap:12px;">
+                        <i class="bi bi-calendar-plus-fill" style="font-size:1.4rem;color:#1565c0;"></i>
+                        <span style="font-size:0.95rem;font-weight:700;color:#0d47a1;">${title}</span>
+                    </div>
+                    <div style="padding:18px 20px 14px;">
+                        <p style="margin:0 0 6px;font-size:0.78rem;color:#78909c;">${byLabel} <strong>${escapeHtml(facilityName)}</strong></p>
+                        <p style="margin:0 0 8px;font-size:1.05rem;font-weight:700;color:#1a237e;">${escapeHtml(patient)}</p>
+                        <p style="margin:0;font-size:0.88rem;color:#37474f;">
+                            <i class="bi bi-calendar2 me-1" style="color:#1565c0;"></i>${date}
+                            <i class="bi bi-clock ms-3 me-1" style="color:#1565c0;"></i>${time}
+                        </p>
+                    </div>
+                    <div style="padding:0 20px 16px;display:flex;gap:10px;">
+                        <button class="btn btn-primary btn-sm" onclick="document.getElementById('visit-booked-popup').remove();selectCalendarDate(null);document.getElementById('vlist-s1').scrollIntoView({behavior:'smooth',block:'start'});">${goLabel}</button>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('visit-booked-popup').remove();">${closeLabel}</button>
+                    </div>
+                </div>`;
+            document.body.appendChild(overlay);
+            setTimeout(() => {
+                const el = document.getElementById('visit-booked-popup');
+                if (el) { el.style.transition = 'opacity .3s'; el.style.opacity = '0'; setTimeout(() => el && el.remove(), 300); }
+            }, 20000);
         }
 
         function showToast(msg, type = 'info', duration = 4500) {
