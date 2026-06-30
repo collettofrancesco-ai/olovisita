@@ -51,6 +51,26 @@
 
         /* ── Correzioni modalità scura ── */
 
+        [data-theme="dark"] .tv-calendar {
+            background: var(--card-header);
+        }
+        [data-theme="dark"] .tv-cal-month-label { color: #b0bec5; }
+        [data-theme="dark"] .tv-cal-dayname { color: #546e7a; }
+        [data-theme="dark"] .tv-cal-day { color: #90a4ae; }
+        [data-theme="dark"] .tv-cal-day:hover:not(.tv-cal-empty) { background: rgba(21,101,192,0.25); color: #90caf9; }
+        [data-theme="dark"] .tv-cal-nav { color: #546e7a; }
+        [data-theme="dark"] .tv-cal-nav:hover { background: rgba(21,101,192,0.25); color: #90caf9; }
+        [data-theme="dark"] .tv-cal-today { color: #90caf9; box-shadow: 0 0 0 1.5px #90caf9; }
+
+        [data-theme="dark"] .visit-item.visit-centro {
+            background: rgba(74,222,128,0.07);
+            border-left-color: #4ade80;
+        }
+        [data-theme="dark"] .visit-item.visit-network {
+            background: rgba(96,165,250,0.07);
+            border-left-color: #60a5fa;
+        }
+
         [data-theme="dark"] .app-header {
             background: linear-gradient(135deg, #071535 0%, #0a1f3d 60%, #0d2648 100%);
         }
