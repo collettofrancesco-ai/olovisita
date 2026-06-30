@@ -2732,6 +2732,7 @@
                 visit_mode_help: "Network: la richiesta va anche all'altra struttura, che deve accettarla. Centro: resta interna, parte subito dopo il consenso del paziente.",
                 visit_mode_required_error: "Scegli se la televisita è Network (condivisa) o Centro (solo questa struttura) prima di programmarla.",
                 badge_visit_centro: "Centro",
+                badge_visit_network: "Second Opinion",
                 form_date: "Data",
                 form_time: "Ora",
                 form_notes: "Note cliniche",
@@ -3008,6 +3009,7 @@
                 visit_mode_help: "Réseau : la demande part aussi vers l'autre établissement, qui doit l'accepter. Centre : elle reste interne, et démarre dès que le patient a donné son consentement.",
                 visit_mode_required_error: "Choisissez si la télévisite est Réseau (partagée) ou Centre (cet établissement uniquement) avant de la planifier.",
                 badge_visit_centro: "Centre",
+                badge_visit_network: "Second Opinion",
                 form_date: "Date",
                 form_time: "Heure",
                 form_notes: "Notes cliniques",
@@ -5772,7 +5774,9 @@
 
             const isActive = tv.id === S.activeTvId;
             const activeBadge = isActive ? `<span class="badge bg-primary ms-1" style="font-size:0.62rem; font-weight:500;"><i class="bi bi-person-check-fill me-1"></i>${currentLang === 'fr' ? 'Actif' : 'Attivo'}</span>` : '';
-            const centroBadge = tv.visitMode === 'centro' ? `<span class="badge bg-info-subtle text-info-emphasis ms-1" style="font-size:0.62rem; font-weight:500;"><i class="bi bi-building-lock me-1"></i>${t('badge_visit_centro')}</span>` : '';
+            const centroBadge = tv.visitMode === 'centro'
+                ? `<span class="badge bg-info-subtle text-info-emphasis ms-1" style="font-size:0.62rem; font-weight:500;"><i class="bi bi-building-lock me-1"></i>${t('badge_visit_centro')}</span>`
+                : `<span class="badge bg-primary-subtle text-primary-emphasis ms-1" style="font-size:0.62rem; font-weight:500;"><i class="bi bi-globe2 me-1"></i>${t('badge_visit_network')}</span>`;
 
             return `
     <div class="visit-item${tv.visitMode === 'centro' ? ' visit-centro' : ' visit-network'}${isActive ? ' visit-selected' : ''}" onclick="selectPatientContext('${tv.id}')">
