@@ -5245,19 +5245,19 @@
                 addNotif('bi-calendar-plus-fill', t('notif_sched_created_title'), t('notif_sched_created_body', { patient: event.patient, date: event.date, time: event.time }), 'incoming');
                 flashBell();
             }
-            if (ev === 'visit_accepted' && event.scheduledBy === S.role) {
+            if (ev === 'visit_accepted' && event.scheduledBy === S.role && event.visitMode !== 'centro') {
                 const fromD = DOCTORS[event.scheduledBy === 'struttura1' ? 'struttura2' : 'struttura1'] || {};
                 showVisitUpdatePopup('accepted', event.patient, event.date, event.time, fromD);
                 addNotif('bi-calendar-check-fill', t('notif_sched_acc_title'), t('notif_sched_acc_body', { patient: event.patient }), 'sent');
                 flashBell();
             }
-            if (ev === 'visit_rejected' && event.scheduledBy === S.role) {
+            if (ev === 'visit_rejected' && event.scheduledBy === S.role && event.visitMode !== 'centro') {
                 const fromD = DOCTORS[event.scheduledBy === 'struttura1' ? 'struttura2' : 'struttura1'] || {};
                 showVisitUpdatePopup('rejected', event.patient, event.date, event.time, fromD);
                 addNotif('bi-calendar-x-fill', t('notif_sched_rej_title'), t('notif_sched_rej_body', { patient: event.patient }), 'incoming');
                 flashBell();
             }
-            if (ev === 'visit_cancelled' && event.cancelledBy !== S.role) {
+            if (ev === 'visit_cancelled' && event.cancelledBy !== S.role && event.visitMode !== 'centro') {
                 const fromD = DOCTORS[event.cancelledBy] || {};
                 showVisitUpdatePopup('cancelled', event.patient, event.date, event.time, fromD);
                 addNotif('bi-x-octagon-fill', t('notif_visit_cancelled_title'), t('notif_visit_cancelled_body', { patient: event.patient, facility: fromD.facility || event.cancelledBy }), 'incoming');
@@ -9125,7 +9125,7 @@
             renderAll();
             showToast(t('toast_sched_accepted', { patient: tv.patient }), 'success');
             showBanner(t('banner_sched_accepted', { patient: tv.patient }), 'success');
-            syncState({ kind: 'visit_accepted', patient: tv.patient, scheduledBy: tv.scheduledBy, date: fmtDate(tv.date), time: tv.time, tvId: id });
+            syncState({ kind: 'visit_accepted', patient: tv.patient, scheduledBy: tv.scheduledBy, date: fmtDate(tv.date), time: tv.time, tvId: id, visitMode: tv.visitMode });
         }
 
         function rejectSched(id) {
@@ -9134,7 +9134,7 @@
             tv.status = 'rifiutata';
             renderAll();
             showToast(t('toast_sched_rejected', { patient: tv.patient }), 'warning');
-            syncState({ kind: 'visit_rejected', patient: tv.patient, scheduledBy: tv.scheduledBy, date: fmtDate(tv.date), time: tv.time, tvId: id });
+            syncState({ kind: 'visit_rejected', patient: tv.patient, scheduledBy: tv.scheduledBy, date: fmtDate(tv.date), time: tv.time, tvId: id, visitMode: tv.visitMode });
         }
 
         function cancelVisit(id) {
@@ -9170,7 +9170,7 @@
             tv.status = 'annullata';
             renderAll();
             showToast(t('toast_visit_cancelled', { patient: tv.patient }), 'warning');
-            syncState({ kind: 'visit_cancelled', patient: tv.patient, tvId: id, cancelledBy: S.role, date: fmtDate(tv.date), time: tv.time });
+            syncState({ kind: 'visit_cancelled', patient: tv.patient, tvId: id, cancelledBy: S.role, date: fmtDate(tv.date), time: tv.time, visitMode: tv.visitMode });
         }
 
         function selectPatientContext(id) {
