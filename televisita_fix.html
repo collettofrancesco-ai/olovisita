@@ -4663,14 +4663,39 @@
                     // ora, cioè anche se il medico era offline nel momento esatto in cui il paziente
                     // ha firmato. Senza questo, quella conferma andrebbe persa per sempre.
                     mqttClient.subscribe(topic + '/consent/+', { qos: 1 });
+
+                    // Self-backup per struttura: subtopic privato con retain:true che contiene
+                    // lo stato completo incluse le visite Centro. Solo la propria struttura si
+                    // iscrive al proprio subtopic — l'altra struttura non lo vede mai.
+                    mqttClient.subscribe(topic + '/selfbackup/' + S.role, { qos: 1 });
                 });
 
-                mqttClient.on('message', (topic, message) => {
-                    if (topic === ADMIN_BACKUP_REQUEST_TOPIC) {
+                mqttClient.on('message', (receivedTopic, message) => {
+                    if (receivedTopic === ADMIN_BACKUP_REQUEST_TOPIC) {
                         console.log('Richiesta di backup immediato dal pannello admin');
                         publishAdminBackup();
                         return;
                     }
+
+                    // Self-backup retained: arriva solo al cold start, contiene lo stato
+                    // completo della propria struttura (visite Centro incluse).
+                    if (currentTopicId && receivedTopic === MQTT_TOPIC_BASE + currentTopicId + '/selfbackup/' + S.role) {
+                        if (mqttColdStart) {
+                            try {
+                                const data = JSON.parse(message.toString());
+                                if (data.iv && data.ciphertext) {
+                                    decryptPayload(data, currentGroupCode).then(decrypted => {
+                                        if (!decrypted || decrypted.type !== 'self_backup') return;
+                                        console.log('Ripristino stato completo dal self-backup retained');
+                                        mqttColdStart = false;
+                                        if (decrypted.shared) handleIncomingSync(decrypted);
+                                    });
+                                }
+                            } catch (e) { console.error('Errore self-backup restore:', e); }
+                        }
+                        return;
+                    }
+
                     try {
                         const data = JSON.parse(message.toString());
                         const isSelf = data.sender === S.role;
@@ -4679,8 +4704,8 @@
                                 decryptPayload(data, currentGroupCode).then(decrypted => {
                                     if (!decrypted) return;
                                     if (isSelf) {
-                                        // Proprio retained ricevuto in cold start: ripristina lo stato.
-                                        // Azzeriamo subito il flag per non processare i propri messaggi futuri.
+                                        // Main-topic retained in cold start (solo visite network):
+                                        // usato solo se il self-backup non è ancora arrivato.
                                         mqttColdStart = false;
                                         if (decrypted.shared) handleIncomingSync(decrypted);
                                         return;
@@ -4759,6 +4784,36 @@
             }
         }
 
+        // Pubblica il backup completo della propria struttura (visite Centro incluse, senza
+        // base64 documenti per restare entro i limiti MQTT) su un subtopic dedicato con
+        // retain:true. Solo questa struttura si iscrive al proprio subtopic: l'altra non lo
+        // vede. In caso di cache svuotata, il broker riconsegna questo retained al login e
+        // la struttura recupera tutto il suo stato, incluse le visite Centro.
+        function publishSelfBackup() {
+            if (!mqttClient || !mqttClient.connected || !currentTopicId) return;
+            const payload = {
+                type: 'self_backup',
+                shared: {
+                    televisite: S.televisite,
+                    docs: S.docs.map(({ base64Data, file, ...meta }) => meta),
+                    immReq: S.immReq,
+                    immRoom: S.immRoom,
+                    activeRoom: S.activeRoom,
+                    emails: S.emails,
+                    immReqSender: S.immReqSender
+                }
+            };
+            encryptPayload(payload, currentGroupCode).then(encrypted => {
+                if (!encrypted) return;
+                const envelope = { sender: S.role, iv: encrypted.iv, ciphertext: encrypted.ciphertext };
+                mqttClient.publish(
+                    MQTT_TOPIC_BASE + currentTopicId + '/selfbackup/' + S.role,
+                    JSON.stringify(envelope),
+                    { qos: 1, retain: true }
+                );
+            });
+        }
+
         function syncState(event) {
             if (event && !event.id) {
                 event.id = 'ev_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
@@ -4767,7 +4822,7 @@
             // Salva lo stato completo (inclusi i file Base64) nel localStorage locale per persistenza
             const storageState = getSharedStateForStorage();
             persistTvState(storageState);
-            
+
             // Notifica i tab locali dello stesso browser
             bc.postMessage({ shared: storageState, event: event || null });
 
@@ -4778,6 +4833,8 @@
                     shared: mqttShared,
                     event: event || null
                 });
+                // Aggiorna il self-backup retained (include visite Centro)
+                publishSelfBackup();
 
                 // Quando si risponde a un state_request (state_share), re-invia anche
                 // i chunk dei documenti condivisi che hanno base64Data,
