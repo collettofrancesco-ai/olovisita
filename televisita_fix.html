@@ -4363,7 +4363,12 @@
                 // QoS 1: richiede conferma (PUBACK) dal broker e ritrasmette automaticamente
                 // se la conferma non arriva, evitando la perdita silenziosa di tratti/segmenti
                 // tipica di QoS 0 ("fire and forget") sui broker pubblici.
-                mqttClient.publish(topic, JSON.stringify(envelope), { qos: 1 }, (err) => {
+                // retain:true solo per i messaggi di stato (campo "shared"): il broker conserva
+                // l'ultimo stato e lo consegna a chi si iscrive in ritardo (es. medico offline
+                // al momento della prenotazione). I messaggi effimeri (whiteboard, state_request,
+                // doc_chunk) non vengono trattenuti.
+                const retain = !!messageObj.shared;
+                mqttClient.publish(topic, JSON.stringify(envelope), { qos: 1, retain }, (err) => {
                     if (err) console.error('Errore pubblicazione MQTT:', err);
                 });
             });
