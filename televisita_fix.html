@@ -5246,19 +5246,21 @@
                 flashBell();
             }
             if (ev === 'visit_accepted' && event.scheduledBy === S.role) {
-                showToast(t('toast_sched_accepted', { patient: event.patient }), 'success');
+                const fromD = DOCTORS[event.scheduledBy === 'struttura1' ? 'struttura2' : 'struttura1'] || {};
+                showVisitUpdatePopup('accepted', event.patient, event.date, event.time, fromD);
                 addNotif('bi-calendar-check-fill', t('notif_sched_acc_title'), t('notif_sched_acc_body', { patient: event.patient }), 'sent');
                 flashBell();
             }
             if (ev === 'visit_rejected' && event.scheduledBy === S.role) {
-                showToast(t('toast_sched_rejected', { patient: event.patient }), 'warning');
+                const fromD = DOCTORS[event.scheduledBy === 'struttura1' ? 'struttura2' : 'struttura1'] || {};
+                showVisitUpdatePopup('rejected', event.patient, event.date, event.time, fromD);
                 addNotif('bi-calendar-x-fill', t('notif_sched_rej_title'), t('notif_sched_rej_body', { patient: event.patient }), 'incoming');
+                flashBell();
             }
             if (ev === 'visit_cancelled' && event.cancelledBy !== S.role) {
                 const fromD = DOCTORS[event.cancelledBy] || {};
-                const facility = fromD.facility || event.cancelledBy;
-                showToast(t('toast_visit_cancelled', { patient: event.patient }), 'warning');
-                addNotif('bi-x-octagon-fill', t('notif_visit_cancelled_title'), t('notif_visit_cancelled_body', { patient: event.patient, facility }), 'incoming');
+                showVisitUpdatePopup('cancelled', event.patient, event.date, event.time, fromD);
+                addNotif('bi-x-octagon-fill', t('notif_visit_cancelled_title'), t('notif_visit_cancelled_body', { patient: event.patient, facility: fromD.facility || event.cancelledBy }), 'incoming');
                 flashBell();
             }
             if (ev === 'doc_shared' && event.fromRole !== S.role) {
@@ -9123,7 +9125,7 @@
             renderAll();
             showToast(t('toast_sched_accepted', { patient: tv.patient }), 'success');
             showBanner(t('banner_sched_accepted', { patient: tv.patient }), 'success');
-            syncState({ kind: 'visit_accepted', patient: tv.patient, scheduledBy: tv.scheduledBy });
+            syncState({ kind: 'visit_accepted', patient: tv.patient, scheduledBy: tv.scheduledBy, date: fmtDate(tv.date), time: tv.time, tvId: id });
         }
 
         function rejectSched(id) {
@@ -9132,7 +9134,7 @@
             tv.status = 'rifiutata';
             renderAll();
             showToast(t('toast_sched_rejected', { patient: tv.patient }), 'warning');
-            syncState({ kind: 'visit_rejected', patient: tv.patient, scheduledBy: tv.scheduledBy });
+            syncState({ kind: 'visit_rejected', patient: tv.patient, scheduledBy: tv.scheduledBy, date: fmtDate(tv.date), time: tv.time, tvId: id });
         }
 
         function cancelVisit(id) {
@@ -9168,7 +9170,7 @@
             tv.status = 'annullata';
             renderAll();
             showToast(t('toast_visit_cancelled', { patient: tv.patient }), 'warning');
-            syncState({ kind: 'visit_cancelled', patient: tv.patient, tvId: id, cancelledBy: S.role });
+            syncState({ kind: 'visit_cancelled', patient: tv.patient, tvId: id, cancelledBy: S.role, date: fmtDate(tv.date), time: tv.time });
         }
 
         function selectPatientContext(id) {
@@ -11361,6 +11363,60 @@
 
         function scrollToVideo() {
             document.getElementById('video-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function showVisitUpdatePopup(type, patient, date, time, fromD) {
+            const existing = document.getElementById('visit-update-popup');
+            if (existing) existing.remove();
+
+            const configs = {
+                accepted: {
+                    icon: 'bi-calendar-check-fill',
+                    headerBg: '#e8f5e9', iconColor: '#2e7d32', titleColor: '#1b5e20',
+                    title: currentLang === 'fr' ? 'Visite acceptée' : 'Visita accettata',
+                    btnCls: 'btn-success'
+                },
+                rejected: {
+                    icon: 'bi-calendar-x-fill',
+                    headerBg: '#fff3e0', iconColor: '#e65100', titleColor: '#bf360c',
+                    title: currentLang === 'fr' ? 'Visite refusée' : 'Visita rifiutata',
+                    btnCls: 'btn-warning'
+                },
+                cancelled: {
+                    icon: 'bi-x-octagon-fill',
+                    headerBg: '#fce4ec', iconColor: '#880e4f', titleColor: '#880e4f',
+                    title: currentLang === 'fr' ? 'Visite annulée' : 'Visita annullata',
+                    btnCls: 'btn-danger'
+                }
+            };
+            const cfg = configs[type] || configs.accepted;
+            const facilityName = fromD.facility || '';
+            const doctorName = fromD.name || '';
+
+            const overlay = document.createElement('div');
+            overlay.id = 'visit-update-popup';
+            overlay.style.cssText = 'position:fixed;inset:0;z-index:99998;background:rgba(15,23,42,0.45);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;';
+            overlay.innerHTML = `
+                <div style="background:#fff;border:1.5px solid ${cfg.iconColor}40;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.22);max-width:400px;width:90%;overflow:hidden;animation:fadeInScale .2s ease;">
+                    <div style="background:${cfg.headerBg};padding:14px 20px 12px;display:flex;align-items:center;gap:12px;">
+                        <i class="bi ${cfg.icon}" style="font-size:1.4rem;color:${cfg.iconColor};"></i>
+                        <span style="font-size:0.95rem;font-weight:700;color:${cfg.titleColor};">${cfg.title}</span>
+                    </div>
+                    <div style="padding:18px 20px 14px;">
+                        <p style="margin:0 0 4px;font-size:0.78rem;color:#78909c;">${currentLang === 'fr' ? 'Par' : 'Da'} <strong>${escapeHtml(facilityName)}</strong></p>
+                        ${doctorName ? `<p style="margin:0 0 6px;font-size:0.82rem;color:#546e7a;"><i class="bi bi-person-fill me-1"></i>${escapeHtml(doctorName)}</p>` : ''}
+                        <p style="margin:6px 0 8px;font-size:1.05rem;font-weight:700;color:#1a237e;">${escapeHtml(patient)}</p>
+                        ${date ? `<p style="margin:0;font-size:0.88rem;color:#37474f;">
+                            <i class="bi bi-calendar2 me-1" style="color:#1565c0;"></i>${date}
+                            <i class="bi bi-clock ms-3 me-1" style="color:#1565c0;"></i>${time}
+                        </p>` : ''}
+                    </div>
+                    <div style="padding:0 20px 16px;display:flex;gap:10px;">
+                        <button class="btn ${cfg.btnCls} btn-sm" onclick="document.getElementById('visit-update-popup').remove();selectCalendarDate(null);document.getElementById('vlist-s1')?.scrollIntoView({behavior:'smooth',block:'start'});">${currentLang === 'fr' ? 'Voir la visite' : 'Vai alla visita'}</button>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('visit-update-popup').remove();">${currentLang === 'fr' ? 'Fermer' : 'Chiudi'}</button>
+                    </div>
+                </div>`;
+            document.body.appendChild(overlay);
         }
 
         function showVisitBookedPopup(patient, date, time, fromRole, doctorName) {
