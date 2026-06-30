@@ -11281,10 +11281,6 @@
                     </div>
                 </div>`;
             document.body.appendChild(overlay);
-            setTimeout(() => {
-                const el = document.getElementById('visit-booked-popup');
-                if (el) { el.style.transition = 'opacity .3s'; el.style.opacity = '0'; setTimeout(() => el && el.remove(), 300); }
-            }, 20000);
         }
 
         function showToast(msg, type = 'info', duration = 4500) {
