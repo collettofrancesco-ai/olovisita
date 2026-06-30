@@ -5586,7 +5586,7 @@
             const todayStr = new Date().toISOString().slice(0, 10);
             const year = calendarViewYear;
             const month = calendarViewMonth;
-            const visitDates = new Set(visits.map(tv => tv.date));
+            const visitDates = new Set(visits.map(tv => tv.date).filter(Boolean));
 
             const firstDow = (new Date(year, month, 1).getDay() + 6) % 7; // Lun=0
             const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -5673,10 +5673,12 @@
                 const mNames     = currentLang === 'fr' ? mNamesFR   : mNamesIT;
 
                 function groupLabel(dateStr) {
+                    if (!dateStr) return { text: '—', isToday: false };
                     if (dateStr === todayStr) return { text: currentLang === 'fr' ? "Aujourd'hui" : 'Oggi', isToday: true };
                     if (dateStr === tmrStr)   return { text: currentLang === 'fr' ? 'Demain'       : 'Domani', isToday: false };
                     if (dateStr === ystrStr)  return { text: currentLang === 'fr' ? 'Hier'          : 'Ieri', isToday: false };
                     const [y, m, d] = dateStr.split('-');
+                    if (!y || !m || !d) return { text: fmtDate(dateStr) || dateStr, isToday: false };
                     const dow = new Date(+y, +m - 1, +d).getDay();
                     return { text: `${dayNames[dow]} ${+d} ${mNames[+m - 1]} ${y}`, isToday: false };
                 }
@@ -5685,8 +5687,9 @@
                 const groups = [];
                 const seen = {};
                 filtered.forEach(tv => {
-                    if (!seen[tv.date]) { seen[tv.date] = []; groups.push(tv.date); }
-                    seen[tv.date].push(tv);
+                    const key = tv.date || '—';
+                    if (!seen[key]) { seen[key] = []; groups.push(key); }
+                    seen[key].push(tv);
                 });
 
                 html = groups.map(date => {
