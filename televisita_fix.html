@@ -5629,7 +5629,13 @@
             const todayStr = new Date().toISOString().slice(0, 10);
             const year = calendarViewYear;
             const month = calendarViewMonth;
-            const visitDates = new Set(visits.map(tv => tv.date).filter(Boolean));
+            // mappa data → tipi di visita presenti
+            const visitsByDate = {};
+            visits.filter(tv => tv.date).forEach(tv => {
+                if (!visitsByDate[tv.date]) visitsByDate[tv.date] = { centro: false, network: false };
+                if (tv.visitMode === 'centro') visitsByDate[tv.date].centro = true;
+                else visitsByDate[tv.date].network = true;
+            });
 
             const firstDow = (new Date(year, month, 1).getDay() + 6) % 7; // Lun=0
             const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -5647,12 +5653,21 @@
                 const ds = `${year}-${String(month + 1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
                 const isToday    = ds === todayStr;
                 const isSelected = ds === calendarSelectedDate;
-                const hasVisits  = visitDates.has(ds);
+                const dayInfo    = visitsByDate[ds];
+                const hasVisits  = !!dayInfo;
                 let cls = 'tv-cal-day';
                 if (isToday)    cls += ' tv-cal-today';
                 if (isSelected) cls += ' tv-cal-selected';
                 if (hasVisits)  cls += ' tv-cal-has-visits';
-                cells += `<div class="${cls}" onclick="selectCalendarDate('${ds}')">${d}${hasVisits ? '<span class="tv-cal-dot"></span>' : ''}</div>`;
+                let dot = '';
+                if (hasVisits) {
+                    const both = dayInfo.centro && dayInfo.network;
+                    const dotStyle = both
+                        ? 'background:linear-gradient(90deg,#22c55e 50%,#3b82f6 50%);'
+                        : dayInfo.centro ? 'background:#22c55e;' : 'background:#3b82f6;';
+                    dot = `<span class="tv-cal-dot" style="${dotStyle}"></span>`;
+                }
+                cells += `<div class="${cls}" onclick="selectCalendarDate('${ds}')">${d}${dot}</div>`;
             }
 
             const label = `${monthNames[month]} ${year}`;
