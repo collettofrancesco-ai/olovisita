@@ -9312,6 +9312,7 @@
                 dob: dob,
                 gender: gender,
                 pob: pob,
+                idType: idType || '',
                 cf: cf,
                 date: newDate,
                 time: newTime,
@@ -9413,13 +9414,16 @@
             if (modeEl && tv.visitMode) modeEl.value = tv.visitMode;
 
             const idTypeEl = document.getElementById(`${p}-id-type`);
-            if (idTypeEl && tv.idType) {
-                idTypeEl.value = tv.idType;
-                toggleIdField(p === 'f' ? 'f' : 'f2');
-            } else if (idTypeEl) {
-                idTypeEl.value = '';
-                const idRow = document.getElementById(`${p}-id-value-row`);
-                if (idRow) idRow.style.display = 'none';
+            if (idTypeEl) {
+                // Fallback per visite vecchie che non hanno idType salvato:
+                // se c'è un cf di 16 caratteri è CF italiano, se è 8 cifre è CIN tunisino.
+                let detectedType = tv.idType || '';
+                if (!detectedType && tv.cf) {
+                    if (/^[A-Z0-9]{16}$/i.test(tv.cf)) detectedType = 'CF';
+                    else if (/^\d{8}$/.test(tv.cf)) detectedType = 'CIN';
+                }
+                idTypeEl.value = detectedType;
+                toggleIdField(p);
             }
 
             const card = document.getElementById('card-sched-section');
