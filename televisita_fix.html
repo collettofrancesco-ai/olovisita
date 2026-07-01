@@ -6150,7 +6150,6 @@
                 ${tv.phone || tv.email ? `<p class="text-muted small mt-1 mb-1">${tv.phone ? `<i class="bi bi-phone me-1"></i>${escapeHtml(tv.phone)}` : ''}${tv.phone && tv.email ? ' · ' : ''}${tv.email ? `<i class="bi bi-envelope me-1"></i>${escapeHtml(tv.email)}` : ''}</p>` : ''}
                 ${tv.notes ? `<p class="text-muted small mt-1 mb-1">${escapeHtml(tv.notes)}</p>` : '<div class="mb-1"></div>'}
                 ${(tv.createdByName || tv.scheduledBy) ? `<p class="mb-1" style="font-size:0.7rem; color:#78909c;"><i class="bi bi-person-badge me-1"></i>${currentLang === 'fr' ? 'Réservée par' : 'Prenotata da'} <strong>${escapeHtml(tv.createdByName || (FACILITIES[tv.scheduledBy] ? FACILITIES[tv.scheduledBy].name : tv.scheduledBy))}</strong></p>` : ''}
-                <p class="mb-2"><button class="btn btn-link p-0" style="font-size:0.72rem;color:#1565c0;text-decoration:none;" onclick="event.stopPropagation(); showPatientHistory('${escapeHtml(tv.patient)}')"><i class="bi bi-clock-history me-1"></i>${currentLang === 'fr' ? 'Accès' : 'Accessi'}</button></p>
                 
                 ${consentSectionHTML(tv, scheduledByMe)}
  
@@ -6159,6 +6158,7 @@
                     ${canAct ? `<button class="btn btn-outline-success btn-sm py-0" onclick="event.stopPropagation(); acceptSched('${tv.id}')"><i class="bi bi-check me-1"></i>${t('btn_accept')}</button>
                                   <button class="btn btn-outline-danger btn-sm py-0"  onclick="event.stopPropagation(); rejectSched('${tv.id}')"><i class="bi bi-x me-1"></i>${t('btn_reject')}</button>` : ''}
                     ${waiting ? `<span class="text-muted small"><i class="bi bi-hourglass me-1"></i>${t('waiting_confirm')}</span>` : ''}
+                    <button class="btn btn-outline-secondary btn-sm py-0" onclick="event.stopPropagation(); showPatientHistory('${escapeHtml(tv.patient)}')"><i class="bi bi-clock-history me-1"></i>${currentLang === 'fr' ? 'Accès' : 'Accessi'}</button>
                     ${scheduledByMe ? `<button class="btn btn-outline-secondary btn-sm py-0" onclick="event.stopPropagation(); rescheduleVisit('${tv.id}')"><i class="bi bi-arrow-repeat me-1"></i>${currentLang === 'fr' ? 'Reprogrammer' : 'Riprogramma'}</button>` : ''}
                     ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclick="event.stopPropagation(); cancelVisit('${tv.id}')"><i class="bi bi-x-octagon me-1"></i>${t('btn_cancel_visit')}</button>` : ''}
                     ${tv.status === 'completata' ? `<span class="text-muted small"><i class="bi bi-check-all me-1"></i>${t('status_completata')}</span>` : ''}
