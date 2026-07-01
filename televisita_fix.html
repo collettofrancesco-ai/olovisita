@@ -412,6 +412,16 @@
             border-bottom: 1.5px solid #e3eaf3;
         }
         .tv-date-group-header:first-child { margin-top: 0; }
+        .filter-pill { font-size:0.71rem; padding:3px 11px; border-radius:20px; border:1px solid var(--border); background:none; color:var(--text-muted,#78909c); cursor:pointer; transition:all .15s; white-space:nowrap; }
+        .filter-pill.active { background:#1565c0; color:#fff; border-color:#1565c0; }
+        .filter-pill:hover:not(.active) { background:var(--border); }
+        [data-theme="dark"] .filter-pill.active { background:#1976d2; border-color:#1976d2; }
+        .visit-search-input { font-size:0.82rem; border-radius:20px; padding-left:2rem; }
+        .visit-search-wrap { position:relative; }
+        .visit-search-wrap .bi-search { position:absolute; left:0.6rem; top:50%; transform:translateY(-50%); color:#90a4ae; font-size:0.8rem; pointer-events:none; }
+        .history-item { padding:8px 10px; border-radius:8px; border-left:3px solid #e0e0e0; margin-bottom:6px; background:var(--card); }
+        .history-item.centro { border-left-color:#22c55e; }
+        .history-item.network { border-left-color:#3b82f6; }
         .tv-date-group-label {
             font-size: 0.72rem;
             font-weight: 700;
@@ -1913,6 +1923,19 @@
                         <h6 class="fw-bold small text-uppercase text-muted mb-3"><i
                                 class="bi bi-list-ul me-2 text-primary"></i><span data-i18n="your_requests">Le tue
                                 richieste</span></h6>
+                        <div id="visit-filterbar-s1" class="mb-2">
+                            <div class="visit-search-wrap mb-2">
+                                <i class="bi bi-search"></i>
+                                <input type="text" class="form-control form-control-sm visit-search-input" id="visit-search-s1"
+                                    placeholder="Cerca paziente…" oninput="visitSearchQuery=this.value; renderVisits()">
+                            </div>
+                            <div class="d-flex gap-1 flex-wrap" id="visit-pills-s1">
+                                <button class="filter-pill active" onclick="setVisitFilter('all')"><span data-i18n="filter_all">Tutte</span></button>
+                                <button class="filter-pill" onclick="setVisitFilter('today')"><span data-i18n="filter_today">Oggi</span></button>
+                                <button class="filter-pill" onclick="setVisitFilter('pending')"><span data-i18n="filter_pending">Da accettare</span></button>
+                                <button class="filter-pill" onclick="setVisitFilter('no-consent')"><span data-i18n="filter_no_consent">Senza consenso</span></button>
+                            </div>
+                        </div>
                         <div id="cal-s1"></div>
                         <div id="vlist-s1" class="visits-scroll"></div>
                     </div>
@@ -2034,6 +2057,19 @@
                         <h6 class="fw-bold small text-uppercase text-muted mb-3"><i class="bi bi-list-ul me-2"
                                 style="color:#00796b;"></i><span data-i18n="all_visits">Tutte le televisite</span>
                         </h6>
+                        <div id="visit-filterbar-s2" class="mb-2">
+                            <div class="visit-search-wrap mb-2">
+                                <i class="bi bi-search"></i>
+                                <input type="text" class="form-control form-control-sm visit-search-input" id="visit-search-s2"
+                                    placeholder="Cerca paziente…" oninput="visitSearchQuery=this.value; renderVisits()">
+                            </div>
+                            <div class="d-flex gap-1 flex-wrap" id="visit-pills-s2">
+                                <button class="filter-pill active" onclick="setVisitFilter('all')"><span data-i18n="filter_all">Tutte</span></button>
+                                <button class="filter-pill" onclick="setVisitFilter('today')"><span data-i18n="filter_today">Oggi</span></button>
+                                <button class="filter-pill" onclick="setVisitFilter('pending')"><span data-i18n="filter_pending">Da accettare</span></button>
+                                <button class="filter-pill" onclick="setVisitFilter('no-consent')"><span data-i18n="filter_no_consent">Senza consenso</span></button>
+                            </div>
+                        </div>
                         <div id="cal-s2"></div>
                         <div id="vlist-s2" class="visits-scroll"></div>
                     </div>
@@ -2942,6 +2978,10 @@
                 doc_received: "Ricevuto",
                 doc_select_patient_hint: "Seleziona un paziente dalla lista a sinistra per filtrare i documenti e associare i nuovi caricamenti.",
                 doc_offline_title: "Documenti non disponibili su questo dispositivo",
+                filter_all: "Tutte",
+                filter_today: "Oggi",
+                filter_pending: "Da accettare",
+                filter_no_consent: "Senza consenso",
                 doc_offline_body: "Apri OloVisita sul PC abituale per sincronizzarli automaticamente su questo dispositivo.",
                 notif_doc_shared_title: "Nuovo documento da {facility}",
                 notif_doc_shared_body: "{name} · Da: {sender}",
@@ -3228,6 +3268,10 @@
                 doc_received: "Reçu",
                 doc_select_patient_hint: "Sélectionnez un patient dans la liste de gauche pour filtrer les documents et associer les nouveaux téléchargements.",
                 doc_offline_title: "Documents non disponibles sur cet appareil",
+                filter_all: "Toutes",
+                filter_today: "Aujourd'hui",
+                filter_pending: "À accepter",
+                filter_no_consent: "Sans consentement",
                 doc_offline_body: "Ouvrez OloVisita sur votre PC habituel pour les synchroniser automatiquement sur cet appareil.",
                 notif_doc_shared_title: "Nouveau document de {facility}",
                 notif_doc_shared_body: "{name} · De : {sender}",
@@ -3535,6 +3579,9 @@
         // Stato del mini calendario nella sezione "Le tue richieste"
         const _today = new Date();
         let calendarSelectedDate = null; // nessun filtro di default: mostra tutte raggruppate
+        let visitSearchQuery = '';
+        let visitFilter = 'all'; // 'all' | 'today' | 'pending' | 'no-consent'
+        const remindedVisitIds = new Set();
         let calendarViewYear = _today.getFullYear();
         let calendarViewMonth = _today.getMonth(); // 0-indexed
 
@@ -5957,19 +6004,43 @@
 </div>`;
         }
 
+        function setVisitFilter(f) {
+            visitFilter = f;
+            ['s1','s2'].forEach(s => {
+                const pills = document.querySelectorAll(`#visit-pills-${s} .filter-pill`);
+                const map = ['all','today','pending','no-consent'];
+                pills.forEach((p, i) => p.classList.toggle('active', map[i] === f));
+                const searchEl = document.getElementById(`visit-search-${s}`);
+                if (searchEl) searchEl.value = visitSearchQuery;
+            });
+            renderVisits();
+        }
+
         function renderVisits() {
             const isS1 = S.role === 'struttura1';
-            // Le televisite "Centro" sono visibili solo alla struttura che le ha create: per l'altra
-            // struttura è come se non esistessero (oltre a non arrivarle mai via MQTT, vedi getShared()).
             const visible = visibleTelevisite();
 
             const calHtml = calendarHTML(visible);
             document.getElementById('cal-s1').innerHTML = calHtml;
             document.getElementById('cal-s2').innerHTML = calHtml;
 
-            const filtered = calendarSelectedDate
-                ? visible.filter(tv => tv.date === calendarSelectedDate)
-                : visible;
+            // Applica ricerca testuale
+            let filtered = visible;
+            if (visitSearchQuery.trim()) {
+                const q = visitSearchQuery.trim().toLowerCase();
+                filtered = filtered.filter(tv => tv.patient && tv.patient.toLowerCase().includes(q));
+            }
+            // Applica filtro per stato
+            const todayISO = new Date().toISOString().slice(0, 10);
+            if (visitFilter === 'today') {
+                filtered = filtered.filter(tv => tv.date === todayISO);
+            } else if (visitFilter === 'pending') {
+                filtered = filtered.filter(tv => tv.status === 'programmata');
+            } else if (visitFilter === 'no-consent') {
+                filtered = filtered.filter(tv => tv.consentStatus !== 'firmato' && !['completata','rifiutata','annullata'].includes(tv.status));
+            }
+            // Applica filtro calendario (sovrascrive il filtro testo/stato sulla data)
+            if (calendarSelectedDate) filtered = visible.filter(tv => tv.date === calendarSelectedDate);
 
             let html;
             if (!filtered.length) {
@@ -6086,6 +6157,7 @@
                     ${canAct ? `<button class="btn btn-outline-success btn-sm py-0" onclick="event.stopPropagation(); acceptSched('${tv.id}')"><i class="bi bi-check me-1"></i>${t('btn_accept')}</button>
                                   <button class="btn btn-outline-danger btn-sm py-0"  onclick="event.stopPropagation(); rejectSched('${tv.id}')"><i class="bi bi-x me-1"></i>${t('btn_reject')}</button>` : ''}
                     ${waiting ? `<span class="text-muted small"><i class="bi bi-hourglass me-1"></i>${t('waiting_confirm')}</span>` : ''}
+                    <button class="btn btn-outline-secondary btn-sm py-0" onclick="event.stopPropagation(); showPatientHistory('${escapeHtml(tv.patient)}')"><i class="bi bi-clock-history me-1"></i>${currentLang === 'fr' ? 'Historique' : 'Storico'}</button>
                     ${scheduledByMe ? `<button class="btn btn-outline-secondary btn-sm py-0" onclick="event.stopPropagation(); rescheduleVisit('${tv.id}')"><i class="bi bi-arrow-repeat me-1"></i>${currentLang === 'fr' ? 'Reprogrammer' : 'Riprogramma'}</button>` : ''}
                     ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclick="event.stopPropagation(); cancelVisit('${tv.id}')"><i class="bi bi-x-octagon me-1"></i>${t('btn_cancel_visit')}</button>` : ''}
                     ${tv.status === 'completata' ? `<span class="text-muted small"><i class="bi bi-check-all me-1"></i>${t('status_completata')}</span>` : ''}
@@ -9435,7 +9507,108 @@
                 : `Dati di ${escapeHtml(tv.patient)} copiati — scegli una nuova data`, 'info');
         }
 
-        function cancelVisit(id) {
+        // -----------------------------------------------------------------------
+        // PROMEMORIA VISITA IMMINENTE
+        // -----------------------------------------------------------------------
+        function checkUpcomingVisits() {
+            if (!S || !S.televisite) return;
+            const nowMs = Date.now();
+            const WINDOW_MS = 15 * 60 * 1000;
+            visibleTelevisite().forEach(tv => {
+                if (remindedVisitIds.has(tv.id)) return;
+                if (!['programmata','accettata'].includes(tv.status)) return;
+                if (!tv.date || !tv.time) return;
+                const visitMs = new Date(tv.date + 'T' + tv.time).getTime();
+                const diff = visitMs - nowMs;
+                if (diff > 0 && diff <= WINDOW_MS) {
+                    remindedVisitIds.add(tv.id);
+                    showVisitReminder(tv, Math.round(diff / 60000));
+                }
+            });
+        }
+        setInterval(checkUpcomingVisits, 60000);
+
+        function showVisitReminder(tv, minutesLeft) {
+            const existing = document.getElementById('visit-reminder-popup');
+            if (existing) existing.remove();
+            const mins = minutesLeft || 15;
+            const label = currentLang === 'fr'
+                ? `Dans <strong>${mins} min</strong> : visite avec <strong>${escapeHtml(tv.patient)}</strong>`
+                : `Tra <strong>${mins} min</strong>: visita con <strong>${escapeHtml(tv.patient)}</strong>`;
+            const overlay = document.createElement('div');
+            overlay.id = 'visit-reminder-popup';
+            overlay.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:3000;max-width:320px;width:90%;animation:fadeInScale .25s ease;';
+            overlay.innerHTML = `
+            <div style="background:#fff;border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,0.18);border-left:4px solid #1565c0;overflow:hidden;">
+                <div style="background:#e8f0fe;padding:10px 14px;display:flex;align-items:center;gap:10px;">
+                    <i class="bi bi-alarm-fill" style="color:#1565c0;font-size:1.1rem;"></i>
+                    <span style="font-weight:700;font-size:0.85rem;color:#1a3a6c;">${currentLang === 'fr' ? 'Rappel de visite' : 'Promemoria visita'}</span>
+                    <button onclick="document.getElementById('visit-reminder-popup').remove()" style="margin-left:auto;background:none;border:none;color:#78909c;cursor:pointer;font-size:1rem;line-height:1;">×</button>
+                </div>
+                <div style="padding:12px 14px;">
+                    <p style="margin:0 0 10px;font-size:0.83rem;color:#37474f;">${label}</p>
+                    <div style="display:flex;gap:8px;">
+                        <button class="btn btn-primary btn-sm" onclick="document.getElementById('visit-reminder-popup').remove(); startVisit('${tv.id}')">
+                            <i class="bi bi-camera-video-fill me-1"></i>${currentLang === 'fr' ? 'Démarrer' : 'Avvia ora'}
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('visit-reminder-popup').remove()">
+                            ${currentLang === 'fr' ? 'Ignorer' : 'Ignora'}
+                        </button>
+                    </div>
+                </div>
+            </div>`;
+            document.body.appendChild(overlay);
+            setTimeout(() => { const el = document.getElementById('visit-reminder-popup'); if (el) el.remove(); }, 60000);
+        }
+
+        // -----------------------------------------------------------------------
+        // STORICO PAZIENTE
+        // -----------------------------------------------------------------------
+        function showPatientHistory(patientName) {
+            const existing = document.getElementById('patient-history-modal');
+            if (existing) existing.remove();
+            const allVisits = S.televisite
+                .filter(tv => tv.patient === patientName)
+                .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+            const rows = allVisits.length ? allVisits.map(tv => {
+                const si = statusInfo(tv.status);
+                const modeIcon = tv.visitMode === 'centro' ? 'bi-building-lock' : 'bi-globe2';
+                const modeColor = tv.visitMode === 'centro' ? '#22c55e' : '#3b82f6';
+                return `<div class="history-item ${tv.visitMode}">
+                    <div class="d-flex justify-content-between align-items-start gap-2">
+                        <div>
+                            <span class="badge ${si.cls}" style="font-size:.68rem;">${si.label}</span>
+                            <span class="ms-1" style="font-size:0.7rem;color:#90a4ae;"><i class="bi ${modeIcon}" style="color:${modeColor};"></i></span>
+                        </div>
+                        <span style="font-size:0.75rem;color:#78909c;white-space:nowrap;">
+                            <i class="bi bi-calendar2 me-1"></i>${fmtDate(tv.date)} <i class="bi bi-clock ms-1 me-1"></i>${tv.time || '—'}
+                        </span>
+                    </div>
+                    ${tv.notes ? `<p class="mb-0 mt-1" style="font-size:0.73rem;color:#546e7a;">${escapeHtml(tv.notes)}</p>` : ''}
+                    ${tv.createdByName ? `<p class="mb-0 mt-1" style="font-size:0.68rem;color:#90a4ae;"><i class="bi bi-person-badge me-1"></i>${escapeHtml(tv.createdByName)}</p>` : ''}
+                </div>`;
+            }).join('') : `<p class="text-muted text-center small py-3">${currentLang === 'fr' ? 'Aucune visite précédente.' : 'Nessuna visita precedente.'}</p>`;
+
+            const overlay = document.createElement('div');
+            overlay.id = 'patient-history-modal';
+            overlay.style.cssText = 'position:fixed;inset:0;z-index:3001;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;padding:1rem;';
+            overlay.innerHTML = `
+            <div style="background:var(--card);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.25);max-width:460px;width:100%;max-height:80vh;display:flex;flex-direction:column;overflow:hidden;animation:fadeInScale .2s ease;">
+                <div style="background:#e8f0fe;padding:14px 18px;display:flex;align-items:center;gap:10px;flex-shrink:0;">
+                    <i class="bi bi-clock-history" style="color:#1565c0;font-size:1.1rem;"></i>
+                    <div>
+                        <div style="font-weight:700;font-size:0.9rem;color:#1a3a6c;">${currentLang === 'fr' ? 'Historique' : 'Storico visite'}</div>
+                        <div style="font-size:0.75rem;color:#546e7a;">${escapeHtml(patientName)} · ${allVisits.length} visit${allVisits.length !== 1 ? 'e' : 'a'}</div>
+                    </div>
+                    <button onclick="document.getElementById('patient-history-modal').remove()" style="margin-left:auto;background:none;border:none;color:#78909c;cursor:pointer;font-size:1.3rem;line-height:1;">×</button>
+                </div>
+                <div style="overflow-y:auto;padding:14px 16px;">${rows}</div>
+            </div>`;
+            overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+            document.body.appendChild(overlay);
+        }
+
+                function cancelVisit(id) {
             const tv = S.televisite.find(t => t.id === id);
             if (!tv) return;
             const overlay = document.createElement('div');
