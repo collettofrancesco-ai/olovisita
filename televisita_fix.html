@@ -9472,7 +9472,7 @@
         }
 
         function selectPatientContext(id) {
-            S.activeTvId = id;
+            S.activeTvId = S.activeTvId === id ? null : id;
             renderAll();
             syncState(null);
         }
