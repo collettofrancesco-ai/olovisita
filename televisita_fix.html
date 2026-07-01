@@ -762,18 +762,44 @@
 
         .app-title-main {
             font-family: 'Outfit', 'Segoe UI', sans-serif;
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #0d47a1;
+            font-size: 2rem;
+            font-weight: 800;
             margin: 0;
-            line-height: 1.2;
+            line-height: 1.15;
+            letter-spacing: -0.01em;
+        }
+        .app-title-main .olo-part {
+            color: #0d47a1;
+        }
+        .app-title-main .visita-part {
+            background: linear-gradient(135deg, #1565c0 0%, #0097a7 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .app-title-pill {
+            display: inline-block;
+            font-size: 0.6rem;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: #fff;
+            background: linear-gradient(135deg, #1565c0, #0097a7);
+            border-radius: 20px;
+            padding: 2px 8px;
+            vertical-align: middle;
+            margin-left: 6px;
+            position: relative;
+            top: -4px;
         }
 
         .app-subtitle-main {
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             font-weight: 500;
             color: #556987;
-            margin: 4px 0 0 0;
+            margin: 6px 0 0 0;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
         }
 
         .login-card {
@@ -1244,9 +1270,10 @@
                     <div class="logo-divider"></div>
 
                     <div class="product-branding-text">
-                        <div class="app-title-main"><strong>oloHealth Televisita</strong></div>
-                        <div class="app-subtitle-main" data-i18n="app_subtitle"><em>Piattaforma Televisite Mediche</em>
+                        <div class="app-title-main">
+                            <span class="olo-part">Olo</span><span class="visita-part">Visita</span><span class="app-title-pill">by oloHealth</span>
                         </div>
+                        <div class="app-subtitle-main" data-i18n="app_subtitle">Piattaforma Televisite Mediche</div>
                     </div>
                 </div>
             </div>
