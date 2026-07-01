@@ -2297,6 +2297,17 @@
                             <input type="file" id="file-inp" class="d-none" multiple onchange="uploadFiles(event)">
                         </div>
 
+                        <!-- Banner documenti non disponibili su questo dispositivo (cold-start) -->
+                        <div id="doc-offline-banner" class="d-none mb-3 p-3 rounded-3" style="background:#fff3e0; border:1px solid #ffb74d;">
+                            <div class="d-flex align-items-start gap-2">
+                                <i class="bi bi-laptop flex-shrink-0 mt-1" style="color:#e65100; font-size:1rem;"></i>
+                                <div>
+                                    <div class="fw-semibold small" style="color:#bf360c;" data-i18n="doc_offline_title">Documenti non disponibili su questo dispositivo</div>
+                                    <div class="small mt-1" style="color:#6d4c41; font-size:0.73rem;" data-i18n="doc_offline_body">Apri OloVisita sul PC abituale per sincronizzarli automaticamente su questo dispositivo.</div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div id="doc-list" class="d-flex flex-column gap-3"></div>
                     </div>
                 </div>
@@ -2919,6 +2930,8 @@
                 doc_shared_with: "Condiviso con {facility}",
                 doc_received: "Ricevuto",
                 doc_select_patient_hint: "Seleziona un paziente dalla lista a sinistra per filtrare i documenti e associare i nuovi caricamenti.",
+                doc_offline_title: "Documenti non disponibili su questo dispositivo",
+                doc_offline_body: "Apri OloVisita sul PC abituale per sincronizzarli automaticamente su questo dispositivo.",
                 notif_doc_shared_title: "Nuovo documento da {facility}",
                 notif_doc_shared_body: "{name} · Da: {sender}",
                 banner_doc_shared: "Il documento <strong>{name}</strong> è stato condiviso da <strong>{facility}</strong>",
@@ -3203,6 +3216,8 @@
                 doc_shared_with: "Partagé avec {facility}",
                 doc_received: "Reçu",
                 doc_select_patient_hint: "Sélectionnez un patient dans la liste de gauche pour filtrer les documents et associer les nouveaux téléchargements.",
+                doc_offline_title: "Documents non disponibles sur cet appareil",
+                doc_offline_body: "Ouvrez OloVisita sur votre PC habituel pour les synchroniser automatiquement sur cet appareil.",
                 notif_doc_shared_title: "Nouveau document de {facility}",
                 notif_doc_shared_body: "{name} · De : {sender}",
                 banner_doc_shared: "Le document <strong>{name}</strong> a été partagé par <strong>{facility}</strong>",
@@ -7284,6 +7299,20 @@
         function renderDocs() {
             const el = document.getElementById('doc-list');
             if (!el) return;
+
+            // Banner "documenti non disponibili": visibile se esiste almeno un doc senza base64Data
+            // (cold-start su nuovo PC) e scompare automaticamente quando tutti i file arrivano.
+            const offlineBanner = document.getElementById('doc-offline-banner');
+            if (offlineBanner) {
+                const missingDocs = S.docs.filter(d => !d.base64Data && (d.by === S.role || d.shared !== false));
+                offlineBanner.classList.toggle('d-none', missingDocs.length === 0);
+                if (missingDocs.length > 0) {
+                    const titleEl = offlineBanner.querySelector('[data-i18n="doc_offline_title"]');
+                    const bodyEl  = offlineBanner.querySelector('[data-i18n="doc_offline_body"]');
+                    if (titleEl) titleEl.textContent = t('doc_offline_title');
+                    if (bodyEl)  bodyEl.textContent  = t('doc_offline_body');
+                }
+            }
 
             populatePatientFilter();
 
