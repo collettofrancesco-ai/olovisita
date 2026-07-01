@@ -6039,16 +6039,17 @@
             } else if (visitFilter === 'no-consent') {
                 filtered = filtered.filter(tv => tv.consentStatus !== 'firmato' && !['completata','rifiutata','annullata'].includes(tv.status));
             }
-            // Applica filtro calendario (sovrascrive il filtro testo/stato sulla data)
-            if (calendarSelectedDate) filtered = visible.filter(tv => tv.date === calendarSelectedDate);
+            // Applica filtro calendario solo se non c'è una ricerca testuale attiva
+            if (calendarSelectedDate && !visitSearchQuery.trim()) filtered = visible.filter(tv => tv.date === calendarSelectedDate);
 
             let html;
+            const useCalendarFlat = calendarSelectedDate && !visitSearchQuery.trim();
             if (!filtered.length) {
-                const emptyMsg = calendarSelectedDate
+                const emptyMsg = useCalendarFlat
                     ? (currentLang === 'fr' ? 'Aucune visite ce jour' : 'Nessuna visita in questo giorno')
                     : t('no_visits');
                 html = `<div class="empty small"><i class="bi bi-calendar-x fs-2"></i><p class="mt-2 mb-0">${emptyMsg}</p></div>`;
-            } else if (calendarSelectedDate) {
+            } else if (useCalendarFlat) {
                 // Filtro per giorno: lista semplice, l'header è già nel footer del calendario
                 html = filtered.map(tv => visitHTML(tv, isS1)).join('');
             } else {
