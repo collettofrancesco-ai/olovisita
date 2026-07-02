@@ -393,6 +393,49 @@
         }
         .tv-cal-today .tv-cal-dot { background: rgba(255,255,255,0.85); }
         .tv-cal-selected .tv-cal-dot { background: rgba(255,255,255,0.85); }
+        .tv-cal-info-btn {
+            position: relative;
+            background: rgba(255,255,255,0.15);
+            border: none;
+            padding: 3px 7px;
+            cursor: pointer;
+            color: #fff;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            line-height: 1;
+            transition: background .15s;
+        }
+        .tv-cal-info-btn:hover { background: rgba(255,255,255,0.3); }
+        .tv-cal-legend {
+            display: none;
+            position: absolute;
+            top: calc(100% + 6px);
+            right: 0;
+            background: var(--card, #fff);
+            border: 1px solid var(--border, #e0e0e0);
+            border-radius: 10px;
+            padding: 10px 13px;
+            min-width: 175px;
+            z-index: 100;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.13);
+            pointer-events: none;
+        }
+        .tv-cal-info-btn.open .tv-cal-legend { display: block; pointer-events: auto; }
+        .tv-cal-legend-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.75rem;
+            color: var(--text, #374151);
+            padding: 3px 0;
+            white-space: nowrap;
+        }
+        .tv-cal-legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
         .tv-cal-footer {
             display: flex;
             align-items: center;
@@ -6000,7 +6043,17 @@
   <div class="tv-cal-header">
     <button class="tv-cal-nav" onclick="changeCalendarMonth(-1)"><i class="bi bi-chevron-left"></i></button>
     <span class="tv-cal-month-label">${label}</span>
-    <button class="tv-cal-nav" onclick="changeCalendarMonth(1)"><i class="bi bi-chevron-right"></i></button>
+    <div style="display:flex;align-items:center;gap:4px;">
+      <button class="tv-cal-nav" onclick="changeCalendarMonth(1)"><i class="bi bi-chevron-right"></i></button>
+      <button class="tv-cal-info-btn" onclick="this.classList.toggle('open')" onblur="setTimeout(()=>this.classList.remove('open'),150)">
+        <i class="bi bi-info-circle"></i>
+        <div class="tv-cal-legend">
+          <div class="tv-cal-legend-row"><span class="tv-cal-legend-dot" style="background:#22c55e;"></span>${currentLang==='fr'?'Visite Centre':'Visita Centro'}</div>
+          <div class="tv-cal-legend-row"><span class="tv-cal-legend-dot" style="background:#3b82f6;"></span>Second Opinion</div>
+          <div class="tv-cal-legend-row"><span class="tv-cal-legend-dot" style="background:linear-gradient(90deg,#22c55e 50%,#3b82f6 50%);"></span>${currentLang==='fr'?'Les deux':'Entrambi'}</div>
+        </div>
+      </button>
+    </div>
   </div>
   <div class="tv-cal-grid">
     ${dayNames.map(n => `<div class="tv-cal-dayname">${n}</div>`).join('')}
