@@ -2255,6 +2255,23 @@
                     </div>
                 </div>
 
+                <div class="section-card mb-4" id="card-imm-centro-section">
+                    <div class="card-header">
+                        <div class="card-icon" style="background:#e8f5e9;color:#2e7d32;"><i class="bi bi-hospital-fill"></i></div>
+                        <div>
+                            <div class="fw-bold" data-i18n="card_imm_centro_title">Visita Centro Urgente</div>
+                            <div class="text-muted" style="font-size:.78rem;" data-i18n="card_imm_centro_sub">Accesso immediato senza prenotazione</div>
+                        </div>
+                    </div>
+                    <div class="p-4 text-center py-3">
+                        <i class="bi bi-hospital" style="font-size:2.8rem;color:#2e7d32;"></i>
+                        <p class="mt-2 text-muted small" data-i18n="imm_centro_idle_text">Avvia subito una visita centro per un paziente presente ora</p>
+                        <button class="btn btn-success fw-bold px-4" data-bs-toggle="modal" data-bs-target="#centroUrgentModal">
+                            <i class="bi bi-hospital-fill me-2"></i><span data-i18n="btn_centro_urgent">Avvia Visita Centro</span>
+                        </button>
+                    </div>
+                </div>
+
                 <div class="section-card" id="video-card">
                     <div class="card-header">
                         <div class="card-icon" style="background:#e8f5e9;color:#2e7d32;"><i
@@ -2503,6 +2520,87 @@
                         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annulla</button>
                         <button type="submit" class="btn btn-warning fw-bold text-white px-4">
                             <i class="bi bi-lightning-charge-fill me-1"></i> Richiedi Visita Urgente
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Visita Centro Urgente -->
+    <div class="modal fade" id="centroUrgentModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content" style="border-radius:16px;overflow:hidden;">
+                <div class="modal-header text-white border-0 py-3"
+                    style="background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%);">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-hospital-fill fs-5"></i>
+                        <h5 class="modal-title fw-bold m-0" style="font-size: 1.1rem; letter-spacing: 0.5px;">Visita Centro Urgente</h5>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="centro-urgent-form" onsubmit="submitCentroUrgentRequest(event)" autocomplete="off">
+                    <div class="modal-body p-4">
+                        <p class="text-muted small mb-4">Inserisci le informazioni del paziente per avviare subito la visita centro. Il consenso informato verrà caricato automaticamente.</p>
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold small">Paziente (Nome e Cognome) <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="cu-patient" placeholder="Nome e Cognome" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold small">Email Paziente <span class="text-danger">*</span></label>
+                                <input type="email" class="form-control" id="cu-email" placeholder="email@esempio.com" required>
+                            </div>
+                        </div>
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold small">Cellulare Paziente</label>
+                                <input type="tel" class="form-control" id="cu-phone" placeholder="+39 333 123 4567">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold small">Data di nascita</label>
+                                <input type="date" class="form-control" id="cu-dob">
+                            </div>
+                        </div>
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold small">Sesso</label>
+                                <select class="form-select" id="cu-gender">
+                                    <option value="M">M</option>
+                                    <option value="F">F</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold small">Luogo di nascita</label>
+                                <input type="text" class="form-control" id="cu-pob" placeholder="Comune" list="comuni-list">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold small">Tipo Identificativo</label>
+                                <select class="form-select" id="cu-id-type" onchange="toggleIdField('cu')">
+                                    <option value="" selected>-- Nessuno --</option>
+                                    <option value="CF">Codice Fiscale (Italia)</option>
+                                    <option value="CIN">CIN (Tunisia)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row g-3 mb-3" id="cu-id-value-row" style="display: none;">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold small" id="cu-id-label">Codice Identificativo</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control font-monospace" id="cu-cf"
+                                        placeholder="Codice Fiscale"
+                                        style="text-transform: uppercase; letter-spacing: 0.5px;">
+                                    <button type="button" class="btn btn-outline-primary" id="cu-cf-btn"
+                                        onclick="autoCalculateCF('cu')" title="Calcola automaticamente"
+                                        style="border-color: #dee2e6;"><i class="bi bi-magic text-primary"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-0 pt-0">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annulla</button>
+                        <button type="submit" class="btn btn-success fw-bold px-4">
+                            <i class="bi bi-hospital-fill me-1"></i> Avvia Visita Centro
                         </button>
                     </div>
                 </form>
@@ -3100,6 +3198,11 @@
                 toast_call_ended: "La videoconferenza è stata terminata.",
                 toast_sched_started: "Videoconferenza avviata per <strong>{patient}</strong>",
                 toast_imm_sent: "Richiesta inviata alla Struttura 2. In attesa di risposta…",
+                card_imm_centro_title: "Visita Centro Urgente",
+                card_imm_centro_sub: "Accesso immediato senza prenotazione",
+                imm_centro_idle_text: "Avvia subito una visita centro per un paziente presente ora",
+                btn_centro_urgent: "Avvia Visita Centro",
+                toast_imm_centro_started: "Visita centro urgente avviata per <strong>{patient}</strong>",
                 toast_imm_accepted_local: "Richiesta accettata! Videoconferenza pronta.",
                 banner_imm_accepted_local: "Hai accettato la televisita immediata. Puoi entrare in conferenza.",
                 toast_imm_rejected_local: "Richiesta rifiutata.",
@@ -3393,6 +3496,11 @@
                 toast_call_ended: "La visioconférence est terminée.",
                 toast_sched_started: "Visioconférence démarrée pour <strong>{patient}</strong>",
                 toast_imm_sent: "Demande envoyée à l'Établissement 2. En attente de réponse…",
+                card_imm_centro_title: "Visite Centre Urgente",
+                card_imm_centro_sub: "Accès immédiat sans réservation",
+                imm_centro_idle_text: "Démarrer immédiatement une visite centre pour un patient présent maintenant",
+                btn_centro_urgent: "Démarrer la Visite Centre",
+                toast_imm_centro_started: "Visite centre urgente démarrée pour <strong>{patient}</strong>",
                 toast_imm_accepted_local: "Demande acceptée ! Visioconférence prête.",
                 banner_imm_accepted_local: "Vous avez accepté la télévisite immédiata. Vous pouvez rejoindre la conférence.",
                 toast_imm_rejected_local: "Demande refusée.",
@@ -9978,6 +10086,105 @@
 
             // Chiama la funzione di richiesta urgente con i parametri inseriti
             requestImmediate(patientName, patientEmail, phone, dob, gender, pob, idType, cf);
+        }
+
+        function submitCentroUrgentRequest(event) {
+            if (event) event.preventDefault();
+
+            const patientName = document.getElementById('cu-patient').value.trim();
+            const patientEmail = document.getElementById('cu-email').value.trim();
+            const phone = document.getElementById('cu-phone').value.trim();
+            const dob = document.getElementById('cu-dob').value;
+            const gender = document.getElementById('cu-gender').value;
+            const pob = document.getElementById('cu-pob').value.trim();
+            const idType = document.getElementById('cu-id-type').value;
+            let cf = document.getElementById('cu-cf').value.trim().toUpperCase();
+
+            if (!cf && idType === 'CF' && dob && patientName) {
+                cf = calculateItalianCF(patientName, dob, gender, pob);
+            } else if (!cf && idType === 'CIN' && patientName) {
+                let hash = 0;
+                for (let i = 0; i < patientName.length; i++) hash = patientName.charCodeAt(i) + ((hash << 5) - hash);
+                let cin = '';
+                for (let i = 0; i < 8; i++) cin += Math.abs((hash + i) * 17) % 10;
+                cf = cin;
+            }
+
+            const modalEl = document.getElementById('centroUrgentModal');
+            const modalInstance = bootstrap.Modal.getInstance(modalEl);
+            if (modalInstance) modalInstance.hide();
+            document.getElementById('centro-urgent-form').reset();
+            document.getElementById('cu-id-value-row').style.display = 'none';
+
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString(currentLang === 'fr' ? 'fr-FR' : 'it-IT', { hour: '2-digit', minute: '2-digit' });
+
+            const newTv = {
+                id: 'TV' + Date.now() + Math.floor(Math.random() * 100),
+                patient: patientName || 'Paziente',
+                email: patientEmail || '',
+                phone: phone,
+                dob: dob,
+                gender: gender,
+                pob: pob,
+                idType: idType,
+                cf: cf,
+                date: now.toISOString().split('T')[0],
+                time: timeStr,
+                doctor: DOCTORS[S.role].name,
+                room: null,
+                status: 'in-corso',
+                consentStatus: 'firmato',
+                consentOtp: null,
+                scheduledBy: S.role,
+                type: 'centro'
+            };
+
+            S.televisite.unshift(newTv);
+            S.activeTvId = newTv.id;
+
+            const consentDoc = {
+                id: 'D_CONS_' + Date.now() + Math.floor(Math.random() * 100),
+                name: 'Consenso_Visita_Centro.pdf',
+                ext: 'pdf',
+                size: '124 KB',
+                by: S.role,
+                at: now.toLocaleDateString(currentLang === 'fr' ? 'fr-FR' : 'it-IT', { day: '2-digit', month: '2-digit' }) + ' ' + timeStr,
+                patient: newTv.patient,
+                icon: 'bi-file-earmark-pdf-fill',
+                ibg: '#ffebee',
+                ic: '#c62828',
+                file: null,
+                shared: false,
+                base64Data: null,
+                category: 'consenso',
+                isConsentDocument: true
+            };
+            S.docs.push(consentDoc);
+
+            renderAll();
+            showToast(t('toast_imm_centro_started', { patient: newTv.patient }), 'success');
+
+            if (patientEmail) {
+                const portalUrl = buildPatientPortalUrl ? buildPatientPortalUrl(newTv.id) : '';
+                const mailBody = currentLang === 'fr'
+                    ? `Cher patient, vous avez été enregistré pour une visite urgente au centre. Veuillez accéder au portail patient pour signer le consentement.`
+                    : `Gentile paziente, sei stato registrato per una visita urgente al centro. Accedi al portale paziente per firmare il consenso.`;
+                const email = addSimulatedEmail({
+                    type: 'centro_urgent_invite',
+                    patientName: newTv.patient,
+                    patientEmail: patientEmail,
+                    subject: currentLang === 'fr' ? 'Visite Centre Urgente' : 'Visita Centro Urgente',
+                    body: mailBody,
+                    tvId: newTv.id,
+                    inviteUrl: portalUrl
+                });
+                showEmailNotificationToast(email);
+                addNotif('bi-envelope-fill', t('email_invite_simulated_title', { patient: newTv.patient }), mailBody, 'incoming', email.id);
+                flashBell();
+            }
+
+            saveState();
         }
 
         function cancelImmediate() {
