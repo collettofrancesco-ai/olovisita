@@ -6338,7 +6338,7 @@
                 ${consentSectionHTML(tv, scheduledByMe)}
  
                 <div class="d-flex gap-2 flex-wrap align-items-center">
-                    ${canJoin && !(isCentroVisit && !tv.room) ? `<button class="btn btn-success btn-sm py-0" onclick="event.stopPropagation(); startVisit('${tv.id}')" ${disableAvvia ? 'disabled title="' + t('btn_disabled_consent') + '" style="opacity: 0.65; cursor: not-allowed;"' : ''}><i class="bi bi-camera-video-fill me-1"></i>${scheduledByMe ? (currentLang === 'it' ? 'Avvia' : 'Démarrer') : (currentLang === 'it' ? 'Entra' : 'Rejoindre')}</button>` : ''}
+                    ${canJoin ? `<button class="btn btn-success btn-sm py-0" onclick="event.stopPropagation(); startVisit('${tv.id}')" ${disableAvvia ? 'disabled title="' + t('btn_disabled_consent') + '" style="opacity: 0.65; cursor: not-allowed;"' : ''}><i class="bi bi-camera-video-fill me-1"></i>${scheduledByMe ? (currentLang === 'it' ? 'Avvia' : 'Démarrer') : (currentLang === 'it' ? 'Entra' : 'Rejoindre')}</button>` : ''}
                     ${canAct ? `<button class="btn btn-outline-success btn-sm py-0" onclick="event.stopPropagation(); acceptSched('${tv.id}')"><i class="bi bi-check me-1"></i>${t('btn_accept')}</button>
                                   <button class="btn btn-outline-danger btn-sm py-0"  onclick="event.stopPropagation(); rejectSched('${tv.id}')"><i class="bi bi-x me-1"></i>${t('btn_reject')}</button>` : ''}
                     ${waiting ? `<span class="text-muted small"><i class="bi bi-hourglass me-1"></i>${t('waiting_confirm')}</span>` : ''}
@@ -9914,7 +9914,7 @@
                 return;
             }
             S.activeTvId = id;
-            if (tv.consentStatus !== 'firmato' && tv.type !== 'urgente') {
+            if (tv.consentStatus !== 'firmato' && tv.type !== 'urgente' && tv.type !== 'centro') {
                 showToast(t('btn_disabled_consent'), 'danger');
                 return;
             }
@@ -10141,7 +10141,7 @@
                 date: now.toISOString().split('T')[0],
                 time: timeStr,
                 doctor: DOCTORS[S.role].name,
-                room: null,
+                room: genRoom('TV' + Date.now() + Math.floor(Math.random() * 100)),
                 status: 'in-corso',
                 consentStatus: null,
                 consentOtp: null,
@@ -10152,6 +10152,7 @@
 
             S.televisite.unshift(newTv);
             S.activeTvId = newTv.id;
+            S.activeRoom = newTv.room;
 
             const consentDoc = {
                 id: 'D_CONS_' + Date.now() + Math.floor(Math.random() * 100),
@@ -10173,6 +10174,8 @@
             S.docs.push(consentDoc);
 
             renderAll();
+            launchJitsi(newTv.room);
+            scrollToVideo();
             showToast(t('toast_imm_centro_started', { patient: newTv.patient }), 'success');
             syncState(null);
         }
