@@ -2133,7 +2133,7 @@
                 <!-- Card unificato Accesso Urgente (Centro + Second Opinion) -->
                 <div class="section-card mb-4" id="card-urgente-section">
                     <div class="card-header">
-                        <div class="card-icon" style="background:#fff3e0;color:#e65100;"><i class="bi bi-lightning-charge-fill"></i></div>
+                        <div class="card-icon" style="background:#e3f2fd;color:#1565c0;"><i class="bi bi-lightning-charge-fill"></i></div>
                         <div>
                             <div class="fw-bold" data-i18n="card_urgente_title">Accesso Urgente</div>
                             <div class="text-muted" style="font-size:.78rem;" data-i18n="card_urgente_sub">Televisite immediate senza prenotazione</div>
@@ -2168,23 +2168,23 @@
                         </div>
                         <!-- Colonna destra: Second Opinion Urgente -->
                         <div class="col-12 col-md-6">
-                            <div class="px-3 py-2 border-bottom" style="background:#fff8f1;">
-                                <span class="fw-semibold small" style="color:#e65100;"><i class="bi bi-lightning-charge-fill me-1"></i><span data-i18n="card_imm_title">Second Opinion Urgente</span></span>
+                            <div class="px-3 py-2 border-bottom" style="background:#eff6ff;">
+                                <span class="fw-semibold small" style="color:#1565c0;"><i class="bi bi-lightning-charge-fill me-1"></i><span data-i18n="card_imm_title">Second Opinion Urgente</span></span>
                             </div>
                             <div id="imm-s1" class="p-3">
                                 <div id="p-idle">
                                     <div class="text-center">
-                                        <i class="bi bi-camera-video" style="font-size:2rem;color:#e65100;"></i>
+                                        <i class="bi bi-camera-video" style="font-size:2rem;color:#1565c0;"></i>
                                         <p class="mt-2 text-muted small" data-i18n="imm_idle_text">Avvia una televisita urgente con il collega di Struttura 2</p>
-                                        <button class="btn btn-warning btn-sm fw-bold px-3" data-bs-toggle="modal" data-bs-target="#urgentVisitModal">
+                                        <button class="btn btn-primary btn-sm fw-bold px-3" data-bs-toggle="modal" data-bs-target="#urgentVisitModal">
                                             <i class="bi bi-lightning-charge-fill me-1"></i><span data-i18n="imm_btn_request">Richiedi Televisita Ora</span>
                                         </button>
                                     </div>
                                 </div>
                                 <div id="p-waiting" style="display:none;">
-                                    <div class="req-card" style="background:#fffde7;padding:1.2rem;">
-                                        <div class="status-orb pulse" style="background:#fff8e1;color:#f57f17;width:52px;height:52px;font-size:1.3rem;"><i class="bi bi-hourglass-split"></i></div>
-                                        <h6 class="fw-bold mt-2" style="color:#e65100;" data-i18n="imm_waiting_title">In attesa di risposta…</h6>
+                                    <div class="req-card" style="background:#dbeafe;padding:1.2rem;">
+                                        <div class="status-orb pulse" style="background:#bfdbfe;color:#1565c0;width:52px;height:52px;font-size:1.3rem;"><i class="bi bi-hourglass-split"></i></div>
+                                        <h6 class="fw-bold mt-2" style="color:#1565c0;" data-i18n="imm_waiting_title">In attesa di risposta…</h6>
                                         <p class="text-muted small mb-2" data-i18n="imm_waiting_text">Il collega è stato notificato.<br>In attesa di accettazione.</p>
                                         <button class="btn btn-outline-danger btn-sm" onclick="cancelImmediate()"><i class="bi bi-x-circle me-1"></i><span data-i18n="btn_cancel">Annulla</span></button>
                                     </div>
@@ -2221,9 +2221,9 @@
                                     </div>
                                 </div>
                                 <div id="q-incoming" style="display:none;">
-                                    <div class="req-card" style="background:#fff3e0;padding:1.2rem;">
-                                        <div class="status-orb pulse" style="background:#ffe0b2;color:#e65100;width:52px;height:52px;font-size:1.3rem;"><i class="bi bi-camera-video-fill"></i></div>
-                                        <h6 class="fw-bold mt-2" style="color:#e65100;" data-i18n="imm_request_recv">Richiesta Televisita</h6>
+                                    <div class="req-card" style="background:#e3f2fd;padding:1.2rem;">
+                                        <div class="status-orb pulse" style="background:#bfdbfe;color:#1565c0;width:52px;height:52px;font-size:1.3rem;"><i class="bi bi-camera-video-fill"></i></div>
+                                        <h6 class="fw-bold mt-2" style="color:#1565c0;" data-i18n="imm_request_recv">Richiesta Televisita</h6>
                                         <p class="text-muted small mb-1"><span data-i18n="from_label">Da:</span> <strong id="imm-recv-sender-name">Médecin Thomas Perturbè</strong></p>
                                         <p class="text-muted small mb-2" id="imm-recv-sender-details"><span data-i18n="spec_cardio">Cardiologie</span> — Centre Tunis</p>
                                         <div class="d-flex gap-2 justify-content-center flex-wrap">
@@ -2412,9 +2412,9 @@
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content" style="border-radius:16px;overflow:hidden;">
                 <div class="modal-header text-white border-0 py-3"
-                    style="background: linear-gradient(135deg, #f57c00 0%, #e65100 100%);">
+                    style="background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);">
                     <div class="d-flex align-items-center gap-2">
-                        <i class="bi bi-lightning-charge-fill fs-5 text-warning animate-pulse"></i>
+                        <i class="bi bi-lightning-charge-fill fs-5 text-white animate-pulse"></i>
                         <h5 class="modal-title fw-bold m-0" style="font-size: 1.1rem; letter-spacing: 0.5px;">Second Opinion Urgente</h5>
                     </div>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
