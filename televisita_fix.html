@@ -5560,6 +5560,7 @@
                         persistTvState(getSharedStateForStorage());
                         showToast(t('toast_consent_signed'), 'success');
                         addNotif('bi-check-circle-fill', t('email_simulated_title', { patient: tv.patient }), t('toast_consent_signed'), 'incoming');
+                        pushBrowserNotif('✍️ Consenso firmato', `${tv.patient} ha firmato il consenso`, 'consent_signed');
                         flashBell();
                     }
                     // Una volta recepita la firma, non serve più tenerla "in attesa" sul broker: un
@@ -5668,6 +5669,7 @@
                 showBanner(`<i class="bi bi-camera-video-fill me-2"></i>${t('toast_imm_recv_banner', { name: other.name })}`, 'warning');
                 showToast(t('toast_imm_recv_title', { name: other.name }), 'warning');
                 addNotif('bi-camera-video-fill', t('notif_imm_req_title'), t('notif_imm_req_body', { name: other.name, facility: other.facility }), 'incoming');
+                pushBrowserNotif('🔴 Second Opinion Urgente', `${other.name} (${other.facility}) richiede una televisita urgente`, 'imm_request');
                 flashBell();
             }
             if (ev === 'imm_cancel' && S.role !== event.sender) {
@@ -5677,6 +5679,7 @@
             if (ev === 'imm_accepted' && S.role === event.sender) {
                 showToast(t('toast_imm_accepted', { name: other.name }), 'success');
                 addNotif('bi-check-circle-fill', t('notif_imm_acc_title'), t('notif_imm_acc_body', { name: other.name }), 'sent');
+                pushBrowserNotif('✅ Richiesta accettata', `${other.name} ha accettato la televisita urgente`, 'imm_accepted');
                 flashBell();
                 setTimeout(() => joinVideo(), 600);
             }
@@ -5689,24 +5692,28 @@
             if (ev === 'visit_scheduled' && event.fromRole !== S.role && event.patient) {
                 showVisitBookedPopup(event.patient, event.date, event.time, event.fromRole, event.doctorName);
                 addNotif('bi-calendar-plus-fill', t('notif_sched_created_title'), t('notif_sched_created_body', { patient: event.patient, date: event.date, time: event.time }), 'incoming');
+                pushBrowserNotif('📅 Nuova visita programmata', `${event.patient} — ${fmtDate(event.date)} ${event.time || ''}`, 'visit_scheduled');
                 flashBell();
             }
             if (ev === 'visit_accepted' && event.scheduledBy === S.role && event.visitMode !== 'centro') {
                 const fromD = DOCTORS[event.scheduledBy === 'struttura1' ? 'struttura2' : 'struttura1'] || {};
                 showVisitUpdatePopup('accepted', event.patient, event.date, event.time, fromD);
                 addNotif('bi-calendar-check-fill', t('notif_sched_acc_title'), t('notif_sched_acc_body', { patient: event.patient }), 'sent');
+                pushBrowserNotif('✅ Visita accettata', `${event.patient} — ${fmtDate(event.date)} ${event.time || ''}`, 'visit_accepted');
                 flashBell();
             }
             if (ev === 'visit_rejected' && event.scheduledBy === S.role && event.visitMode !== 'centro') {
                 const fromD = DOCTORS[event.scheduledBy === 'struttura1' ? 'struttura2' : 'struttura1'] || {};
                 showVisitUpdatePopup('rejected', event.patient, event.date, event.time, fromD);
                 addNotif('bi-calendar-x-fill', t('notif_sched_rej_title'), t('notif_sched_rej_body', { patient: event.patient }), 'incoming');
+                pushBrowserNotif('❌ Visita rifiutata', `${event.patient} — ${fmtDate(event.date)} ${event.time || ''}`, 'visit_rejected');
                 flashBell();
             }
             if (ev === 'visit_cancelled' && event.cancelledBy !== S.role && event.visitMode !== 'centro') {
                 const fromD = DOCTORS[event.cancelledBy] || {};
                 showVisitUpdatePopup('cancelled', event.patient, event.date, event.time, fromD);
                 addNotif('bi-x-octagon-fill', t('notif_visit_cancelled_title'), t('notif_visit_cancelled_body', { patient: event.patient, facility: fromD.facility || event.cancelledBy }), 'incoming');
+                pushBrowserNotif('🚫 Visita annullata', `${event.patient} annullata da ${fromD.facility || event.cancelledBy}`, 'visit_cancelled');
                 flashBell();
             }
             if (ev === 'doc_shared' && event.fromRole !== S.role) {
@@ -5714,6 +5721,7 @@
                 showToast(`<i class="bi bi-share-fill me-1"></i>${t('toast_doc_received', { name: fromD.name, names: event.docName })}`, 'info');
                 addNotif('bi-share-fill', t('notif_doc_shared_title', { facility: fromD.facility }), t('notif_doc_shared_body', { name: event.docName, sender: fromD.name }), 'incoming');
                 showBanner(`<i class="bi bi-share-fill me-2"></i>${t('banner_doc_shared', { name: event.docName, facility: fromD.facility })}`, 'info');
+                pushBrowserNotif('📄 Documento ricevuto', `${event.docName} da ${fromD.name}`, 'doc_shared');
                 flashBell();
             }
             if (ev === 'call_ended') {
@@ -5729,6 +5737,30 @@
             const dot = document.getElementById('notif-dot');
             dot.style.display = '';
             dot.textContent = N.items.length > 9 ? '9+' : N.items.length;
+        }
+
+        // ---------------------------------------------------------------------------
+        // NOTIFICHE PUSH BROWSER
+        // ---------------------------------------------------------------------------
+        function requestBrowserNotifPermission() {
+            if (!('Notification' in window) || Notification.permission !== 'default') return;
+            // Banner non invasivo in cima alla pagina
+            const bar = document.createElement('div');
+            bar.id = 'notif-permission-bar';
+            bar.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#1565c0;color:#fff;padding:10px 16px;display:flex;align-items:center;gap:12px;font-size:.85rem;box-shadow:0 2px 8px rgba(0,0,0,.2);';
+            bar.innerHTML = `
+                <i class="bi bi-bell-fill" style="font-size:1rem;flex-shrink:0;"></i>
+                <span style="flex:1;">${currentLang === 'fr' ? 'Activer les notifications pour être alerté même quand cet onglet est en arrière-plan.' : 'Attiva le notifiche per ricevere avvisi anche quando la tab è in secondo piano.'}</span>
+                <button onclick="Notification.requestPermission().then(p=>{ document.getElementById('notif-permission-bar')?.remove(); if(p==='granted') showToast('🔔 Notifiche attivate','success'); })" style="background:#fff;color:#1565c0;border:none;border-radius:6px;padding:4px 12px;font-weight:600;cursor:pointer;font-size:.82rem;">${currentLang === 'fr' ? 'Activer' : 'Attiva'}</button>
+                <button onclick="document.getElementById('notif-permission-bar')?.remove()" style="background:none;border:none;color:rgba(255,255,255,.7);cursor:pointer;font-size:1.2rem;line-height:1;padding:0 4px;">×</button>`;
+            document.body.prepend(bar);
+        }
+
+        function pushBrowserNotif(title, body, tag) {
+            if (!('Notification' in window) || Notification.permission !== 'granted') return;
+            if (document.visibilityState === 'visible' && document.hasFocus()) return;
+            const notif = new Notification(title, { body, tag, icon: 'https://collettofrancesco-ai.github.io/olovisita/vendor/favicon.ico' });
+            notif.onclick = () => { window.focus(); notif.close(); };
         }
 
         // ---------------------------------------------------------------------------
@@ -6070,6 +6102,7 @@
 
             hideBanner();
             renderAll();
+            setTimeout(requestBrowserNotifPermission, 1500);
         }
 
         // ---------------------------------------------------------------------------
