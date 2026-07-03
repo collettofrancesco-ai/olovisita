@@ -260,6 +260,10 @@
             background: #fce4ec;
             color: #880e4f;
         }
+        .bs-non_presentato {
+            background: #fff3e0;
+            color: #e65100;
+        }
 
         /* Lista delle visite */
         .visit-item {
@@ -3041,6 +3045,8 @@
                 status_rifiutata: "Rifiutata",
                 status_annullata: "Annullata",
                 status_completata: "Completata",
+                status_non_presentato: "Non Presentato",
+                btn_non_presentato: "Non Presentato",
                 status_waiting: "In Attesa",
                 status_accepted: "Accettata",
                 status_rejected: "Rifiutata",
@@ -3332,6 +3338,8 @@
                 status_rifiutata: "Refusée",
                 status_annullata: "Annulée",
                 status_completata: "Terminée",
+                status_non_presentato: "Non Présenté",
+                btn_non_presentato: "Non Présenté",
                 status_waiting: "En Attente",
                 status_accepted: "Acceptée",
                 status_rejected: "Refusée",
@@ -5996,8 +6004,9 @@
             // mappa data → tipi di visita presenti
             const visitsByDate = {};
             visits.filter(tv => tv.date).forEach(tv => {
-                if (!visitsByDate[tv.date]) visitsByDate[tv.date] = { centro: false, network: false };
-                if (tv.visitMode === 'centro') visitsByDate[tv.date].centro = true;
+                if (!visitsByDate[tv.date]) visitsByDate[tv.date] = { centro: false, network: false, nonPresent: false };
+                if (tv.status === 'non_presentato') visitsByDate[tv.date].nonPresent = true;
+                else if (tv.visitMode === 'centro') visitsByDate[tv.date].centro = true;
                 else visitsByDate[tv.date].network = true;
             });
 
@@ -6025,11 +6034,12 @@
                 if (hasVisits)  cls += ' tv-cal-has-visits';
                 let dot = '';
                 if (hasVisits) {
+                    const hasActive = dayInfo.centro || dayInfo.network;
                     const both = dayInfo.centro && dayInfo.network;
-                    const dotStyle = both
-                        ? 'background:linear-gradient(90deg,#22c55e 50%,#3b82f6 50%);'
-                        : dayInfo.centro ? 'background:#22c55e;' : 'background:#3b82f6;';
-                    dot = `<span class="tv-cal-dot" style="${dotStyle}"></span>`;
+                    const mainStyle = hasActive ? (both ? 'background:linear-gradient(90deg,#22c55e 50%,#3b82f6 50%);' : dayInfo.centro ? 'background:#22c55e;' : 'background:#3b82f6;') : '';
+                    const redDot = dayInfo.nonPresent ? `<span class="tv-cal-dot" style="background:#ef4444;${hasActive ? 'left:65%;' : ''}"></span>` : '';
+                    const mainDot = hasActive ? `<span class="tv-cal-dot" style="${mainStyle}${dayInfo.nonPresent ? 'left:35%;' : ''}"></span>` : '';
+                    dot = mainDot + redDot;
                 }
                 cells += `<div class="${cls}" onclick="selectCalendarDate('${ds}')">${d}${dot}</div>`;
             }
@@ -6054,6 +6064,7 @@
           <div class="tv-cal-legend-row"><span class="tv-cal-legend-dot" style="background:#22c55e;"></span>${currentLang==='fr'?'Visite Centre':'Visita Centro'}</div>
           <div class="tv-cal-legend-row"><span class="tv-cal-legend-dot" style="background:#3b82f6;"></span>Second Opinion</div>
           <div class="tv-cal-legend-row"><span class="tv-cal-legend-dot" style="background:linear-gradient(90deg,#22c55e 50%,#3b82f6 50%);"></span>${currentLang==='fr'?'Les deux':'Entrambi'}</div>
+          <div class="tv-cal-legend-row"><span class="tv-cal-legend-dot" style="background:#ef4444;"></span>${currentLang==='fr'?'Non présenté':'Non presentato'}</div>
         </div>
       </button>
     </div>
@@ -6102,7 +6113,7 @@
             } else if (visitFilter === 'pending') {
                 filtered = filtered.filter(tv => tv.status === 'programmata');
             } else if (visitFilter === 'no-consent') {
-                filtered = filtered.filter(tv => tv.consentStatus !== 'firmato' && !['completata','rifiutata','annullata'].includes(tv.status));
+                filtered = filtered.filter(tv => tv.consentStatus !== 'firmato' && !['completata','rifiutata','annullata','non_presentato'].includes(tv.status));
             }
             // Applica filtro calendario solo se non c'è una ricerca testuale attiva
             if (calendarSelectedDate && !visitSearchQuery.trim()) filtered = visible.filter(tv => tv.date === calendarSelectedDate);
@@ -6171,7 +6182,7 @@
                 s2TitleEl.textContent = t('received_visits');
             }
 
-            const active = visible.filter(tv => tv.status !== 'completata' && tv.status !== 'rifiutata' && tv.status !== 'annullata').length;
+            const active = visible.filter(tv => tv.status !== 'completata' && tv.status !== 'rifiutata' && tv.status !== 'annullata' && tv.status !== 'non_presentato').length;
             document.getElementById('vis-badge').textContent = active + ' ' + t('status_accepted').toLowerCase();
         }
 
@@ -6227,10 +6238,12 @@
                     <button class="btn btn-outline-secondary btn-sm py-0" onclick="event.stopPropagation(); editPatientNotes('${escapeHtml(tv.patient)}')"><i class="bi bi-journal-medical me-1"></i>${currentLang === 'fr' ? 'Note' : 'Note'}</button>
                     <button class="btn btn-outline-secondary btn-sm py-0" onclick="event.stopPropagation(); showPatientHistory('${escapeHtml(tv.patient)}')"><i class="bi bi-clock-history me-1"></i>${currentLang === 'fr' ? 'Accès' : 'Accessi'}</button>
                     ${scheduledByMe ? `<button class="btn btn-outline-secondary btn-sm py-0" onclick="event.stopPropagation(); rescheduleVisit('${tv.id}')"><i class="bi bi-arrow-repeat me-1"></i>${currentLang === 'fr' ? 'Reprogrammer' : 'Riprogramma'}</button>` : ''}
+                    ${scheduledByMe && (tv.status === 'programmata' || tv.status === 'accettata') ? `<button class="btn btn-outline-warning btn-sm py-0" onclick="event.stopPropagation(); markNonPresentato('${tv.id}')" style="color:#e65100;border-color:#e65100;"><i class="bi bi-person-x-fill me-1"></i>${t('btn_non_presentato')}</button>` : ''}
                     ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclick="event.stopPropagation(); cancelVisit('${tv.id}')"><i class="bi bi-x-octagon me-1"></i>${t('btn_cancel_visit')}</button>` : ''}
                     ${tv.status === 'completata' ? `<span class="text-muted small"><i class="bi bi-check-all me-1"></i>${t('status_completata')}</span>` : ''}
                     ${tv.status === 'rifiutata' ? `<span class="text-danger small"><i class="bi bi-x-circle me-1"></i>${t('status_rifiutata')}</span>` : ''}
                     ${tv.status === 'annullata' ? `<span class="small" style="color:#880e4f;"><i class="bi bi-x-octagon me-1"></i>${t('status_annullata')}</span>` : ''}
+                    ${tv.status === 'non_presentato' ? `<span class="small" style="color:#e65100;"><i class="bi bi-person-x-fill me-1"></i>${t('status_non_presentato')}</span>` : ''}
                 </div>
             </div>
         </div>
@@ -6238,7 +6251,7 @@
         }
 
         function consentSectionHTML(tv, isCreator) {
-            if (tv.status === 'completata' || tv.status === 'rifiutata' || tv.status === 'annullata') {
+            if (tv.status === 'completata' || tv.status === 'rifiutata' || tv.status === 'annullata' || tv.status === 'non_presentato') {
                 return '';
             }
 
@@ -9720,7 +9733,19 @@
             document.body.appendChild(overlay);
         }
 
-                function cancelVisit(id) {
+                function markNonPresentato(id) {
+            const tv = S.televisite.find(t => t.id === id);
+            if (!tv) return;
+            const label = currentLang === 'fr' ? 'Non Présenté' : 'Non Presentato';
+            if (!confirm((currentLang === 'fr' ? 'Marquer cette visite comme "Non Présenté" ?' : 'Segnare questa visita come "Non Presentato"?'))) return;
+            tv.status = 'non_presentato';
+            saveState();
+            syncState('non_presentato_visit', { visitId: id, patient: tv.patient });
+            renderVisits();
+            showToast(`<i class='bi bi-person-x-fill text-warning me-2'></i>${escapeHtml(tv.patient)} — ${label}`, 'warning');
+        }
+
+        function cancelVisit(id) {
             const tv = S.televisite.find(t => t.id === id);
             if (!tv) return;
             const overlay = document.createElement('div');
@@ -11944,6 +11969,7 @@
                 annullata: { label: t('status_annullata'), color: '#880e4f', cls: 'bs-annullata' },
                 'in-corso': { label: t('status_in_corso'), color: '#e65100', cls: 'bs-in-corso' },
                 completata: { label: t('status_completata'), color: '#757575', cls: 'bs-completata' },
+                non_presentato: { label: t('status_non_presentato'), color: '#e65100', cls: 'bs-non_presentato' },
                 waiting: { label: t('status_waiting'), color: '#f57f17', cls: 'bs-in-attesa' },
                 accepted: { label: t('status_accepted'), color: '#2e7d32', cls: 'bs-accettata' },
                 rejected: { label: t('status_rejected'), color: '#c62828', cls: 'bs-rifiutata' }
