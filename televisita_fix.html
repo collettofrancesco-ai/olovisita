@@ -2135,12 +2135,24 @@
                             <div class="text-muted" style="font-size:.78rem;" data-i18n="card_imm_centro_sub">Accesso immediato senza prenotazione</div>
                         </div>
                     </div>
-                    <div class="p-4 text-center py-3">
+                    <!-- Stato idle: nessuna visita centro in corso -->
+                    <div id="centro-idle" class="p-4 text-center py-3">
                         <i class="bi bi-hospital" style="font-size:2.8rem;color:#2e7d32;"></i>
                         <p class="mt-2 text-muted small" data-i18n="imm_centro_idle_text">Avvia subito una visita centro per un paziente presente ora</p>
                         <button class="btn btn-success fw-bold px-4" data-bs-toggle="modal" data-bs-target="#centroUrgentModal">
                             <i class="bi bi-hospital-fill me-2"></i><span data-i18n="btn_centro_urgent">Avvia Visita Centro</span>
                         </button>
+                    </div>
+                    <!-- Stato attivo: visita centro in corso -->
+                    <div id="centro-active" style="display:none;" class="p-3">
+                        <div class="req-card" style="background:#e8f5e9;border:1px solid #c8e6c9;">
+                            <div class="status-orb" style="background:#c8e6c9;color:#2e7d32;"><i class="bi bi-hospital-fill"></i></div>
+                            <h5 class="fw-bold" style="color:#2e7d32;" data-i18n="centro_active_title">Visita in Corso</h5>
+                            <p id="centro-active-patient" class="text-muted small mb-3"></p>
+                            <button class="btn btn-success btn-sm px-3 fw-bold" onclick="rejoinCentroVisit()">
+                                <i class="bi bi-camera-video-fill me-1"></i><span data-i18n="centro_btn_rejoin">Rientra in Chiamata</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -3197,9 +3209,11 @@
                 toast_imm_sent: "Richiesta inviata alla Struttura 2. In attesa di risposta…",
                 card_imm_centro_title: "Visita Centro Urgente",
                 card_imm_centro_sub: "Accesso immediato senza prenotazione",
-                imm_centro_idle_text: "Avvia subito una visita centro per un paziente presente ora",
+                imm_centro_idle_text: "Avvia subito una visita centro urgente",
                 btn_centro_urgent: "Avvia Visita Centro",
                 toast_imm_centro_started: "Visita centro urgente avviata per <strong>{patient}</strong>",
+                centro_active_title: "Visita Centro in Corso",
+                centro_btn_rejoin: "Rientra in Chiamata",
                 toast_imm_accepted_local: "Richiesta accettata! Videoconferenza pronta.",
                 banner_imm_accepted_local: "Hai accettato la televisita immediata. Puoi entrare in conferenza.",
                 toast_imm_rejected_local: "Richiesta rifiutata.",
@@ -3495,9 +3509,11 @@
                 toast_imm_sent: "Demande envoyée à l'Établissement 2. En attente de réponse…",
                 card_imm_centro_title: "Visite Centre Urgente",
                 card_imm_centro_sub: "Accès immédiat sans réservation",
-                imm_centro_idle_text: "Démarrer immédiatement une visite centre pour un patient présent maintenant",
+                imm_centro_idle_text: "Démarrer immédiatement une visite centre urgente",
                 btn_centro_urgent: "Démarrer la Visite Centre",
                 toast_imm_centro_started: "Visite centre urgente démarrée pour <strong>{patient}</strong>",
+                centro_active_title: "Visite Centre en Cours",
+                centro_btn_rejoin: "Rejoindre l'Appel",
                 toast_imm_accepted_local: "Demande acceptée ! Visioconférence prête.",
                 banner_imm_accepted_local: "Vous avez accepté la télévisite immédiata. Vous pouvez rejoindre la conférence.",
                 toast_imm_rejected_local: "Demande refusée.",
@@ -6085,6 +6101,7 @@
             renderVisits();
             renderDocs();
             renderImm();
+            renderImmCentro();
             renderSession();
             document.getElementById('doc-badge').textContent = S.docs.length;
             renderEmailList();
@@ -9335,6 +9352,25 @@
             }
 
             animate();
+        }
+
+        function renderImmCentro() {
+            const activeCentro = S.televisite.find(tv => tv.type === 'centro' && tv.status === 'in-corso');
+            show('centro-idle', !activeCentro);
+            show('centro-active', !!activeCentro);
+            if (activeCentro) {
+                const el = document.getElementById('centro-active-patient');
+                if (el) el.textContent = activeCentro.patient;
+            }
+        }
+
+        function rejoinCentroVisit() {
+            const tv = S.televisite.find(t => t.type === 'centro' && t.status === 'in-corso');
+            if (!tv || !tv.room) return;
+            S.activeTvId = tv.id;
+            S.activeRoom = tv.room;
+            launchJitsi(tv.room);
+            scrollToVideo();
         }
 
         function renderImm() {
