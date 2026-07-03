@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url || steps.retry.outputs.page_url }}
+      url: ${{ steps.deployment.outputs.page_url || steps.retry1.outputs.page_url || steps.retry2.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
@@ -30,10 +30,19 @@ jobs:
         uses: actions/deploy-pages@v4
         continue-on-error: true
 
-      - name: Attendo 15s prima del retry
+      - name: Attendo 20s prima del retry 1
         if: steps.deployment.outcome == 'failure'
-        run: sleep 15
+        run: sleep 20
 
-      - id: retry
+      - id: retry1
         if: steps.deployment.outcome == 'failure'
+        uses: actions/deploy-pages@v4
+        continue-on-error: true
+
+      - name: Attendo 30s prima del retry 2
+        if: steps.deployment.outcome == 'failure' && steps.retry1.outcome == 'failure'
+        run: sleep 30
+
+      - id: retry2
+        if: steps.deployment.outcome == 'failure' && steps.retry1.outcome == 'failure'
         uses: actions/deploy-pages@v4
