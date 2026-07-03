@@ -9908,7 +9908,8 @@
                 S.activeTvId = id;
                 tv.status = 'in-corso';
                 renderAll();
-                showToast(t('toast_sched_started', { patient: tv.patient }), 'success');
+                renderActiveEMR();
+                showToast(t('toast_imm_centro_started', { patient: tv.patient }), 'success');
                 syncState(null);
                 return;
             }
