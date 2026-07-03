@@ -6361,6 +6361,8 @@
             if (tv.status === 'completata' || tv.status === 'rifiutata' || tv.status === 'annullata' || tv.status === 'non_presentato') {
                 return '';
             }
+            // Visita centro urgente: nessun flusso consenso, solo link videochiamata via mail
+            if (tv.type === 'centro') return '';
 
             // Le televisite urgenti hanno il consenso già firmato in automatico alla creazione
             // (per non far attendere l'urgenza), ma il testo e l'aspetto del riquadro "Consenso
@@ -10144,7 +10146,7 @@
                 room: genRoom('TV' + Date.now() + Math.floor(Math.random() * 100)),
                 status: 'in-corso',
                 consentStatus: null,
-                consentOtp: null,
+                inviteSent: true,
                 scheduledBy: S.role,
                 visitMode: 'centro',
                 type: 'centro'
@@ -10154,24 +10156,24 @@
             S.activeTvId = newTv.id;
             S.activeRoom = newTv.room;
 
-            const consentDoc = {
-                id: 'D_CONS_' + Date.now() + Math.floor(Math.random() * 100),
-                name: 'Consenso_Visita_Centro.pdf',
-                ext: 'pdf',
-                size: '124 KB',
-                by: S.role,
-                at: now.toLocaleDateString(currentLang === 'fr' ? 'fr-FR' : 'it-IT', { day: '2-digit', month: '2-digit' }) + ' ' + timeStr,
-                patient: newTv.patient,
-                icon: 'bi-file-earmark-pdf-fill',
-                ibg: '#ffebee',
-                ic: '#c62828',
-                file: null,
-                shared: false,
-                base64Data: null,
-                category: 'consenso',
-                isConsentDocument: true
-            };
-            S.docs.push(consentDoc);
+            // Invia mail al paziente con link diretto alla videochiamata (no flusso consenso)
+            const callUrl = buildPatientCallUrl(newTv.room);
+            const mailBody = currentLang === 'fr'
+                ? `Cher patient, vous êtes convoqué pour une visite centre urgente. Cliquez sur le lien pour rejoindre la vidéoconférence : <a href="${callUrl}" style="display:inline-block;background:#1a56db;color:#ffffff;padding:10px 22px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:14px;">Rejoindre la Conférence</a>`
+                : `Gentile paziente, sei convocato per una visita centro urgente. Clicca sul link per unirti alla videoconferenza: <a href="${callUrl}" style="display:inline-block;background:#1a56db;color:#ffffff;padding:10px 22px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:14px;">Entra in Videoconferenza</a>`;
+
+            const email = addSimulatedEmail({
+                type: 'call_invite',
+                patientName: newTv.patient,
+                patientEmail: patientEmail,
+                subject: currentLang === 'fr' ? 'Visite Centre Urgente' : 'Visita Centro Urgente',
+                body: mailBody,
+                tvId: newTv.id,
+                inviteUrl: callUrl
+            });
+            showEmailNotificationToast(email);
+            addNotif('bi-envelope-fill', t('email_invite_simulated_title', { patient: newTv.patient }), t('email_invite_simulated_body', { url: callUrl }), 'incoming', email.id);
+            flashBell();
 
             renderAll();
             launchJitsi(newTv.room);
