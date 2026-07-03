@@ -10169,8 +10169,8 @@
             if (patientEmail) {
                 const consentUrl = buildPatientConsentUrl(newTv, newTv.patient, patientEmail);
                 const mailBody = currentLang === 'fr'
-                    ? `Cher patient, vous avez été enregistré pour une visite urgente au centre. Veuillez signer votre consentement en cliquant sur le lien suivant : <a href="${consentUrl}">${consentUrl}</a>`
-                    : `Gentile paziente, sei stato registrato per una visita urgente al centro. Firma il consenso cliccando sul seguente link: <a href="${consentUrl}">${consentUrl}</a>`;
+                    ? `Cher patient, vous avez été enregistré pour une visite urgente au centre. Veuillez signer votre consentement : <a href="${consentUrl}">Cliquez ici pour signer</a>`
+                    : `Gentile paziente, sei stato registrato per una visita urgente al centro. Firma il consenso: <a href="${consentUrl}">Clicca qui per firmare</a>`;
                 const email = addSimulatedEmail({
                     type: 'centro_urgent_invite',
                     patientName: newTv.patient,
