@@ -643,6 +643,9 @@
             padding: 2rem;
             text-align: center;
         }
+        @media (min-width: 768px) {
+            .border-end-md { border-right: 1px solid var(--border) !important; }
+        }
 
         .status-orb {
             width: 72px;
@@ -2127,158 +2130,116 @@
                     </div>
                 </div>
 
-                <div class="section-card mb-4" id="card-imm-centro-section">
+                <!-- Card unificato Accesso Urgente (Centro + Second Opinion) -->
+                <div class="section-card mb-4" id="card-urgente-section">
                     <div class="card-header">
-                        <div class="card-icon" style="background:#e8f5e9;color:#2e7d32;"><i class="bi bi-hospital-fill"></i></div>
+                        <div class="card-icon" style="background:#fff3e0;color:#e65100;"><i class="bi bi-lightning-charge-fill"></i></div>
                         <div>
-                            <div class="fw-bold" data-i18n="card_imm_centro_title">Visita Centro Urgente</div>
-                            <div class="text-muted" style="font-size:.78rem;" data-i18n="card_imm_centro_sub">Accesso immediato senza prenotazione</div>
-                        </div>
-                    </div>
-                    <!-- Stato idle: nessuna visita centro in corso -->
-                    <div id="centro-idle" class="p-4 text-center py-3">
-                        <i class="bi bi-hospital" style="font-size:2.8rem;color:#2e7d32;"></i>
-                        <p class="mt-2 text-muted small" data-i18n="imm_centro_idle_text">Avvia subito una visita centro per un paziente presente ora</p>
-                        <button class="btn btn-success fw-bold px-4" data-bs-toggle="modal" data-bs-target="#centroUrgentModal">
-                            <i class="bi bi-hospital-fill me-2"></i><span data-i18n="btn_centro_urgent">Avvia Visita Centro</span>
-                        </button>
-                    </div>
-                    <!-- Stato attivo: visita centro in corso -->
-                    <div id="centro-active" style="display:none;" class="p-3">
-                        <div class="req-card" style="background:#e8f5e9;border:1px solid #c8e6c9;">
-                            <div class="status-orb" style="background:#c8e6c9;color:#2e7d32;"><i class="bi bi-hospital-fill"></i></div>
-                            <h5 class="fw-bold" style="color:#2e7d32;" data-i18n="centro_active_title">Visita in Corso</h5>
-                            <p id="centro-active-patient" class="text-muted small mb-3"></p>
-                            <button class="btn btn-success btn-sm px-3 fw-bold" onclick="rejoinCentroVisit()">
-                                <i class="bi bi-camera-video-fill me-1"></i><span data-i18n="centro_btn_rejoin">Rientra in Chiamata</span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="section-card mb-4" id="card-imm-section">
-                    <div class="card-header">
-                        <div class="card-icon" style="background:#fff3e0;color:#e65100;"><i
-                                class="bi bi-lightning-charge-fill"></i></div>
-                        <div>
-                            <div class="fw-bold" data-i18n="card_imm_title">Richiesta Immediata</div>
-                            <div class="text-muted" style="font-size:.78rem;" data-i18n="card_imm_sub">Televisita
-                                urgente in tempo reale</div>
+                            <div class="fw-bold" data-i18n="card_urgente_title">Accesso Urgente</div>
+                            <div class="text-muted" style="font-size:.78rem;" data-i18n="card_urgente_sub">Televisite immediate senza prenotazione</div>
                         </div>
                         <div id="imm-badge" class="ms-auto"></div>
                     </div>
-
-                    <div id="imm-s1" class="p-4">
-                        <div id="p-idle">
-                            <div class="text-center py-3">
-                                <i class="bi bi-camera-video" style="font-size:2.8rem;color:#e65100;"></i>
-                                <p class="mt-2 text-muted small" data-i18n="imm_idle_text">Avvia una televisita
-                                    urgente
-                                    con il collega di Struttura 2</p>
-                                <button class="btn btn-warning fw-bold px-4" data-bs-toggle="modal"
-                                    data-bs-target="#urgentVisitModal">
-                                    <i class="bi bi-lightning-charge-fill me-2"></i><span
-                                        data-i18n="imm_btn_request">Richiedi Televisita Ora</span>
+                    <div class="row g-0">
+                        <!-- Colonna sinistra: Visita Centro Urgente -->
+                        <div class="col-12 col-md-6 border-end-md">
+                            <div class="px-3 py-2 border-bottom" style="background:#f1f8f1;">
+                                <span class="fw-semibold small" style="color:#2e7d32;"><i class="bi bi-hospital-fill me-1"></i><span data-i18n="card_imm_centro_title">Visita Centro Urgente</span></span>
+                            </div>
+                            <!-- idle -->
+                            <div id="centro-idle" class="p-3 text-center">
+                                <i class="bi bi-hospital" style="font-size:2rem;color:#2e7d32;"></i>
+                                <p class="mt-2 text-muted small" data-i18n="imm_centro_idle_text">Avvia subito una visita centro urgente</p>
+                                <button class="btn btn-success btn-sm fw-bold px-3" data-bs-toggle="modal" data-bs-target="#centroUrgentModal">
+                                    <i class="bi bi-hospital-fill me-1"></i><span data-i18n="btn_centro_urgent">Avvia Visita Centro</span>
                                 </button>
                             </div>
-                        </div>
-                        <div id="p-waiting" style="display:none;">
-                            <div class="req-card" style="background:#fffde7;">
-                                <div class="status-orb pulse" style="background:#fff8e1;color:#f57f17;"><i
-                                        class="bi bi-hourglass-split"></i></div>
-                                <h5 class="fw-bold" style="color:#e65100;" data-i18n="imm_waiting_title">In attesa
-                                    di
-                                    risposta…</h5>
-                                <p class="text-muted small mb-3" data-i18n="imm_waiting_text">Il collega è stato
-                                    notificato.<br>In attesa di accettazione.</p>
-                                <button class="btn btn-outline-danger btn-sm" onclick="cancelImmediate()"><i
-                                        class="bi bi-x-circle me-1"></i><span
-                                        data-i18n="btn_cancel">Annulla</span></button>
-                            </div>
-                        </div>
-                        <div id="p-accepted" style="display:none;">
-                            <div class="req-card" style="background:#e8f5e9;">
-                                <div class="status-orb" style="background:#c8e6c9;color:#2e7d32;"><i
-                                        class="bi bi-check-circle-fill"></i></div>
-                                <h5 class="fw-bold text-success" data-i18n="imm_accepted_title">Richiesta Accettata!
-                                </h5>
-                                <p class="text-muted small mb-3" data-i18n="imm_accepted_text">Il collega ha
-                                    accettato.<br>La videoconferenza è pronta.</p>
-                                <button class="btn btn-success fw-bold" onclick="joinVideo()"><i
-                                        class="bi bi-camera-video-fill me-2"></i><span data-i18n="btn_join_video">Entra
-                                        in Conferenza</span></button>
-                            </div>
-                        </div>
-                        <div id="p-rejected" style="display:none;">
-                            <div class="req-card" style="background:#ffebee;">
-                                <div class="status-orb" style="background:#ffcdd2;color:#c62828;"><i
-                                        class="bi bi-x-circle-fill"></i></div>
-                                <h5 class="fw-bold text-danger" data-i18n="imm_rejected_title">Richiesta Rifiutata
-                                </h5>
-                                <p class="text-muted small mb-3" data-i18n="imm_rejected_text">Il collega non è
-                                    disponibile.<br>Prova a programmare una visita.</p>
-                                <button class="btn btn-outline-primary btn-sm" onclick="resetImmediate()"><i
-                                        class="bi bi-arrow-counterclockwise me-1"></i><span
-                                        data-i18n="btn_new_request">Nuova richiesta</span></button>
-                            </div>
-                        </div>
-                        <div id="p-incorso" style="display:none;">
-                            <div class="req-card" style="background:#e8f5e9;">
-                                <div class="status-orb" style="background:#c8e6c9;color:#2e7d32;"><i
-                                        class="bi bi-camera-video-fill"></i></div>
-                                <h5 class="fw-bold text-success" data-i18n="status_in_corso">Televisita In Corso
-                                </h5>
-                                <p class="text-muted small mb-3" data-i18n="video_active_text">Videoconferenza
-                                    attiva.
-                                </p>
-                                <button class="btn btn-success fw-bold" onclick="joinVideo()"><i
-                                        class="bi bi-camera-video-fill me-2"></i><span data-i18n="btn_go_video">Vai
-                                        alla
-                                        Conferenza</span></button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div id="imm-s2" class="p-4" style="display:none;">
-                        <div id="q-idle">
-                            <div class="empty"><i class="bi bi-bell fs-2"></i>
-                                <p class="mt-2 mb-0 small" data-i18n="no_imm_requests">Nessuna richiesta immediata
-                                </p>
-                            </div>
-                        </div>
-                        <div id="q-incoming" style="display:none;">
-                            <div class="req-card" style="background:#fff3e0;">
-                                <div class="status-orb pulse" style="background:#ffe0b2;color:#e65100;"><i
-                                        class="bi bi-camera-video-fill"></i></div>
-                                <h5 class="fw-bold" style="color:#e65100;" data-i18n="imm_request_recv">Richiesta
-                                    Televisita</h5>
-                                <p class="text-muted small mb-1"><span data-i18n="from_label">Da:</span>
-                                    <strong id="imm-recv-sender-name">Médecin Thomas Perturbè</strong>
-                                </p>
-                                <p class="text-muted small mb-3" id="imm-recv-sender-details"><span
-                                        data-i18n="spec_cardio">Cardiologie</span> — Centre Tunis</p>
-                                <div class="d-flex gap-3 justify-content-center">
-                                    <button class="btn btn-success fw-bold px-4" onclick="acceptImmediate()"><i
-                                            class="bi bi-check-lg me-2"></i><span
-                                            data-i18n="btn_accept">Accetta</span></button>
-                                    <button class="btn btn-outline-danger fw-bold" onclick="rejectImmediate()"><i
-                                            class="bi bi-x-lg me-2"></i><span
-                                            data-i18n="btn_reject">Rifiuta</span></button>
+                            <!-- attivo -->
+                            <div id="centro-active" style="display:none;" class="p-3">
+                                <div class="req-card" style="background:#e8f5e9;border:1px solid #c8e6c9;padding:1.2rem;">
+                                    <div class="status-orb" style="background:#c8e6c9;color:#2e7d32;width:52px;height:52px;font-size:1.3rem;"><i class="bi bi-hospital-fill"></i></div>
+                                    <h6 class="fw-bold mt-2" style="color:#2e7d32;" data-i18n="centro_active_title">Visita Centro in Corso</h6>
+                                    <p id="centro-active-patient" class="text-muted small mb-2"></p>
+                                    <button class="btn btn-success btn-sm px-3 fw-bold" onclick="rejoinCentroVisit()">
+                                        <i class="bi bi-camera-video-fill me-1"></i><span data-i18n="centro_btn_rejoin">Rientra in Chiamata</span>
+                                    </button>
                                 </div>
                             </div>
                         </div>
-                        <div id="q-accepted" style="display:none;">
-                            <div class="req-card" style="background:#e8f5e9;">
-                                <div class="status-orb" style="background:#c8e6c9;color:#2e7d32;"><i
-                                        class="bi bi-camera-video-fill"></i></div>
-                                <h5 class="fw-bold text-success" data-i18n="imm_started_title">Televisita Avviata
-                                </h5>
-                                <p class="text-muted small mb-3" data-i18n="imm_started_text">Hai accettato. La sala
-                                    è
-                                    pronta.</p>
-                                <button class="btn btn-success fw-bold" onclick="joinVideo()"><i
-                                        class="bi bi-camera-video-fill me-2"></i><span data-i18n="btn_join_video">Entra
-                                        in Conferenza</span></button>
+                        <!-- Colonna destra: Second Opinion Urgente -->
+                        <div class="col-12 col-md-6">
+                            <div class="px-3 py-2 border-bottom" style="background:#fff8f1;">
+                                <span class="fw-semibold small" style="color:#e65100;"><i class="bi bi-lightning-charge-fill me-1"></i><span data-i18n="card_imm_title">Second Opinion Urgente</span></span>
+                            </div>
+                            <div id="imm-s1" class="p-3">
+                                <div id="p-idle">
+                                    <div class="text-center">
+                                        <i class="bi bi-camera-video" style="font-size:2rem;color:#e65100;"></i>
+                                        <p class="mt-2 text-muted small" data-i18n="imm_idle_text">Avvia una televisita urgente con il collega di Struttura 2</p>
+                                        <button class="btn btn-warning btn-sm fw-bold px-3" data-bs-toggle="modal" data-bs-target="#urgentVisitModal">
+                                            <i class="bi bi-lightning-charge-fill me-1"></i><span data-i18n="imm_btn_request">Richiedi Televisita Ora</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div id="p-waiting" style="display:none;">
+                                    <div class="req-card" style="background:#fffde7;padding:1.2rem;">
+                                        <div class="status-orb pulse" style="background:#fff8e1;color:#f57f17;width:52px;height:52px;font-size:1.3rem;"><i class="bi bi-hourglass-split"></i></div>
+                                        <h6 class="fw-bold mt-2" style="color:#e65100;" data-i18n="imm_waiting_title">In attesa di risposta…</h6>
+                                        <p class="text-muted small mb-2" data-i18n="imm_waiting_text">Il collega è stato notificato.<br>In attesa di accettazione.</p>
+                                        <button class="btn btn-outline-danger btn-sm" onclick="cancelImmediate()"><i class="bi bi-x-circle me-1"></i><span data-i18n="btn_cancel">Annulla</span></button>
+                                    </div>
+                                </div>
+                                <div id="p-accepted" style="display:none;">
+                                    <div class="req-card" style="background:#e8f5e9;padding:1.2rem;">
+                                        <div class="status-orb" style="background:#c8e6c9;color:#2e7d32;width:52px;height:52px;font-size:1.3rem;"><i class="bi bi-check-circle-fill"></i></div>
+                                        <h6 class="fw-bold mt-2 text-success" data-i18n="imm_accepted_title">Richiesta Accettata!</h6>
+                                        <p class="text-muted small mb-2" data-i18n="imm_accepted_text">Il collega ha accettato.<br>La videoconferenza è pronta.</p>
+                                        <button class="btn btn-success btn-sm fw-bold" onclick="joinVideo()"><i class="bi bi-camera-video-fill me-1"></i><span data-i18n="btn_join_video">Entra in Conferenza</span></button>
+                                    </div>
+                                </div>
+                                <div id="p-rejected" style="display:none;">
+                                    <div class="req-card" style="background:#ffebee;padding:1.2rem;">
+                                        <div class="status-orb" style="background:#ffcdd2;color:#c62828;width:52px;height:52px;font-size:1.3rem;"><i class="bi bi-x-circle-fill"></i></div>
+                                        <h6 class="fw-bold mt-2 text-danger" data-i18n="imm_rejected_title">Richiesta Rifiutata</h6>
+                                        <p class="text-muted small mb-2" data-i18n="imm_rejected_text">Il collega non è disponibile.<br>Prova a programmare una visita.</p>
+                                        <button class="btn btn-outline-primary btn-sm" onclick="resetImmediate()"><i class="bi bi-arrow-counterclockwise me-1"></i><span data-i18n="btn_new_request">Nuova richiesta</span></button>
+                                    </div>
+                                </div>
+                                <div id="p-incorso" style="display:none;">
+                                    <div class="req-card" style="background:#e8f5e9;padding:1.2rem;">
+                                        <div class="status-orb" style="background:#c8e6c9;color:#2e7d32;width:52px;height:52px;font-size:1.3rem;"><i class="bi bi-camera-video-fill"></i></div>
+                                        <h6 class="fw-bold mt-2 text-success" data-i18n="status_in_corso">Televisita In Corso</h6>
+                                        <p class="text-muted small mb-2" data-i18n="video_active_text">Videoconferenza attiva.</p>
+                                        <button class="btn btn-success btn-sm fw-bold" onclick="joinVideo()"><i class="bi bi-camera-video-fill me-1"></i><span data-i18n="btn_go_video">Vai alla Conferenza</span></button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="imm-s2" class="p-3" style="display:none;">
+                                <div id="q-idle">
+                                    <div class="empty"><i class="bi bi-bell fs-2"></i>
+                                        <p class="mt-2 mb-0 small" data-i18n="no_imm_requests">Nessuna richiesta immediata</p>
+                                    </div>
+                                </div>
+                                <div id="q-incoming" style="display:none;">
+                                    <div class="req-card" style="background:#fff3e0;padding:1.2rem;">
+                                        <div class="status-orb pulse" style="background:#ffe0b2;color:#e65100;width:52px;height:52px;font-size:1.3rem;"><i class="bi bi-camera-video-fill"></i></div>
+                                        <h6 class="fw-bold mt-2" style="color:#e65100;" data-i18n="imm_request_recv">Richiesta Televisita</h6>
+                                        <p class="text-muted small mb-1"><span data-i18n="from_label">Da:</span> <strong id="imm-recv-sender-name">Médecin Thomas Perturbè</strong></p>
+                                        <p class="text-muted small mb-2" id="imm-recv-sender-details"><span data-i18n="spec_cardio">Cardiologie</span> — Centre Tunis</p>
+                                        <div class="d-flex gap-2 justify-content-center flex-wrap">
+                                            <button class="btn btn-success btn-sm fw-bold px-3" onclick="acceptImmediate()"><i class="bi bi-check-lg me-1"></i><span data-i18n="btn_accept">Accetta</span></button>
+                                            <button class="btn btn-outline-danger btn-sm fw-bold" onclick="rejectImmediate()"><i class="bi bi-x-lg me-1"></i><span data-i18n="btn_reject">Rifiuta</span></button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="q-accepted" style="display:none;">
+                                    <div class="req-card" style="background:#e8f5e9;padding:1.2rem;">
+                                        <div class="status-orb" style="background:#c8e6c9;color:#2e7d32;width:52px;height:52px;font-size:1.3rem;"><i class="bi bi-camera-video-fill"></i></div>
+                                        <h6 class="fw-bold mt-2 text-success" data-i18n="imm_started_title">Televisita Avviata</h6>
+                                        <p class="text-muted small mb-2" data-i18n="imm_started_text">Hai accettato. La sala è pronta.</p>
+                                        <button class="btn btn-success btn-sm fw-bold" onclick="joinVideo()"><i class="bi bi-camera-video-fill me-1"></i><span data-i18n="btn_join_video">Entra in Conferenza</span></button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -3074,6 +3035,8 @@
                 your_requests: "Le tue richieste",
                 received_visits: "Televisite ricevute",
                 all_visits: "Tutte le televisite",
+                card_urgente_title: "Accesso Urgente",
+                card_urgente_sub: "Televisite immediate senza prenotazione",
                 card_imm_title: "Second Opinion Urgente",
                 card_imm_sub: "Collegamento immediato in tempo reale",
                 imm_idle_text: "Avvia una second opinion urgente con il collega di Struttura 2",
@@ -3374,6 +3337,8 @@
                 your_requests: "Vos demandes",
                 received_visits: "Télévisites reçues",
                 all_visits: "Toutes les télévisites",
+                card_urgente_title: "Accès Urgent",
+                card_urgente_sub: "Télévisites immédiates sans réservation",
                 card_imm_title: "Second Opinion Urgente",
                 card_imm_sub: "Connexion immédiate en temps réel",
                 imm_idle_text: "Démarrer un second opinion urgent avec le confrère de l'Établissement 2",
