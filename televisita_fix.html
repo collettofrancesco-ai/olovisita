@@ -1989,6 +1989,9 @@
                                 <button class="filter-pill" onclick="setVisitFilter('today')"><span data-i18n="filter_today">Oggi</span></button>
                                 <button class="filter-pill" onclick="setVisitFilter('pending')"><span data-i18n="filter_pending">Da accettare</span></button>
                                 <button class="filter-pill" onclick="setVisitFilter('no-consent')"><span data-i18n="filter_no_consent">Senza consenso</span></button>
+                                <button class="filter-pill" onclick="setVisitFilter('non-presentato')"><span data-i18n="filter_non_presentato">Non Presentato</span></button>
+                                <button class="filter-pill" onclick="setVisitFilter('annullate')"><span data-i18n="filter_annullate">Annullate</span></button>
+                                <button class="filter-pill" onclick="setVisitFilter('completate')"><span data-i18n="filter_completate">Completate</span></button>
                             </div>
                         </div>
                         <div id="cal-s1"></div>
@@ -2123,6 +2126,9 @@
                                 <button class="filter-pill" onclick="setVisitFilter('today')"><span data-i18n="filter_today">Oggi</span></button>
                                 <button class="filter-pill" onclick="setVisitFilter('pending')"><span data-i18n="filter_pending">Da accettare</span></button>
                                 <button class="filter-pill" onclick="setVisitFilter('no-consent')"><span data-i18n="filter_no_consent">Senza consenso</span></button>
+                                <button class="filter-pill" onclick="setVisitFilter('non-presentato')"><span data-i18n="filter_non_presentato">Non Presentato</span></button>
+                                <button class="filter-pill" onclick="setVisitFilter('annullate')"><span data-i18n="filter_annullate">Annullate</span></button>
+                                <button class="filter-pill" onclick="setVisitFilter('completate')"><span data-i18n="filter_completate">Completate</span></button>
                             </div>
                         </div>
                         <div id="cal-s2"></div>
@@ -3105,6 +3111,9 @@
                 filter_today: "Oggi",
                 filter_pending: "Da accettare",
                 filter_no_consent: "Senza consenso",
+                filter_non_presentato: "Non Presentato",
+                filter_annullate: "Annullate",
+                filter_completate: "Completate",
                 doc_offline_body: "Apri OloVisita sul PC abituale per sincronizzarli automaticamente su questo dispositivo.",
                 notif_doc_shared_title: "Nuovo documento da {facility}",
                 notif_doc_shared_body: "{name} · Da: {sender}",
@@ -3407,6 +3416,9 @@
                 filter_today: "Aujourd'hui",
                 filter_pending: "À accepter",
                 filter_no_consent: "Sans consentement",
+                filter_non_presentato: "Non Présenté",
+                filter_annullate: "Annulées",
+                filter_completate: "Terminées",
                 doc_offline_body: "Ouvrez OloVisita sur votre PC habituel pour les synchroniser automatiquement sur cet appareil.",
                 notif_doc_shared_title: "Nouveau document de {facility}",
                 notif_doc_shared_body: "{name} · De : {sender}",
@@ -6172,7 +6184,7 @@
             visitFilter = f;
             ['s1','s2'].forEach(s => {
                 const pills = document.querySelectorAll(`#visit-pills-${s} .filter-pill`);
-                const map = ['all','today','pending','no-consent'];
+                const map = ['all','today','pending','no-consent','non-presentato','annullate','completate'];
                 pills.forEach((p, i) => p.classList.toggle('active', map[i] === f));
                 const searchEl = document.getElementById(`visit-search-${s}`);
                 if (searchEl) searchEl.value = visitSearchQuery;
@@ -6202,6 +6214,12 @@
                 filtered = filtered.filter(tv => tv.status === 'programmata');
             } else if (visitFilter === 'no-consent') {
                 filtered = filtered.filter(tv => tv.consentStatus !== 'firmato' && !['completata','rifiutata','annullata','non_presentato'].includes(tv.status));
+            } else if (visitFilter === 'non-presentato') {
+                filtered = filtered.filter(tv => tv.status === 'non_presentato');
+            } else if (visitFilter === 'annullate') {
+                filtered = filtered.filter(tv => tv.status === 'annullata' || tv.status === 'rifiutata');
+            } else if (visitFilter === 'completate') {
+                filtered = filtered.filter(tv => tv.status === 'completata');
             }
             // Applica filtro calendario solo se non c'è una ricerca testuale attiva
             if (calendarSelectedDate && !visitSearchQuery.trim()) filtered = visible.filter(tv => tv.date === calendarSelectedDate);
