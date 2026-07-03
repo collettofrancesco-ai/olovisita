@@ -2434,7 +2434,7 @@
 
     <div id="toast-box" class="position-fixed bottom-0 end-0 p-3" style="z-index:9999; pointer-events:none;"></div>
 
-    <!-- Modal Richiesta Televisita Urgente -->
+    <!-- Modal Second Opinion Urgente -->
     <div class="modal fade" id="urgentVisitModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content" style="border-radius:16px;overflow:hidden;">
@@ -2442,16 +2442,13 @@
                     style="background: linear-gradient(135deg, #f57c00 0%, #e65100 100%);">
                     <div class="d-flex align-items-center gap-2">
                         <i class="bi bi-lightning-charge-fill fs-5 text-warning animate-pulse"></i>
-                        <h5 class="modal-title fw-bold m-0" style="font-size: 1.1rem; letter-spacing: 0.5px;">Richiesta
-                            Televisita Urgente</h5>
+                        <h5 class="modal-title fw-bold m-0" style="font-size: 1.1rem; letter-spacing: 0.5px;">Second Opinion Urgente</h5>
                     </div>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <form id="urgent-form" onsubmit="submitUrgentRequest(event)" autocomplete="off">
                     <div class="modal-body p-4">
-                        <p class="text-muted small mb-4">Inserisci le informazioni anagrafiche del paziente per avviare
-                            la televisita urgente in tempo reale. Il sistema caricherà e condividerà automaticamente il
-                            modulo di <strong>Consenso Informato</strong>.</p>
+                        <p class="text-muted small mb-4">Inserisci le informazioni anagrafiche del paziente per avviare la second opinion urgente in tempo reale. Il sistema caricherà e condividerà automaticamente il modulo di <strong>Consenso Informato</strong>.</p>
 
                         <div class="row g-3 mb-3">
                             <div class="col-md-6">
@@ -3065,28 +3062,28 @@
                 your_requests: "Le tue richieste",
                 received_visits: "Televisite ricevute",
                 all_visits: "Tutte le televisite",
-                card_imm_title: "Richiesta Immediata",
-                card_imm_sub: "Televisita urgente in tempo reale",
-                imm_idle_text: "Avvia una televisita urgente con il collega di Struttura 2",
+                card_imm_title: "Second Opinion Urgente",
+                card_imm_sub: "Collegamento immediato in tempo reale",
+                imm_idle_text: "Avvia una second opinion urgente con il collega di Struttura 2",
                 imm_btn_request: "Richiedi Televisita Ora",
                 imm_waiting_title: "In attesa di risposta…",
                 imm_waiting_text: "Il collega è stato notificato.<br>In attesa di accettazione.",
                 btn_cancel: "Annulla",
-                imm_accepted_title: "Richiesta Accettata!",
+                imm_accepted_title: "Second Opinion Accettata!",
                 imm_accepted_text: "Il collega ha accettato.<br>La videoconferenza è pronta.",
                 btn_join_video: "Entra in Conferenza",
-                imm_rejected_title: "Richiesta Rifiutata",
+                imm_rejected_title: "Second Opinion Rifiutata",
                 imm_rejected_text: "Il collega non è disponibile.<br>Prova a programmare una visita.",
                 btn_new_request: "Nuova richiesta",
                 status_in_corso: "Televisita In Corso",
                 video_active_text: "Videoconferenza attiva.",
                 btn_go_video: "Vai alla Conferenza",
                 no_imm_requests: "Nessuna richiesta immediata",
-                imm_request_recv: "Richiesta Televisita",
+                imm_request_recv: "Second Opinion Urgente",
                 from_label: "Da:",
                 btn_accept: "Accetta",
                 btn_reject: "Rifiuta",
-                imm_started_title: "Televisita Avviata",
+                imm_started_title: "Second Opinion Avviata",
                 imm_started_text: "Hai accettato. La sala è pronta.",
                 card_video_title: "Videoconferenza",
                 no_active_session: "Nessuna sessione attiva",
@@ -3363,28 +3360,28 @@
                 your_requests: "Vos demandes",
                 received_visits: "Télévisites reçues",
                 all_visits: "Toutes les télévisites",
-                card_imm_title: "Demande Immédiate",
-                card_imm_sub: "Télévisite urgente en temps réel",
-                imm_idle_text: "Démarrer une télévisite urgente avec le confrère de l'Établissement 2",
+                card_imm_title: "Second Opinion Urgente",
+                card_imm_sub: "Connexion immédiate en temps réel",
+                imm_idle_text: "Démarrer un second opinion urgent avec le confrère de l'Établissement 2",
                 imm_btn_request: "Demander une Télévisite Maintenant",
                 imm_waiting_title: "En attente de réponse…",
                 imm_waiting_text: "Le confrère a été notifié.<br>En attente d'acceptation.",
                 btn_cancel: "Annuler",
-                imm_accepted_title: "Demande Acceptée !",
+                imm_accepted_title: "Second Opinion Accepté !",
                 imm_accepted_text: "Le confrère a accepté.<br>La visioconférence est prête.",
                 btn_join_video: "Rejoindre la Conférence",
-                imm_rejected_title: "Demande Refusée",
+                imm_rejected_title: "Second Opinion Refusé",
                 imm_rejected_text: "Le confrère n'est pas disponible.<br>Essayez de planifier une visite.",
                 btn_new_request: "Nouvelle demande",
                 status_in_corso: "Télévisite En Cours",
                 video_active_text: "Visioconférence active.",
                 btn_go_video: "Aller à la Conférence",
                 no_imm_requests: "Aucune demande immédiate",
-                imm_request_recv: "Demande de Télévisite",
+                imm_request_recv: "Second Opinion Urgente",
                 from_label: "De :",
                 btn_accept: "Accepter",
                 btn_reject: "Refuser",
-                imm_started_title: "Télévisite Démarrée",
+                imm_started_title: "Second Opinion Démarré",
                 imm_started_text: "Vous avez accepté. La salle est prête.",
                 card_video_title: "Visioconférence",
                 no_active_session: "Aucune session active",
@@ -10046,7 +10043,7 @@
                 type: 'call_invite',
                 patientName: finalPatient,
                 patientEmail: finalEmail,
-                subject: currentLang === 'fr' ? 'Invitation Télévisite Urgente' : 'Invito Televisita Urgente',
+                subject: currentLang === 'fr' ? 'Second Opinion Urgente' : 'Second Opinion Urgente',
                 body: mailBody,
                 tvId: newTv.id,
                 inviteUrl: callUrl
