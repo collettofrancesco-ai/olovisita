@@ -5687,6 +5687,7 @@
                 showToast(t('toast_imm_accepted', { name: other.name }), 'success');
                 addNotif('bi-check-circle-fill', t('notif_imm_acc_title'), t('notif_imm_acc_body', { name: other.name }), 'sent');
                 flashBell();
+                setTimeout(() => joinVideo(), 600);
             }
             if (ev === 'imm_rejected' && S.role === event.sender) {
                 showToast(t('toast_imm_rejected', { name: other.name }), 'danger');
@@ -10166,10 +10167,10 @@
             showToast(t('toast_imm_centro_started', { patient: newTv.patient }), 'success');
 
             if (patientEmail) {
-                const portalUrl = buildPatientPortalUrl ? buildPatientPortalUrl(newTv.id) : '';
+                const consentUrl = buildPatientConsentUrl(newTv, newTv.patient, patientEmail);
                 const mailBody = currentLang === 'fr'
-                    ? `Cher patient, vous avez été enregistré pour une visite urgente au centre. Veuillez accéder au portail patient pour signer le consentement.`
-                    : `Gentile paziente, sei stato registrato per una visita urgente al centro. Accedi al portale paziente per firmare il consenso.`;
+                    ? `Cher patient, vous avez été enregistré pour une visite urgente au centre. Veuillez signer votre consentement en cliquant sur le lien suivant : <a href="${consentUrl}">${consentUrl}</a>`
+                    : `Gentile paziente, sei stato registrato per una visita urgente al centro. Firma il consenso cliccando sul seguente link: <a href="${consentUrl}">${consentUrl}</a>`;
                 const email = addSimulatedEmail({
                     type: 'centro_urgent_invite',
                     patientName: newTv.patient,
@@ -10177,7 +10178,7 @@
                     subject: currentLang === 'fr' ? 'Visite Centre Urgente' : 'Visita Centro Urgente',
                     body: mailBody,
                     tvId: newTv.id,
-                    inviteUrl: portalUrl
+                    inviteUrl: consentUrl
                 });
                 showEmailNotificationToast(email);
                 addNotif('bi-envelope-fill', t('email_invite_simulated_title', { patient: newTv.patient }), mailBody, 'incoming', email.id);
