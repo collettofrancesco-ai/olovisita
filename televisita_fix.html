@@ -2165,7 +2165,8 @@
                                 <div class="req-card" style="background:#e8f5e9;border:1px solid #c8e6c9;padding:1.2rem;">
                                     <div class="status-orb" style="background:#c8e6c9;color:#2e7d32;width:52px;height:52px;font-size:1.3rem;"><i class="bi bi-hospital-fill"></i></div>
                                     <h6 class="fw-bold mt-2" style="color:#2e7d32;" data-i18n="centro_active_title">Visita Centro in Corso</h6>
-                                    <p id="centro-active-patient" class="text-muted small mb-2"></p>
+                                    <p id="centro-active-patient" class="fw-semibold mb-0" style="font-size:.85rem;color:#1b5e20;"></p>
+                                    <p id="centro-active-doctor" class="text-muted mb-2" style="font-size:.75rem;"></p>
                                     <button class="btn btn-success btn-sm px-3 fw-bold" onclick="rejoinCentroVisit()">
                                         <i class="bi bi-camera-video-fill me-1"></i><span data-i18n="centro_btn_rejoin">Rientra in Chiamata</span>
                                     </button>
@@ -9343,8 +9344,10 @@
             show('centro-idle', !activeCentro);
             show('centro-active', !!activeCentro);
             if (activeCentro) {
-                const el = document.getElementById('centro-active-patient');
-                if (el) el.textContent = activeCentro.patient;
+                const elP = document.getElementById('centro-active-patient');
+                if (elP) elP.textContent = activeCentro.patient;
+                const elD = document.getElementById('centro-active-doctor');
+                if (elD) elD.textContent = activeCentro.doctor ? '👨‍⚕️ ' + activeCentro.doctor : '';
             }
         }
 
