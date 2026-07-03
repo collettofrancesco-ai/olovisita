@@ -9904,7 +9904,16 @@
 
         function startVisit(id) {
             const tv = S.televisite.find(t => t.id === id);
-            if (!tv || !tv.room) return;
+            if (!tv) return;
+            // Visite centro senza stanza video: seleziona il paziente e segna in-corso, senza Jitsi
+            if (!tv.room) {
+                S.activeTvId = id;
+                tv.status = 'in-corso';
+                renderAll();
+                showToast(t('toast_sched_started', { patient: tv.patient }), 'success');
+                syncState(null);
+                return;
+            }
             S.activeTvId = id;
             if (tv.consentStatus !== 'firmato' && tv.type !== 'urgente') {
                 showToast(t('btn_disabled_consent'), 'danger');
@@ -10167,18 +10176,16 @@
             showToast(t('toast_imm_centro_started', { patient: newTv.patient }), 'success');
 
             if (patientEmail) {
-                const consentUrl = buildPatientConsentUrl(newTv, newTv.patient, patientEmail);
                 const mailBody = currentLang === 'fr'
-                    ? `Cher patient, vous avez été enregistré pour une visite urgente au centre. Veuillez signer votre consentement : <a href="${consentUrl}">Cliquez ici pour signer</a>`
-                    : `Gentile paziente, sei stato registrato per una visita urgente al centro. Firma il consenso: <a href="${consentUrl}">Clicca qui per firmare</a>`;
+                    ? `Cher patient, vous avez été enregistré pour une visite urgente au centre. Votre médecin vous assistera directement en structure pour la signature du consentement.`
+                    : `Gentile paziente, sei stato registrato per una visita urgente al centro. Il tuo medico ti assisterà direttamente in struttura per la firma del consenso.`;
                 const email = addSimulatedEmail({
                     type: 'centro_urgent_invite',
                     patientName: newTv.patient,
                     patientEmail: patientEmail,
                     subject: currentLang === 'fr' ? 'Visite Centre Urgente' : 'Visita Centro Urgente',
                     body: mailBody,
-                    tvId: newTv.id,
-                    inviteUrl: consentUrl
+                    tvId: newTv.id
                 });
                 showEmailNotificationToast(email);
                 addNotif('bi-envelope-fill', t('email_invite_simulated_title', { patient: newTv.patient }), mailBody, 'incoming', email.id);
