@@ -10172,24 +10172,6 @@
 
             renderAll();
             showToast(t('toast_imm_centro_started', { patient: newTv.patient }), 'success');
-
-            if (patientEmail) {
-                const mailBody = currentLang === 'fr'
-                    ? `Cher patient, vous avez été enregistré pour une visite urgente au centre. Votre médecin vous assistera directement en structure pour la signature du consentement.`
-                    : `Gentile paziente, sei stato registrato per una visita urgente al centro. Il tuo medico ti assisterà direttamente in struttura per la firma del consenso.`;
-                const email = addSimulatedEmail({
-                    type: 'centro_urgent_invite',
-                    patientName: newTv.patient,
-                    patientEmail: patientEmail,
-                    subject: currentLang === 'fr' ? 'Visite Centre Urgente' : 'Visita Centro Urgente',
-                    body: mailBody,
-                    tvId: newTv.id
-                });
-                showEmailNotificationToast(email);
-                addNotif('bi-envelope-fill', t('email_invite_simulated_title', { patient: newTv.patient }), mailBody, 'incoming', email.id);
-                flashBell();
-            }
-
             syncState(null);
         }
 
