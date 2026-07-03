@@ -2343,10 +2343,6 @@
                                     style="border-radius: 6px; font-weight: 500;" data-i18n="doc_tab_private">Bozze
                                     Locali</button>
                             </li>
-                            <li class="nav-item">
-                                <button class="nav-link py-1" id="tab-doc-history" onclick="setDocTab('history')"
-                                    style="border-radius: 6px; font-weight: 500;" data-i18n="doc_tab_history">Storico</button>
-                            </li>
                         </ul>
 
                         <!-- Filtri di Ricerca e Categoria -->
@@ -3284,9 +3280,6 @@
                 doc_tab_current: "Paziente Corrente",
                 doc_tab_shared: "Condivisi",
                 doc_tab_private: "Bozze Locali",
-                doc_tab_history: "Storico",
-                history_empty: "Prima visita per questo paziente",
-                history_visits_count: "visite precedenti",
                 placeholder_search_docs: "Cerca documento...",
                 cat_all: "Tutte le categorie",
                 cat_consent: "Consensi e Moduli",
@@ -3592,9 +3585,6 @@
                 doc_tab_current: "Patient Courant",
                 doc_tab_shared: "Partagés",
                 doc_tab_private: "Brouillons Locaux",
-                doc_tab_history: "Historique",
-                history_empty: "Première visite pour ce patient",
-                history_visits_count: "visites précédentes",
                 placeholder_search_docs: "Rechercher un document...",
                 cat_all: "Toutes les catégories",
                 cat_consent: "Consentements et Formulaires",
@@ -7545,7 +7535,7 @@
             if (tab === 'current') document.getElementById('tab-doc-current').classList.add('active');
             if (tab === 'shared') document.getElementById('tab-doc-shared').classList.add('active');
             if (tab === 'private') document.getElementById('tab-doc-private').classList.add('active');
-            if (tab === 'history') document.getElementById('tab-doc-history').classList.add('active');
+
             renderDocs();
         }
 
@@ -7579,50 +7569,6 @@
             } else {
                 select.value = 'all';
             }
-        }
-
-        function getPatientHistory(tv) {
-            return visibleTelevisite()
-                .filter(t => t.id !== tv.id && (tv.cf ? t.cf === tv.cf : t.patient === tv.patient))
-                .sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.time || '').localeCompare(a.time || ''));
-        }
-
-        function renderPatientHistoryHTML(tv) {
-            const history = getPatientHistory(tv);
-            const statusIcons = { completata:'✅', annullata:'❌', rifiutata:'❌', non_presentato:'⚠️', 'in-corso':'🟢', accettata:'🔵', programmata:'🕐' };
-
-            const header = `
-                <div class="p-2 rounded-2 mb-3" style="background:#f8f9fa;border:1px solid #e9ecef;">
-                    <div class="fw-bold small">${escapeHtml(tv.patient)}</div>
-                    ${tv.cf ? `<div class="text-muted" style="font-size:.72rem;">CF/CIN: ${escapeHtml(tv.cf)}</div>` : ''}
-                    ${tv.dob ? `<div class="text-muted" style="font-size:.72rem;">Nato il: ${escapeHtml(tv.dob)}</div>` : ''}
-                </div>`;
-
-            if (!history.length) {
-                return header + `<div class="empty small text-center py-3"><i class="bi bi-clock-history fs-2 text-muted"></i><p class="mt-2 mb-0 text-muted">${t('history_empty')}</p></div>`;
-            }
-
-            const rows = history.map(h => {
-                const si = statusInfo(h.status);
-                const modeBadge = h.visitMode === 'centro'
-                    ? `<span class="badge" style="background:#e8f5e9;color:#2e7d32;font-size:.62rem;">Centro</span>`
-                    : `<span class="badge" style="background:#e3f2fd;color:#1565c0;font-size:.62rem;">Network</span>`;
-                const docCount = S.docs.filter(d => d.tvId === h.id).length;
-                return `
-                <div class="border rounded-2 p-2 mb-2" style="font-size:.78rem;cursor:pointer;" onclick="selectPatientContext('${h.id}'); setDocTab('current');">
-                    <div class="d-flex align-items-center justify-content-between mb-1">
-                        <span class="fw-semibold">${escapeHtml(fmtDate(h.date))} ${h.time ? '· ' + escapeHtml(h.time) : ''}</span>
-                        <span class="badge ${si.cls}" style="font-size:.6rem;">${si.label}</span>
-                    </div>
-                    <div class="d-flex align-items-center gap-1 flex-wrap">
-                        ${modeBadge}
-                        <span class="text-muted" style="font-size:.68rem;">${escapeHtml(h.doctor || '')}</span>
-                        ${docCount ? `<span class="text-muted ms-auto" style="font-size:.68rem;"><i class="bi bi-file-earmark me-1"></i>${docCount}</span>` : ''}
-                    </div>
-                </div>`;
-            }).join('');
-
-            return header + `<div class="text-muted mb-2" style="font-size:.72rem;">${history.length} ${t('history_visits_count')}</div>` + rows;
         }
 
         function renderDocs() {
@@ -7691,15 +7637,7 @@
                 if (!d.category) d.category = getDocCategory(d);
             });
 
-            if (activeDocTab === 'history') {
-                const activeTv = S.activeTvId ? S.televisite.find(t => t.id === S.activeTvId) : null;
-                if (!activeTv) {
-                    el.innerHTML = `<div class="empty small text-center p-4"><i class="bi bi-person-x fs-2 text-muted"></i><p class="mt-2 mb-0 text-muted" style="font-size:0.75rem;">${t('doc_select_patient_hint')}</p></div>`;
-                    return;
-                }
-                el.innerHTML = renderPatientHistoryHTML(activeTv);
-                return;
-            } else if (activeDocTab === 'current') {
+            if (activeDocTab === 'current') {
                 if (activePatient) {
                     docs = docs.filter(d => d.patient === activePatient);
                 } else {
