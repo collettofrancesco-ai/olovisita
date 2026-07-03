@@ -6338,7 +6338,7 @@
                 ${consentSectionHTML(tv, scheduledByMe)}
  
                 <div class="d-flex gap-2 flex-wrap align-items-center">
-                    ${canJoin ? `<button class="btn btn-success btn-sm py-0" onclick="event.stopPropagation(); startVisit('${tv.id}')" ${disableAvvia ? 'disabled title="' + t('btn_disabled_consent') + '" style="opacity: 0.65; cursor: not-allowed;"' : ''}><i class="bi ${isCentroVisit ? 'bi-hospital-fill' : 'bi-camera-video-fill'} me-1"></i>${isCentroVisit ? (currentLang === 'it' ? 'Avvia' : 'Démarrer') : scheduledByMe ? (currentLang === 'it' ? 'Avvia' : 'Démarrer') : (currentLang === 'it' ? 'Entra' : 'Rejoindre')}</button>` : ''}
+                    ${canJoin && !(isCentroVisit && !tv.room) ? `<button class="btn btn-success btn-sm py-0" onclick="event.stopPropagation(); startVisit('${tv.id}')" ${disableAvvia ? 'disabled title="' + t('btn_disabled_consent') + '" style="opacity: 0.65; cursor: not-allowed;"' : ''}><i class="bi bi-camera-video-fill me-1"></i>${scheduledByMe ? (currentLang === 'it' ? 'Avvia' : 'Démarrer') : (currentLang === 'it' ? 'Entra' : 'Rejoindre')}</button>` : ''}
                     ${canAct ? `<button class="btn btn-outline-success btn-sm py-0" onclick="event.stopPropagation(); acceptSched('${tv.id}')"><i class="bi bi-check me-1"></i>${t('btn_accept')}</button>
                                   <button class="btn btn-outline-danger btn-sm py-0"  onclick="event.stopPropagation(); rejectSched('${tv.id}')"><i class="bi bi-x me-1"></i>${t('btn_reject')}</button>` : ''}
                     ${waiting ? `<span class="text-muted small"><i class="bi bi-hourglass me-1"></i>${t('waiting_confirm')}</span>` : ''}
@@ -10146,6 +10146,7 @@
                 consentStatus: null,
                 consentOtp: null,
                 scheduledBy: S.role,
+                visitMode: 'centro',
                 type: 'centro'
             };
 
