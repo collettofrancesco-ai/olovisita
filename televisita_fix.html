@@ -257,8 +257,8 @@
             color: #f57f17;
         }
         .bs-annullata {
-            background: #fce4ec;
-            color: #880e4f;
+            background: #eceff1;
+            color: #455a64;
         }
         .bs-non_presentato {
             background: #fff3e0;
@@ -6138,8 +6138,9 @@
             // mappa data → tipi di visita presenti
             const visitsByDate = {};
             visits.filter(tv => tv.date).forEach(tv => {
-                if (!visitsByDate[tv.date]) visitsByDate[tv.date] = { centro: false, network: false, nonPresent: false };
-                if (tv.status === 'non_presentato') visitsByDate[tv.date].nonPresent = true;
+                if (!visitsByDate[tv.date]) visitsByDate[tv.date] = { centro: false, network: false, nonPresent: false, annullata: false };
+                if (tv.status === 'non_presentato' || tv.status === 'rifiutata') visitsByDate[tv.date].nonPresent = true;
+                else if (tv.status === 'annullata') visitsByDate[tv.date].annullata = true;
                 else if (tv.visitMode === 'centro') visitsByDate[tv.date].centro = true;
                 else visitsByDate[tv.date].network = true;
             });
@@ -6170,10 +6171,14 @@
                 if (hasVisits) {
                     const hasActive = dayInfo.centro || dayInfo.network;
                     const both = dayInfo.centro && dayInfo.network;
-                    const mainStyle = hasActive ? (both ? 'background:linear-gradient(90deg,#22c55e 50%,#3b82f6 50%);' : dayInfo.centro ? 'background:#22c55e;' : 'background:#3b82f6;') : '';
-                    const redDot = dayInfo.nonPresent ? `<span class="tv-cal-dot" style="background:#ef4444;${hasActive ? 'left:65%;' : ''}"></span>` : '';
-                    const mainDot = hasActive ? `<span class="tv-cal-dot" style="${mainStyle}${dayInfo.nonPresent ? 'left:35%;' : ''}"></span>` : '';
-                    dot = mainDot + redDot;
+                    const mainStyle = both ? 'background:linear-gradient(90deg,#22c55e 50%,#3b82f6 50%);' : dayInfo.centro ? 'background:#22c55e;' : 'background:#3b82f6;';
+                    // Calcola quanti puntini mostrare e li distribuisce equamente
+                    const dots = [];
+                    if (hasActive) dots.push({ style: mainStyle });
+                    if (dayInfo.annullata) dots.push({ style: 'background:#90a4ae;' });
+                    if (dayInfo.nonPresent) dots.push({ style: 'background:#ef4444;' });
+                    const positions = dots.length === 1 ? ['50%'] : dots.length === 2 ? ['35%','65%'] : ['25%','50%','75%'];
+                    dot = dots.map((d, i) => `<span class="tv-cal-dot" style="${d.style}left:${positions[i]};transform:translateX(-50%);"></span>`).join('');
                 }
                 cells += `<div class="${cls}" onclick="selectCalendarDate('${ds}')">${d}${dot}</div>`;
             }
@@ -6198,7 +6203,8 @@
           <div class="tv-cal-legend-row"><span class="tv-cal-legend-dot" style="background:#22c55e;"></span>${currentLang==='fr'?'Visite Centre':'Visita Centro'}</div>
           <div class="tv-cal-legend-row"><span class="tv-cal-legend-dot" style="background:#3b82f6;"></span>Second Opinion</div>
           <div class="tv-cal-legend-row"><span class="tv-cal-legend-dot" style="background:linear-gradient(90deg,#22c55e 50%,#3b82f6 50%);"></span>${currentLang==='fr'?'Les deux':'Entrambi'}</div>
-          <div class="tv-cal-legend-row"><span class="tv-cal-legend-dot" style="background:#ef4444;"></span>${currentLang==='fr'?'Non présenté':'Non presentato'}</div>
+          <div class="tv-cal-legend-row"><span class="tv-cal-legend-dot" style="background:#90a4ae;"></span>${currentLang==='fr'?'Annulée':'Annullata'}</div>
+          <div class="tv-cal-legend-row"><span class="tv-cal-legend-dot" style="background:#ef4444;"></span>${currentLang==='fr'?'Non présenté / Refusée':'Non pres. / Rifiutata'}</div>
         </div>
       </button>
     </div>
@@ -12250,7 +12256,7 @@
                 programmata: { label: t('status_programmata'), color: '#1565c0', cls: 'bs-programmata' },
                 accettata: { label: t('status_accettata'), color: '#2e7d32', cls: 'bs-accettata' },
                 rifiutata: { label: t('status_rifiutata'), color: '#c62828', cls: 'bs-rifiutata' },
-                annullata: { label: t('status_annullata'), color: '#880e4f', cls: 'bs-annullata' },
+                annullata: { label: t('status_annullata'), color: '#455a64', cls: 'bs-annullata' },
                 'in-corso': { label: t('status_in_corso'), color: '#e65100', cls: 'bs-in-corso' },
                 completata: { label: t('status_completata'), color: '#757575', cls: 'bs-completata' },
                 non_presentato: { label: t('status_non_presentato'), color: '#e65100', cls: 'bs-non_presentato' },
