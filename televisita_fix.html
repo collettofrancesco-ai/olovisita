@@ -6240,11 +6240,10 @@
                 const q = visitSearchQuery.trim().toLowerCase();
                 filtered = filtered.filter(tv => tv.patient && tv.patient.toLowerCase().includes(q));
             }
-            // Applica filtro per stato — di default le visite terminali (completate/annullate/non presentato) sono nascoste
-            const terminalStatuses = ['completata','rifiutata','annullata','non_presentato'];
+            // Applica filtro per stato
             const todayISO = new Date().toISOString().slice(0, 10);
             if (visitFilter === 'today') {
-                filtered = filtered.filter(tv => tv.date === todayISO && !terminalStatuses.includes(tv.status));
+                filtered = filtered.filter(tv => tv.date === todayISO);
             } else if (visitFilter === 'pending') {
                 filtered = filtered.filter(tv => tv.status === 'programmata');
             } else if (visitFilter === 'no-consent') {
@@ -6255,12 +6254,9 @@
                 filtered = filtered.filter(tv => tv.status === 'annullata' || tv.status === 'rifiutata');
             } else if (visitFilter === 'completate') {
                 filtered = filtered.filter(tv => tv.status === 'completata');
-            } else {
-                // filtro 'all': mostra tutto tranne stati terminali
-                filtered = filtered.filter(tv => !terminalStatuses.includes(tv.status));
             }
             // Applica filtro calendario solo se non c'è una ricerca testuale attiva
-            if (calendarSelectedDate && !visitSearchQuery.trim()) filtered = visible.filter(tv => tv.date === calendarSelectedDate && !terminalStatuses.includes(tv.status));
+            if (calendarSelectedDate && !visitSearchQuery.trim()) filtered = visible.filter(tv => tv.date === calendarSelectedDate);
 
             let html;
             const useCalendarFlat = calendarSelectedDate && !visitSearchQuery.trim();
