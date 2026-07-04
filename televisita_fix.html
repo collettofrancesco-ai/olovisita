@@ -6375,6 +6375,7 @@
                 ${(tv.createdByName || tv.scheduledBy) ? `<p class="mb-1" style="font-size:0.7rem; color:#78909c;"><i class="bi bi-person-badge me-1"></i>${currentLang === 'fr' ? 'Réservée par' : 'Prenotata da'} <strong>${escapeHtml(tv.createdByName || (FACILITIES[tv.scheduledBy] ? FACILITIES[tv.scheduledBy].name : tv.scheduledBy))}</strong></p>` : ''}
                 
                 ${(S.patientNotes && S.patientNotes[tv.patient]) ? `<div class="mb-2 mt-1" style="background:#f1f8e9;border-left:3px solid #66bb6a;border-radius:0 6px 6px 0;padding:5px 9px;cursor:pointer;" onclick="event.stopPropagation(); editPatientNotes('${escapeHtml(tv.patient)}')"><span style="font-size:0.68rem;color:#2e7d32;font-weight:600;"><i class="bi bi-journal-medical me-1"></i>${currentLang === 'fr' ? 'Note cliniques' : 'Note cliniche'}</span><p class="mb-0 mt-1" style="font-size:0.73rem;color:#37474f;white-space:pre-wrap;">${escapeHtml((S.patientNotes[tv.patient] || '').slice(0,120))}${(S.patientNotes[tv.patient] || '').length > 120 ? '…' : ''}</p></div>` : ''}
+                ${tv.legalNote ? `<div class="mb-2 mt-1" style="background:#f3f0ff;border-left:3px solid #7c3aed;border-radius:0 6px 6px 0;padding:5px 9px;"><span style="font-size:0.65rem;color:#5b21b6;font-weight:600;"><i class="bi bi-shield-check me-1"></i>${currentLang === 'fr' ? 'Consentement présumé — Urgence' : 'Consenso presunto — Urgenza'}</span><p class="mb-0 mt-1" style="font-size:0.65rem;color:#6d28d9;font-family:monospace;">${escapeHtml(tv.legalNote)}</p></div>` : ''}
                 ${consentSectionHTML(tv, scheduledByMe)}
  
                 <div class="d-flex gap-2 flex-wrap align-items-center">
@@ -9909,6 +9910,7 @@
                     </div>
                     ${tv.createdByName ? `<p class="mb-0 mt-1" style="font-size:0.68rem;color:#90a4ae;"><i class="bi bi-person-badge me-1"></i>${escapeHtml(tv.createdByName)}</p>` : ''}
                     ${tv.notes ? `<p class="mb-0 mt-1" style="font-size:0.72rem;color:#546e7a;font-style:italic;">"${escapeHtml(tv.notes)}"</p>` : ''}
+                    ${tv.legalNote ? `<p class="mb-0 mt-1" style="font-size:0.62rem;color:#7c3aed;font-family:monospace;"><i class="bi bi-shield-check me-1"></i>${escapeHtml(tv.legalNote)}</p>` : ''}
                 </div>`;
             }).join('') : `<p class="text-muted text-center small py-3">${currentLang === 'fr' ? 'Aucune visite.' : 'Nessuna visita.'}</p>`;
 
@@ -10084,10 +10086,11 @@
                 doctor: DOCTORS[S.role].name,
                 room: room,
                 status: 'in-corso',
-                consentStatus: 'firmato', // Il consenso per visite urgenti è firmato in automatico
+                consentStatus: 'firmato',
                 consentOtp: null,
                 scheduledBy: S.role,
-                type: 'urgente'
+                type: 'urgente',
+                legalNote: `Visita avviata in regime d'urgenza — consenso presunto ai sensi dell'art. 54 c.p. e art. 8 L. 219/2017. Medico: ${DOCTORS[S.role].name}. ${new Date().toISOString()}`
             };
 
             // Aggiungi alla lista locale delle televisite
@@ -10237,7 +10240,8 @@
                 inviteSent: true,
                 scheduledBy: S.role,
                 visitMode: 'centro',
-                type: 'centro'
+                type: 'centro',
+                legalNote: `Visita avviata in regime d'urgenza — consenso presunto ai sensi dell'art. 54 c.p. e art. 8 L. 219/2017. Medico: ${DOCTORS[S.role].name}. ${new Date().toISOString()}`
             };
 
             S.televisite.unshift(newTv);
