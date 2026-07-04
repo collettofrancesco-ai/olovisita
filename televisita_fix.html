@@ -5164,6 +5164,7 @@
                     // ora, cioè anche se il medico era offline nel momento esatto in cui il paziente
                     // ha firmato. Senza questo, quella conferma andrebbe persa per sempre.
                     mqttClient.subscribe(topic + '/consent/+', { qos: 1 });
+                    mqttClient.subscribe(topic + '/waiting/+', { qos: 1 });
 
                     // Self-backup per struttura: subtopic privato con retain:true che contiene
                     // lo stato completo incluse le visite Centro. Solo la propria struttura si
@@ -5233,6 +5234,25 @@
                                 }
                             } catch (e) { console.error('Errore self-backup restore:', e); }
                         }
+                        return;
+                    }
+
+                    // Paziente entrato in sala d'attesa (messaggio cifrato, topic /waiting/tvId)
+                    if (currentTopicId && receivedTopic === MQTT_TOPIC_BASE + currentTopicId + '/waiting/' + receivedTopic.split('/waiting/')[1]) {
+                        try {
+                            const data = JSON.parse(message.toString());
+                            if (data.iv && data.ciphertext) {
+                                decryptPayload(data, currentGroupCode).then(decrypted => {
+                                    if (!decrypted || decrypted.type !== 'patient_waiting') return;
+                                    const tv = S.televisite.find(t => t.id === decrypted.tvId);
+                                    const name = tv ? tv.patient : 'Paziente';
+                                    showToast(`<i class="bi bi-person-check-fill text-success me-2"></i>${escapeHtml(name)} è entrato in sala d'attesa`, 'success');
+                                    pushBrowserNotif('🟢 Paziente pronto', `${name} è entrato nella videochiamata`, 'patient_waiting');
+                                    addNotif('bi-person-check-fill', currentLang === 'fr' ? 'Patient en salle d\'attente' : 'Paziente in sala d\'attesa', name, 'incoming');
+                                    flashBell();
+                                });
+                            }
+                        } catch (_) {}
                         return;
                     }
 
@@ -7015,12 +7035,13 @@
         // Punta a una pagina nostra (non direttamente a Jitsi): così, se il paziente clicca il
         // link DOPO che la televisita è già terminata, può accorgersene invece di entrare in
         // una stanza Jitsi vuota o ormai chiusa.
-        function buildPatientCallUrl(room) {
+        function buildPatientCallUrl(room, tvId) {
             const base = PUBLIC_PATIENT_BASE_URL;
             const params = new URLSearchParams({
                 call: '1',
                 room: room,
-                lang: currentLang
+                lang: currentLang,
+                ...(tvId ? { tvId, code: currentGroupCode } : {})
             });
             return `${base}?${params.toString()}`;
         }
@@ -7324,6 +7345,8 @@
             const lang = params.get('lang');
             if (lang && LANGS[lang]) currentLang = lang;
             const room = params.get('room');
+            const tvId = params.get('tvId');
+            const code = params.get('code');
 
             document.getElementById('patient-call-checking-text').textContent = t('patient_call_checking');
             document.getElementById('patient-call-ended-title').textContent = t('patient_call_ended_title');
@@ -7331,11 +7354,18 @@
             document.getElementById('patient-call-overlay').style.display = 'block';
 
             const jitsiUrl = `https://${JITSI_DOMAIN}/${room}#config.defaultLanguage=${currentLang === 'fr' ? 'fr' : 'it'}`;
-            checkCallStatusThenProceed(room, (ended) => {
+            checkCallStatusThenProceed(room, async (ended) => {
                 if (ended) {
                     document.getElementById('patient-call-checking').classList.add('d-none');
                     document.getElementById('patient-call-ended').classList.remove('d-none');
                 } else {
+                    // Notifica il medico che il paziente è entrato in sala d'attesa
+                    if (code && tvId) {
+                        try {
+                            const encrypted = await encryptPayload({ type: 'patient_waiting', tvId }, code);
+                            await publishPatientMqttMessage(code, encrypted, { topicSuffix: '/waiting/' + tvId });
+                        } catch (_) {}
+                    }
                     window.location.href = jitsiUrl;
                 }
             });
@@ -10024,7 +10054,7 @@
             // Invia email con il link alla videochiamata se non è già stata inviata
             if (!tv.inviteSent) {
                 tv.inviteSent = true;
-                const callUrl = buildPatientCallUrl(tv.room);
+                const callUrl = buildPatientCallUrl(tv.room, tv.id);
                 const patientName = tv.patient;
                 const patientEmail = tv.email || 'paziente@email.com';
 
@@ -10128,7 +10158,7 @@
             showToast(t('toast_imm_sent'), 'info');
 
             // Invia la mail di invito al paziente (con link alla videochiamata e link al portale)
-            const callUrl = buildPatientCallUrl(room);
+            const callUrl = buildPatientCallUrl(room, newTv.id);
             const mailBody = currentLang === 'fr'
                 ? `Cher patient, vous êtes invité à participer à une télévisite urgente en temps réel. Veuillez vous connecter au portail patient ou cliquer sur le lien suivant pour rejoindre l'appel vidéo : <a href="${callUrl}">${callUrl}</a>. Veuillez également signer le formulaire de consentement ci-joint.`
                 : `Gentile paziente, sei invitato a partecipare a una televisita urgente in tempo reale. Accedi al portale paziente o clicca sul seguente link per unirti alla videochiamata: <a href="${callUrl}">${callUrl}</a>. Ti invitiamo inoltre a prendere visione e firmare il consenso allegato.`;
@@ -10249,7 +10279,7 @@
             S.activeRoom = newTv.room;
 
             // Invia mail al paziente con link diretto alla videochiamata (no flusso consenso)
-            const callUrl = buildPatientCallUrl(newTv.room);
+            const callUrl = buildPatientCallUrl(newTv.room, newTv.id);
             const mailBody = currentLang === 'fr'
                 ? `Cher patient, vous êtes convoqué pour une visite centre urgente. Cliquez sur le lien pour rejoindre la vidéoconférence : <a href="${callUrl}" style="display:inline-block;background:#1a56db;color:#ffffff;padding:10px 22px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:14px;">Rejoindre la Conférence</a>`
                 : `Gentile paziente, sei convocato per una visita centro urgente. Clicca sul link per unirti alla videoconferenza: <a href="${callUrl}" style="display:inline-block;background:#1a56db;color:#ffffff;padding:10px 22px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:14px;">Entra in Videoconferenza</a>`;
