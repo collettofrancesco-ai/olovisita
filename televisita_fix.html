@@ -11903,13 +11903,15 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
         function runDemo() {
             stopDemo(); // Annulla un'eventuale demo già in corso prima di ripartire da zero
 
-            const TOTAL = 29;
+            const TOTAL = 34;
             const DEMO_PATIENT = 'Maria Esposito';
             const DEMO_CENTRO_PATIENT = 'Sara Greco';
+            const DEMO_CENTRO_URGENTE_PATIENT = 'Roberto Ferrari';
             const DEMO_NOTES_IT = 'Paziente lucida e collaborante. Riferisce cefalea persistente da 3 giorni, lieve febbre serale. Pressione e saturazione nella norma. Diagnosi: sindrome influenzale. Prescrizione: riposo, paracetamolo 1000mg al bisogno, controllo se i sintomi persistono oltre 5 giorni.';
             const DEMO_NOTES_FR = 'Patiente lucide et coopérative. Signale des céphalées persistantes depuis 3 jours, légère fièvre le soir. Tension et saturation normales. Diagnostic : syndrome grippal. Prescription : repos, paracétamol 1000mg si besoin, contrôle si les symptômes persistent plus de 5 jours.';
             let demoTvId = null;
             let demoCentroTvId = null;
+            let demoCentroUrgenteTvId = null;
 
             scheduleDemo(0, () => {
                 switchRole('struttura1');
@@ -12090,9 +12092,9 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                 showDemoGuide(16, TOTAL,
                     'Ora vediamo una televisita urgente',
                     'Voyons maintenant une télévisite urgente',
-                    'Abbiamo visto il caso normale. Ora vediamo cosa cambia per un\'urgenza: quando un paziente ha bisogno di un consulto immediato, non c\'è tempo per l\'invio del consenso via email e l\'attesa della firma con OTP.',
-                    'Nous avons vu le cas normal. Voyons maintenant ce qui change pour une urgence : lorsqu\'un patient a besoin d\'une consultation immédiate, il n\'y a pas le temps d\'envoyer le consentement par e-mail et d\'attendre la signature avec OTP.');
-                highlightDemoEl('#card-imm-section');
+                    'Abbiamo visto il caso normale. Ora vediamo cosa cambia per un\'urgenza di rete: quando un paziente ha bisogno di un consulto immediato tra le due strutture, non c\'è tempo per l\'invio del consenso via email e l\'attesa della firma con OTP.',
+                    'Nous avons vu le cas normal. Voyons maintenant ce qui change pour une urgence réseau : lorsqu\'un patient a besoin d\'une consultation immédiate entre les deux établissements, il n\'y a pas le temps d\'envoyer le consentement par e-mail et d\'attendre la signature avec OTP.');
+                highlightDemoEl('#card-urgente-section');
             });
 
             scheduleDemo(134500, () => {
@@ -12100,8 +12102,8 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                 showDemoGuide(17, TOTAL,
                     'Richiesta urgente inviata',
                     'Demande urgente envoyée',
-                    'Per le urgenze, il consenso viene firmato automaticamente alla creazione della richiesta, per non far attendere il paziente: resta comunque tracciato e consultabile come quello firmato manualmente.',
-                    'Pour les urgences, le consentement est signé automatiquement dès la création de la demande, pour ne pas faire attendre le patient : il reste néanmoins tracé et consultable, comme celui signé manuellement.');
+                    'Il consenso viene firmato automaticamente alla creazione — il sistema lo certifica con il regime d\'urgenza (art. 54 c.p., art. 8 L. 219/2017): la nota legale con nome del medico, data e ora compare direttamente in cartella, immutabile. Tutto tracciato, nulla rimane nell\'ombra.',
+                    'Le consentement est signé automatiquement dès la création — le système le certifie sous le régime d\'urgence (art. 54 c.p., art. 8 L. 219/2017) : la note légale avec le nom du médecin, la date et l\'heure apparaît directement dans le dossier, immuable. Tout est tracé, rien ne reste dans l\'ombre.');
                 highlightDemoEl('#card-docs-section');
             });
 
@@ -12112,7 +12114,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                     'Ici aussi, synchronisation immédiate',
                     'Come nel caso normale, la richiesta arriva subito sul cruscotto di Struttura 2, in tempo reale.',
                     'Comme dans le cas normal, la demande arrive immédiatement sur le tableau de bord de l\'Établissement 2, en temps réel.');
-                highlightDemoEl('#card-imm-section');
+                highlightDemoEl('#card-urgente-section');
             });
 
             scheduleDemo(150500, () => {
@@ -12137,50 +12139,100 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                     'Exactement la même interface de consultation que précédemment : dossier clinique, notes cliniques et signature du rapport fonctionnent de manière identique, la seule différence a été la rapidité pour arriver jusqu\'ici.');
             });
 
+            // NUOVO: sala d'attesa virtuale — il paziente entra nel link di chiamata e il medico viene notificato
             scheduleDemo(168000, () => {
-                endCall();
+                const urgentTv = S.televisite.find(t => t.type === 'urgente' && (t.status === 'in-corso' || t.status === 'accettata'));
+                const waitingName = urgentTv ? urgentTv.patient : 'Luca Bianchi';
+                showToast(`<i class="bi bi-person-check-fill text-success me-2"></i>${escapeHtml(waitingName)} è entrato in sala d'attesa`, 'success');
+                addNotif('bi-person-check-fill', 'Paziente in sala d\'attesa', waitingName, 'incoming');
+                flashBell();
                 showDemoGuide(21, TOTAL,
+                    'Sala d\'attesa virtuale',
+                    'Salle d\'attente virtuelle',
+                    `<strong>${escapeHtml(waitingName)}</strong> ha cliccato sul link di chiamata ricevuto via email ed è entrato in sala d'attesa Jitsi: il sistema lo segnala al medico in tempo reale con un toast, una notifica push e la campanella lampeggiante — prima ancora che il medico apra lui stesso la videochiamata. Nessun paziente aspetta nel vuoto senza che il medico lo sappia.`,
+                    `<strong>${escapeHtml(waitingName)}</strong> a cliqué sur le lien d'appel reçu par e-mail et est entré dans la salle d'attente Jitsi : le système le signale au médecin en temps réel avec un toast, une notification push et la cloche clignotante — avant même que le médecin n'ouvre la visioconférence. Aucun patient n'attend dans le vide sans que le médecin le sache.`);
+                highlightDemoEl('#notif-panel');
+            });
+
+            scheduleDemo(177000, () => {
+                endCall();
+                showDemoGuide(22, TOTAL,
                     'Fine del consulto urgente',
                     'Fin de la consultation urgente',
                     'Anche qui il medico chiude la videochiamata e la televisita passa allo stato "Completata", esattamente come nel caso normale.',
                     'Ici aussi, le médecin termine la visioconférence et la télévisite passe au statut "Terminée", exactement comme dans le cas normal.');
             });
 
+            // NUOVO: Centro Urgente — paziente fisicamente presente in struttura
+            scheduleDemo(185000, () => {
+                switchRole('struttura1');
+                showDemoGuide(23, TOTAL,
+                    'Quarta modalità: Accesso Centro Urgente',
+                    'Quatrième mode : Accès Centre Urgent',
+                    'C\'è ancora un caso speciale: un paziente si presenta <strong>fisicamente al centro</strong> per una visita urgente, senza prenotazione. Nessuna email, nessun OTP, nessuna attesa della Struttura 2: il medico inserisce i dati e lancia subito la videochiamata. Il <strong>consenso presunto</strong> viene registrato automaticamente dalla piattaforma (art. 54 c.p., art. 8 L. 219/2017).',
+                    'Il reste encore un cas particulier : un patient se présente <strong>physiquement au centre</strong> pour une consultation urgente, sans rendez-vous. Pas d\'e-mail, pas d\'OTP, pas d\'attente de l\'Établissement 2 : le médecin saisit les données et lance immédiatement la visioconférence. Le <strong>consentement présumé</strong> est enregistré automatiquement par la plateforme (art. 54 c.p., art. 8 L. 219/2017).');
+                highlightDemoEl('#card-urgente-section');
+            });
+
+            scheduleDemo(193000, () => {
+                document.getElementById('cu-patient').value = DEMO_CENTRO_URGENTE_PATIENT;
+                document.getElementById('cu-email').value = 'roberto.ferrari@example.com';
+                document.getElementById('cu-phone').value = '+39 333 888 9999';
+                document.getElementById('cu-dob').value = '1965-04-17';
+                submitCentroUrgentRequest(null);
+                demoCentroUrgenteTvId = S.televisite.find(t => t.type === 'centro' && t.patient === DEMO_CENTRO_URGENTE_PATIENT)?.id;
+                showDemoGuide(24, TOTAL,
+                    'Accesso Centro Urgente avviato',
+                    'Accès Centre Urgent démarré',
+                    `La visita di <strong>${DEMO_CENTRO_URGENTE_PATIENT}</strong> è immediatamente "In corso": la stanza Jitsi è pronta e la nota legale certificata è già visibile in cartella clinica. Zero attese, zero burocrazia — solo il paziente e il medico.`,
+                    `La visite de <strong>${DEMO_CENTRO_URGENTE_PATIENT}</strong> est immédiatement "En cours" : la salle Jitsi est prête et la note légale certifiée est déjà visible dans le dossier clinique. Zéro attente, zéro bureaucratie — juste le patient et le médecin.`);
+                highlightDemoEl('#card-urgente-section');
+            });
+
+            scheduleDemo(202000, () => {
+                endCall();
+                showDemoGuide(25, TOTAL,
+                    'Visita Centro Urgente completata',
+                    'Visite Centre Urgent terminée',
+                    'Il medico chiude la videochiamata e la visita passa a "Completata". Il referto può essere firmato digitalmente e consegnato al paziente con le stesse modalità già viste. Ogni percorso — normale, urgente di rete, urgente in centro — converge nella stessa identica interfaccia di consulto.',
+                    'Le médecin termine la visioconférence et la visite passe à "Terminée". Le rapport peut être signé numériquement et remis au patient de la même façon que précédemment. Chaque parcours — normal, urgent réseau, urgent centre — converge vers la même interface de consultation.');
+            });
+
             // ---------------------------------------------------------------------------
-            // TERZO PERCORSO: TELEVISITA CENTRO (la struttura gestisce la visita da sola,
-            // senza coinvolgere l'altra struttura). Restiamo connessi come Struttura 2,
+            // QUARTO PERCORSO: TELEVISITA CENTRO programmata (la struttura gestisce la
+            // visita da sola, senza coinvolgere l'altra struttura). Restiamo in struttura1
             // così non serve un altro cambio di profilo medico.
             // ---------------------------------------------------------------------------
-            scheduleDemo(176000, () => {
-                showDemoGuide(22, TOTAL,
-                    'Una terza modalità: Televisita Centro',
-                    'Un troisième mode : Télévisite Centre',
-                    'Finora abbiamo visto televisite condivise tra le due strutture. A volte invece una struttura vuole occuparsi di una visita con un proprio paziente in piena autonomia: per questo, al momento della programmazione, si può scegliere la modalità <strong>"Televisita Centro"</strong> invece di "Network".',
-                    'Jusqu\'ici, nous avons vu des télévisites partagées entre les deux établissements. Parfois, un établissement souhaite au contraire gérer une visite avec son propre patient en totale autonomie : pour cela, au moment de la planification, on peut choisir le mode <strong>"Télévisite Centre"</strong> au lieu de "Réseau".');
+            scheduleDemo(211000, () => {
+                showDemoGuide(26, TOTAL,
+                    'Quinta modalità: Televisita Centro programmata',
+                    'Cinquième mode : Télévisite Centre planifiée',
+                    'Finora abbiamo visto televisite condivise tra le due strutture e visite urgenti in entrambe le modalità. A volte invece una struttura vuole occuparsi di una visita con un proprio paziente in piena autonomia, con prenotazione: la modalità <strong>"Televisita Centro"</strong> fa esattamente questo.',
+                    'Jusqu\'ici nous avons vu des télévisites partagées et des visites urgentes dans les deux modes. Parfois un établissement souhaite gérer une visite avec son propre patient en totale autonomie, sur rendez-vous : le mode <strong>"Télévisite Centre"</strong> fait exactement cela.');
                 highlightDemoEl('#card-sched-section');
             });
 
-            scheduleDemo(184500, () => {
-                document.getElementById('f2-patient').value = DEMO_CENTRO_PATIENT;
-                document.getElementById('f2-email').value = 'sara.greco@example.com';
-                document.getElementById('f2-phone').value = '+39 333 555 1212';
-                document.getElementById('f2-date').value = todayStr();
-                document.getElementById('f2-time').value = findFreeDemoTime();
-                document.getElementById('f2-visit-mode').value = 'centro';
-                const notesEl2 = document.getElementById('f2-notes');
+            scheduleDemo(219500, () => {
+                document.getElementById('f-patient').value = DEMO_CENTRO_PATIENT;
+                document.getElementById('f-email').value = 'sara.greco@example.com';
+                document.getElementById('f-phone').value = '+39 333 555 1212';
+                document.getElementById('f-date').value = todayStr();
+                document.getElementById('f-time').value = findFreeDemoTime();
+                document.getElementById('f-visit-mode').value = 'centro';
+                const notesEl2 = document.getElementById('f-notes');
                 if (notesEl2) notesEl2.value = currentLang === 'fr' ? 'Suivi de routine' : 'Controllo di routine';
-                document.getElementById('sched-form-s2').requestSubmit();
+                document.getElementById('sched-form').requestSubmit();
                 demoCentroTvId = S.televisite.find(t => t.patient === DEMO_CENTRO_PATIENT)?.id;
-                showDemoGuide(23, TOTAL,
+                showDemoGuide(27, TOTAL,
                     'Televisita Centro già pronta',
                     'Télévisite Centre déjà prête',
                     `Il modulo è identico a quello di prima, solo con il tipo cambiato. Niente "in attesa di conferma": la televisita per <strong>${DEMO_CENTRO_PATIENT}</strong> è già "Accettata", perché l'altra struttura non viene proprio coinvolta. Manca solo il consenso del paziente per poter partire.`,
                     `Le formulaire est identique à celui d'avant, seul le type a changé. Pas d'"attente de confirmation" : la télévisite pour <strong>${DEMO_CENTRO_PATIENT}</strong> est déjà "Acceptée", car l'autre établissement n'est même pas concerné. Il ne manque que le consentement du patient pour pouvoir démarrer.`);
             });
 
-            scheduleDemo(193500, () => {
+            scheduleDemo(228500, () => {
                 if (demoCentroTvId) sendConsentEmail(demoCentroTvId);
-                showDemoGuide(24, TOTAL,
+                showDemoGuide(28, TOTAL,
                     'Il consenso funziona allo stesso modo',
                     'Le consentement fonctionne de la même façon',
                     'Anche per una Televisita Centro il consenso informato resta obbligatorio e funziona esattamente come prima: lo inviamo al paziente via email, che dovrà leggerlo e firmarlo con il codice OTP.',
@@ -12188,21 +12240,21 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                 highlightDemoEl('#card-sched-section');
             });
 
-            scheduleDemo(203000, () => {
+            scheduleDemo(238500, () => {
                 if (demoCentroTvId) viewConsentPDF(demoCentroTvId);
                 setTimeout(() => {
                     const scrollBody = document.getElementById('pdf-modal-scroll-body');
                     if (scrollBody) scrollBody.scrollTop = scrollBody.scrollHeight;
                     setTimeout(() => document.getElementById('btn-unlock-otp')?.click(), 700);
                 }, 600);
-                showDemoGuide(25, TOTAL,
+                showDemoGuide(29, TOTAL,
                     'Il paziente legge e firma',
                     'Le patient lit et signe',
                     'Il paziente apre il link ricevuto, legge tutto il modulo e accetta: il sistema gli invia il codice OTP da inserire per firmare, proprio come nel percorso normale.',
                     'Le patient ouvre le lien reçu, lit l\'intégralité du formulaire et accepte : le système lui envoie le code OTP à saisir pour signer, exactement comme dans le parcours normal.');
             });
 
-            scheduleDemo(213000, () => {
+            scheduleDemo(248500, () => {
                 const tv = S.televisite.find(t => t.id === demoCentroTvId);
                 const otp = tv ? tv.consentOtp : null;
                 const modalEl = document.getElementById('pdfModal');
@@ -12213,7 +12265,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                         // La card della televisita è renderizzata identica in entrambi i pannelli
                         // (vlist-s1 e vlist-s2 ricevono lo stesso HTML): l'id "otp-input-..." è quindi
                         // duplicato nel DOM. Va selezionato dentro il pannello del ruolo attivo (qui
-                        // Struttura 2), esattamente come fa verifyConsentOtp() internamente, altrimenti
+                        // struttura1), esattamente come fa verifyConsentOtp() internamente, altrimenti
                         // si rischia di scrivere il codice nella copia nascosta dell'altro pannello.
                         const panelEl = document.getElementById(S.role === 'struttura1' ? 'p-s1' : 'p-s2');
                         const input = panelEl ? panelEl.querySelector(`#otp-input-${demoCentroTvId}`) : null;
@@ -12223,7 +12275,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                         }
                     }, 500);
                 }
-                showDemoGuide(26, TOTAL,
+                showDemoGuide(30, TOTAL,
                     'Consenso firmato: si può partire',
                     'Consentement signé : on peut démarrer',
                     'Con il consenso firmato, il pulsante "Avvia" si attiva: anche qui niente avviene finché il paziente non ha davvero accettato e firmato.',
@@ -12231,30 +12283,42 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                 highlightDemoEl('#card-sched-section');
             });
 
-            scheduleDemo(222000, () => {
+            scheduleDemo(257500, () => {
                 if (demoCentroTvId) startVisit(demoCentroTvId);
-                showDemoGuide(27, TOTAL,
+                showDemoGuide(31, TOTAL,
                     'Videochiamata della Televisita Centro',
                     'Visioconférence de la Télévisite Centre',
                     'Stessa identica videochiamata vista finora, con cartella clinica del paziente sempre a fianco: l\'unica differenza, invisibile al paziente, è che questa visita resta una faccenda interna a questa sola struttura.',
                     'Exactement la même visioconférence que jusqu\'ici, avec le dossier clinique du patient toujours à côté : la seule différence, invisible pour le patient, est que cette visite reste une affaire interne à cet établissement seul.');
             });
 
-            scheduleDemo(231500, () => {
+            scheduleDemo(267000, () => {
                 endCall();
-                showDemoGuide(28, TOTAL,
+                showDemoGuide(32, TOTAL,
                     'Fine della Televisita Centro',
                     'Fin de la Télévisite Centre',
                     'Il medico chiude la videochiamata e la televisita passa a "Completata", come sempre. Durante tutto il percorso, però, questa visita non è mai comparsa sul cruscotto dell\'altra struttura: è rimasta una scelta tutta interna a questa sola struttura.',
                     'Le médecin termine la visioconférence et la télévisite passe à "Terminée", comme toujours. Mais pendant tout le parcours, cette visite n\'est jamais apparue sur le tableau de bord de l\'autre établissement : c\'est resté un choix entièrement interne à cet établissement.');
             });
 
-            scheduleDemo(239500, () => {
-                showDemoGuide(29, TOTAL,
+            // NUOVO: mostra filtri, storico pazienti — nuove funzioni UI
+            scheduleDemo(275000, () => {
+                setVisitFilter('completate');
+                showDemoGuide(33, TOTAL,
+                    'Filtri, storico e gestione visite',
+                    'Filtres, historique et gestion des visites',
+                    'La barra dei filtri permette di navigare istantaneamente tra le visite: <strong>Completate</strong>, <strong>Annullate</strong> (grigie), <strong>Non Presentato</strong> (rosse) e altro. Il calendario mostra puntini colorati per ogni tipo di visita nel giorno. Ogni paziente ha un pulsante "Accessi" che apre il suo storico completo con dati anagrafici, tipo di visita, stato del consenso e documenti allegati.',
+                    'La barre de filtres permet de naviguer instantanément entre les visites : <strong>Terminées</strong>, <strong>Annulées</strong> (grises), <strong>Non Présentées</strong> (rouges) et autres. Le calendrier affiche des points colorés pour chaque type de visite dans la journée. Chaque patient dispose d\'un bouton "Accès" qui ouvre son historique complet avec données personnelles, type de visite, état du consentement et documents joints.');
+                highlightDemoEl('.filter-pills-bar');
+                setTimeout(() => setVisitFilter('all'), 7000);
+            });
+
+            scheduleDemo(283000, () => {
+                showDemoGuide(34, TOTAL,
                     'Demo completata!',
                     'Démo terminée !',
-                    'Hai visto tre percorsi: una televisita normale, con consenso letto e firmato dal paziente con codice OTP; una televisita urgente, con consenso firmato automaticamente per non perdere tempo; e una Televisita Centro, gestita da una sola struttura senza coinvolgere l\'altra. In tutti i casi: consulto video, diagnosi, firma digitale con valore legale e consegna del referto al paziente. Puoi ripetere la demo in qualsiasi momento.',
-                    'Vous avez vu trois parcours : une télévisite normale, avec un consentement lu et signé par le patient via un code OTP ; une télévisite urgente, avec un consentement signé automatiquement pour ne pas perdre de temps ; et une Télévisite Centre, gérée par un seul établissement sans impliquer l\'autre. Dans tous les cas : consultation vidéo, diagnostic, signature numérique à valeur légale et remise du rapport au patient. Vous pouvez relancer la démo à tout moment.');
+                    'Hai visto quattro percorsi completi: televisita di rete normale con consenso OTP; televisita urgente di rete con consenso presunto e notifica sala d\'attesa; accesso centro urgente con nota legale automatica; televisita centro programmata con consenso. In tutti i casi: video su Jitsi, cartella clinica, referto firmato digitalmente con valore legale. Puoi ripetere la demo in qualsiasi momento.',
+                    'Vous avez vu quatre parcours complets : télévisite réseau normale avec consentement OTP ; télévisite urgente réseau avec consentement présumé et notification salle d\'attente ; accès centre urgent avec note légale automatique ; télévisite centre planifiée avec consentement. Dans tous les cas : vidéo sur Jitsi, dossier clinique, rapport signé numériquement à valeur légale. Vous pouvez relancer la démo à tout moment.');
             });
         }
 
