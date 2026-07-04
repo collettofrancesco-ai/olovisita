@@ -5776,16 +5776,7 @@
             document.body.prepend(bar);
         }
 
-        function simulatePatientWaiting(tvId) {
-            const tv = S.televisite.find(t => t.id === tvId);
-            if (!tv) return;
-            showToast(`<i class="bi bi-person-check-fill text-success me-2"></i>${escapeHtml(tv.patient)} è entrato in sala d'attesa`, 'success');
-            pushBrowserNotif('🟢 Paziente pronto', `${tv.patient} è entrato nella videochiamata`, 'patient_waiting');
-            addNotif('bi-person-check-fill', 'Paziente in sala d\'attesa', tv.patient, 'incoming');
-            flashBell();
-        }
-
-        function pushBrowserNotif(title, body, tag) {
+function pushBrowserNotif(title, body, tag) {
             if (!('Notification' in window) || Notification.permission !== 'granted') return;
             if (document.visibilityState === 'visible' && document.hasFocus()) return;
             const notif = new Notification(title, { body, tag, icon: 'https://collettofrancesco-ai.github.io/olovisita/vendor/favicon.ico' });
@@ -6416,8 +6407,7 @@
                     <button class="btn btn-outline-secondary btn-sm py-0" onclick="event.stopPropagation(); showPatientHistory('${escapeHtml(tv.patient)}')"><i class="bi bi-clock-history me-1"></i>${currentLang === 'fr' ? 'Accès' : 'Accessi'}</button>
                     ${scheduledByMe ? `<button class="btn btn-outline-secondary btn-sm py-0" onclick="event.stopPropagation(); rescheduleVisit('${tv.id}')"><i class="bi bi-arrow-repeat me-1"></i>${currentLang === 'fr' ? 'Reprogrammer' : 'Riprogramma'}</button>` : ''}
                     ${scheduledByMe && (tv.status === 'programmata' || tv.status === 'accettata') ? `<button class="btn btn-outline-warning btn-sm py-0" onclick="event.stopPropagation(); markNonPresentato('${tv.id}')" style="color:#e65100;border-color:#e65100;"><i class="bi bi-person-x-fill me-1"></i>${t('btn_non_presentato')}</button>` : ''}
-                    ${tv.status === 'in-corso' ? `<button class="btn btn-sm py-0" onclick="event.stopPropagation(); simulatePatientWaiting('${tv.id}')" title="Simula: il paziente ha aperto il link" style="color:#7c3aed;border:1px dashed #7c3aed;border-radius:4px;font-size:.7rem;"><i class="bi bi-flask me-1"></i>Simula paziente</button>` : ''}
-                    ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclick="event.stopPropagation(); cancelVisit('${tv.id}')"><i class="bi bi-x-octagon me-1"></i>${t('btn_cancel_visit')}</button>` : ''}
+${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclick="event.stopPropagation(); cancelVisit('${tv.id}')"><i class="bi bi-x-octagon me-1"></i>${t('btn_cancel_visit')}</button>` : ''}
                     ${tv.status === 'completata' ? `<span class="text-muted small"><i class="bi bi-check-all me-1"></i>${t('status_completata')}</span>` : ''}
                     ${tv.status === 'rifiutata' ? `<span class="text-danger small"><i class="bi bi-x-circle me-1"></i>${t('status_rifiutata')}</span>` : ''}
                     ${tv.status === 'annullata' ? `<span class="small" style="color:#880e4f;"><i class="bi bi-x-octagon me-1"></i>${t('status_annullata')}</span>` : ''}
