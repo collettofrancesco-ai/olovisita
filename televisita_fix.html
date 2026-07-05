@@ -6563,7 +6563,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
             // direttamente a video nello stesso momento in cui viene generato: inviarlo anche per email
             // non aggiunge nulla per chi la riceve, e con una quota EmailJS mensile limitata è uno spreco
             // di richieste reali per un'informazione che il destinatario ha già sotto gli occhi.
-            if (realSend && emailJsConfigs && emailJsConfigs.length > 0) {
+            if (realSend && !S.demoMode && emailJsConfigs && emailJsConfigs.length > 0) {
                 console.log('Sending real email via EmailJS...', email);
                 // Il bottone inline (testo+link) viene rimosso del tutto dal testo semplice: nell'e-mail
                 // reale il bottone arriva già separatamente dal template tramite {{action_label}}/{{invite_url}},
@@ -11869,6 +11869,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
             demoTimeouts = [];
             hideDemoGuide();
             document.querySelectorAll('.demo-pulse').forEach(el => el.classList.remove('demo-pulse'));
+            S.demoMode = false;
             showToast(currentLang === 'fr' ? 'Démo interrompue.' : 'Demo interrotta.', 'warning');
         }
 
@@ -11902,6 +11903,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
 
         function runDemo() {
             stopDemo(); // Annulla un'eventuale demo già in corso prima di ripartire da zero
+            S.demoMode = true; // Blocca l'invio di email reali per tutta la durata della demo
 
             const TOTAL = 34;
             const DEMO_PATIENT = 'Maria Esposito';
