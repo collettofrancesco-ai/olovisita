@@ -3734,6 +3734,9 @@
             patientNotes: {}
         };
 
+        // Accessore read-only per test E2E e debug da console. Non usato dal codice applicativo.
+        Object.defineProperty(window, '_S', { get: () => S, configurable: false });
+
         // Stato del mini calendario nella sezione "Le tue richieste"
         const _today = new Date();
         let calendarSelectedDate = null; // nessun filtro di default: mostra tutte raggruppate

@@ -9,3 +9,8 @@ Backup Televisita/
 backup_televisita_*.json
 __pycache__/
 *.bak
+
+# Playwright / Node
+node_modules/
+playwright-report/
+test-results/
