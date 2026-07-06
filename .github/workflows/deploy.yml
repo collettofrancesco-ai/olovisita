@@ -32,15 +32,36 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Esegui test E2E
-        run: npx playwright test
+        run: npx playwright test --reporter=list,html,github
 
-      - name: Upload report test (in caso di fallimento)
-        if: failure()
+      - name: Riepilogo test nel job summary
+        if: always()
+        run: |
+          echo "## Risultati Test E2E — $(date '+%d/%m/%Y %H:%M UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Suite | Test | Esito |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| login.spec.js | 5 | - |" >> $GITHUB_STEP_SUMMARY
+          echo "| schedule_visit.spec.js | 4 | - |" >> $GITHUB_STEP_SUMMARY
+          echo "| urgent_visit.spec.js | 6 | - |" >> $GITHUB_STEP_SUMMARY
+          echo "| consent_flow.spec.js | 5 | - |" >> $GITHUB_STEP_SUMMARY
+          echo "| demo.spec.js | 4 | - |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -f playwright-report/index.html ]; then
+            PASSED=$(grep -o '"passed":[0-9]*' playwright-report/index.html 2>/dev/null | head -1 | grep -o '[0-9]*' || echo "?")
+            FAILED=$(grep -o '"failed":[0-9]*' playwright-report/index.html 2>/dev/null | head -1 | grep -o '[0-9]*' || echo "?")
+            echo "**Totale: $PASSED/24 superati, $FAILED falliti**" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "_Report HTML completo disponibile nell'artefatto \`playwright-report\`_" >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload report test
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: playwright-report-${{ github.run_number }}
           path: playwright-report/
-          retention-days: 7
+          retention-days: 30
 
   deploy:
     name: Deploy GitHub Pages
