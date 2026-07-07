@@ -100,8 +100,15 @@ l'intero modello di sicurezza. Nell'UI compare solo il nome della stanza derivat
 mai il codice grezzo.
 
 Il valore di default è `atob('T2xvdmlzaXRhX3BhbGVybW9fdHVuaXNpYQ==')` (riga 3884).
-Non va loggato, non va passato come parametro URL, non va inserito in nessun attributo
-visibile nel DOM.
+Non va loggato, non va inserito in nessun attributo visibile nel DOM.
+
+**Eccezione documentata — flusso consenso paziente**: `currentGroupCode` compare nei
+parametri `?room=` e `?code=` degli URL inviati via email al paziente
+(`buildPatientConsentUrl` riga 7007, `buildPatientCallUrl` riga 7047). Questo è
+architetturalmente necessario: il paziente accede al modulo di consenso senza login e
+senza sessione, quindi deve ricevere il segreto fuori banda (via email) per poter
+decriptare i dati della visita lato client. Non esiste alternativa senza un backend.
+Questa è l'unica eccezione ammessa e non va estesa ad altri contesti.
 
 ### 5.2 Le televisite Centro non escono mai dal dispositivo
 

@@ -6528,13 +6528,13 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
             sendAcrossEmailJsAccounts(emailJsConfigs, templateParams)
                 .then(response => {
                     console.log('EmailJS Success:', response.status, response.text);
-                    showToast('✉️ E-mail reale inviata con successo a ' + patientEmail, 'success');
+                    showToast('✉️ E-mail reale inviata con successo a ' + escapeHtml(patientEmail), 'success');
                 })
                 .catch(error => {
                     const status = error && error.status;
                     const detail = (error && (error.text || error.message)) || 'connessione di rete instabile';
                     const prefix = (typeof status === 'number' && status > 0) ? `Errore invio e-mail EmailJS (HTTP ${status})` : 'Errore invio e-mail EmailJS';
-                    showToast('⚠️ ' + prefix + ': ' + detail, 'danger');
+                    showToast('⚠️ ' + prefix + ': ' + escapeHtml(detail), 'danger');
                 });
         }
 
@@ -10412,7 +10412,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                 S.jitsiApi = new JitsiMeetExternalAPI(JITSI_DOMAIN, opts);
                 S.jitsiApi.addEventListener('videoConferenceLeft', () => endCall());
                 S.jitsiApi.addEventListener('participantJoined', ({ displayName }) => {
-                    showToast(`<i class="bi bi-person-check-fill me-2"></i><strong>${displayName || 'Partecipante'}</strong> ${t('participant_joined')}`, 'info');
+                    showToast(`<i class="bi bi-person-check-fill me-2"></i><strong>${escapeHtml(displayName || 'Partecipante')}</strong> ${t('participant_joined')}`, 'info');
                 });
             } catch (err) {
                 console.error('Errore Jitsi:', err);
