@@ -5,10 +5,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OLOVISITA — Piattaforma Televisite Mediche</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.10.1/mqtt.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet"
+          integrity="sha384-XGjxtQfXaH2tnPFa9x+ruJTuLE3Aa6LhHSWRr1XeTyhezb4abCG4ccI5AkVDxqC+" crossorigin="anonymous">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.10.1/mqtt.min.js"
+            integrity="sha384-u4uqeACkFcoKl57rBQJHVGDd1pqhW4w8X3WjTu1ZksPdxoLqdt34jpoNkJisE25W" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3.11.0/dist/email.min.js"
+            integrity="sha384-VDbnsk/qjpIVHPQMkJiROI+vW/7cw0k8TFYVLUabm7EWoLEDwcXh09XQ6gQ86Y0B" crossorigin="anonymous"></script>
     <!-- pdf.js ospitato in locale (cartella vendor/) invece che su CDN esterno: se il CDN è
          bloccato o irraggiungibile (es. firewall ospedaliero) il rendering del PDF fallisce in
          silenzio su un solo lato, e la lavagna collaborativa finisce su un'altezza diversa tra
@@ -4714,6 +4718,14 @@
             navigator.clipboard.writeText(code).then(() => showToast('✅ Codice copiato negli appunti', 'success'));
         }
 
+        // escapeAttr: come escapeHtml ma include anche le virgolette singole — usare
+        // in tutti i contesti onclick="...func('VALORE')..." dove il valore può arrivare via MQTT.
+        function escapeAttr(str) {
+            const d = document.createElement('div');
+            d.textContent = String(str ?? '');
+            return d.innerHTML.replace(/'/g, '&#39;');
+        }
+
         function escapeHtml(str) {
             const div = document.createElement('div');
             div.textContent = str == null ? '' : String(str);
@@ -5911,6 +5923,8 @@ function pushBrowserNotif(title, body, tag) {
             return sha256Fallback(text);
         }
 
+        // Contatore tentativi login falliti per username: blocco esponenziale fino a 30s.
+        const _loginAttempts = {};
         async function submitLogin() {
             const username = document.getElementById('user-select').value;
             const pwdEl = document.getElementById('pwd-input');
@@ -5918,11 +5932,25 @@ function pushBrowserNotif(title, body, tag) {
             const cardEl = document.getElementById('login-form-card');
 
             errEl.textContent = '';
+
+            const attemptKey = activeFacilityId + ':' + username;
+            const now = Date.now();
+            const att = _loginAttempts[attemptKey] || { count: 0, lockedUntil: 0 };
+            if (att.lockedUntil > now) {
+                const secs = Math.ceil((att.lockedUntil - now) / 1000);
+                errEl.textContent = `Troppi tentativi. Riprovare tra ${secs}s.`;
+                return;
+            }
+
             const facility = FACILITIES[activeFacilityId];
             const user = facility.users.find(u => u.username === username);
             const enteredHash = user ? await sha256Hex(pwdEl.value) : null;
 
             if (!user || enteredHash !== user.passwordHash) {
+                att.count = (att.count || 0) + 1;
+                const delay = att.count >= 5 ? 30000 : att.count >= 3 ? 10000 : 0;
+                att.lockedUntil = delay > 0 ? now + delay : 0;
+                _loginAttempts[attemptKey] = att;
                 errEl.textContent = t('pwd_error');
                 cardEl.classList.remove('shake');
                 void cardEl.offsetWidth;
@@ -5931,6 +5959,7 @@ function pushBrowserNotif(title, body, tag) {
                 pwdEl.focus();
                 return;
             }
+            _loginAttempts[attemptKey] = { count: 0, lockedUntil: 0 };
 
             // Sincronizza i dati medici correnti per compatibilità con il resto del cruscotto
             DOCTORS[activeFacilityId].name = user.name;
@@ -6101,7 +6130,13 @@ function pushBrowserNotif(title, body, tag) {
         // ---------------------------------------------------------------------------
         // ROLE SWITCH
         // ---------------------------------------------------------------------------
+        // Accessibile da window solo in ambienti di test (localhost / porta non-80/443).
+        // In produzione il login normale è l'unico modo per cambiare struttura attiva.
+        const _isTestEnv = () => location.hostname === 'localhost' || location.hostname === '127.0.0.1' || /:\d{4,}$/.test(location.host);
+        window.__testMode = _isTestEnv();
+
         function switchRole(role) {
+            if (!window.__testMode && !S.currentUser) return;
             S.role = role;
             const d = DOCTORS[role];
 
@@ -6397,20 +6432,20 @@ function pushBrowserNotif(title, body, tag) {
                 ${tv.notes ? `<p class="text-muted small mt-1 mb-1">${escapeHtml(tv.notes)}</p>` : '<div class="mb-1"></div>'}
                 ${(tv.createdByName || tv.scheduledBy) ? `<p class="mb-1" style="font-size:0.7rem; color:#78909c;"><i class="bi bi-person-badge me-1"></i>${currentLang === 'fr' ? 'Réservée par' : 'Prenotata da'} <strong>${escapeHtml(tv.createdByName || (FACILITIES[tv.scheduledBy] ? FACILITIES[tv.scheduledBy].name : tv.scheduledBy))}</strong></p>` : ''}
                 
-                ${(S.patientNotes && S.patientNotes[tv.patient]) ? `<div class="mb-2 mt-1" style="background:#f1f8e9;border-left:3px solid #66bb6a;border-radius:0 6px 6px 0;padding:5px 9px;cursor:pointer;" onclick="event.stopPropagation(); editPatientNotes('${escapeHtml(tv.patient)}')"><span style="font-size:0.68rem;color:#2e7d32;font-weight:600;"><i class="bi bi-journal-medical me-1"></i>${currentLang === 'fr' ? 'Note cliniques' : 'Note cliniche'}</span><p class="mb-0 mt-1" style="font-size:0.73rem;color:#37474f;white-space:pre-wrap;">${escapeHtml((S.patientNotes[tv.patient] || '').slice(0,120))}${(S.patientNotes[tv.patient] || '').length > 120 ? '…' : ''}</p></div>` : ''}
+                ${(S.patientNotes && S.patientNotes[tv.patient]) ? `<div class="mb-2 mt-1" style="background:#f1f8e9;border-left:3px solid #66bb6a;border-radius:0 6px 6px 0;padding:5px 9px;cursor:pointer;" onclick="event.stopPropagation(); editPatientNotes('${escapeAttr(tv.patient)}')"><span style="font-size:0.68rem;color:#2e7d32;font-weight:600;"><i class="bi bi-journal-medical me-1"></i>${currentLang === 'fr' ? 'Note cliniques' : 'Note cliniche'}</span><p class="mb-0 mt-1" style="font-size:0.73rem;color:#37474f;white-space:pre-wrap;">${escapeHtml((S.patientNotes[tv.patient] || '').slice(0,120))}${(S.patientNotes[tv.patient] || '').length > 120 ? '…' : ''}</p></div>` : ''}
                 ${tv.legalNote ? `<div class="mb-2 mt-1" style="background:#f3f0ff;border-left:3px solid #7c3aed;border-radius:0 6px 6px 0;padding:5px 9px;"><span style="font-size:0.65rem;color:#5b21b6;font-weight:600;"><i class="bi bi-shield-check me-1"></i>${currentLang === 'fr' ? 'Consentement présumé — Urgence' : 'Consenso presunto — Urgenza'}</span><p class="mb-0 mt-1" style="font-size:0.65rem;color:#6d28d9;font-family:monospace;">${escapeHtml(tv.legalNote)}</p></div>` : ''}
                 ${consentSectionHTML(tv, scheduledByMe)}
  
                 <div class="d-flex gap-2 flex-wrap align-items-center">
-                    ${canJoin ? `<button class="btn btn-success btn-sm py-0" onclick="event.stopPropagation(); startVisit('${tv.id}')" ${disableAvvia ? 'disabled title="' + t('btn_disabled_consent') + '" style="opacity: 0.65; cursor: not-allowed;"' : ''}><i class="bi bi-camera-video-fill me-1"></i>${scheduledByMe ? (currentLang === 'it' ? 'Avvia' : 'Démarrer') : (currentLang === 'it' ? 'Entra' : 'Rejoindre')}</button>` : ''}
-                    ${canAct ? `<button class="btn btn-outline-success btn-sm py-0" onclick="event.stopPropagation(); acceptSched('${tv.id}')"><i class="bi bi-check me-1"></i>${t('btn_accept')}</button>
-                                  <button class="btn btn-outline-danger btn-sm py-0"  onclick="event.stopPropagation(); rejectSched('${tv.id}')"><i class="bi bi-x me-1"></i>${t('btn_reject')}</button>` : ''}
+                    ${canJoin ? `<button class="btn btn-success btn-sm py-0" onclick="event.stopPropagation(); startVisit('${escapeAttr(tv.id)}')" ${disableAvvia ? 'disabled title="' + t('btn_disabled_consent') + '" style="opacity: 0.65; cursor: not-allowed;"' : ''}><i class="bi bi-camera-video-fill me-1"></i>${scheduledByMe ? (currentLang === 'it' ? 'Avvia' : 'Démarrer') : (currentLang === 'it' ? 'Entra' : 'Rejoindre')}</button>` : ''}
+                    ${canAct ? `<button class="btn btn-outline-success btn-sm py-0" onclick="event.stopPropagation(); acceptSched('${escapeAttr(tv.id)}')"><i class="bi bi-check me-1"></i>${t('btn_accept')}</button>
+                                  <button class="btn btn-outline-danger btn-sm py-0"  onclick="event.stopPropagation(); rejectSched('${escapeAttr(tv.id)}')"><i class="bi bi-x me-1"></i>${t('btn_reject')}</button>` : ''}
                     ${waiting ? `<span class="text-muted small"><i class="bi bi-hourglass me-1"></i>${t('waiting_confirm')}</span>` : ''}
-                    <button class="btn btn-outline-secondary btn-sm py-0" onclick="event.stopPropagation(); editPatientNotes('${escapeHtml(tv.patient)}')"><i class="bi bi-journal-medical me-1"></i>${currentLang === 'fr' ? 'Note' : 'Note'}</button>
-                    <button class="btn btn-outline-secondary btn-sm py-0" onclick="event.stopPropagation(); showPatientHistory('${escapeHtml(tv.patient)}')"><i class="bi bi-clock-history me-1"></i>${currentLang === 'fr' ? 'Accès' : 'Accessi'}</button>
-                    ${scheduledByMe ? `<button class="btn btn-outline-secondary btn-sm py-0" onclick="event.stopPropagation(); rescheduleVisit('${tv.id}')"><i class="bi bi-arrow-repeat me-1"></i>${currentLang === 'fr' ? 'Reprogrammer' : 'Riprogramma'}</button>` : ''}
-                    ${scheduledByMe && (tv.status === 'programmata' || tv.status === 'accettata') ? `<button class="btn btn-outline-warning btn-sm py-0" onclick="event.stopPropagation(); markNonPresentato('${tv.id}')" style="color:#e65100;border-color:#e65100;"><i class="bi bi-person-x-fill me-1"></i>${t('btn_non_presentato')}</button>` : ''}
-${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclick="event.stopPropagation(); cancelVisit('${tv.id}')"><i class="bi bi-x-octagon me-1"></i>${t('btn_cancel_visit')}</button>` : ''}
+                    <button class="btn btn-outline-secondary btn-sm py-0" onclick="event.stopPropagation(); editPatientNotes('${escapeAttr(tv.patient)}')"><i class="bi bi-journal-medical me-1"></i>${currentLang === 'fr' ? 'Note' : 'Note'}</button>
+                    <button class="btn btn-outline-secondary btn-sm py-0" onclick="event.stopPropagation(); showPatientHistory('${escapeAttr(tv.patient)}')"><i class="bi bi-clock-history me-1"></i>${currentLang === 'fr' ? 'Accès' : 'Accessi'}</button>
+                    ${scheduledByMe ? `<button class="btn btn-outline-secondary btn-sm py-0" onclick="event.stopPropagation(); rescheduleVisit('${escapeAttr(tv.id)}')"><i class="bi bi-arrow-repeat me-1"></i>${currentLang === 'fr' ? 'Reprogrammer' : 'Riprogramma'}</button>` : ''}
+                    ${scheduledByMe && (tv.status === 'programmata' || tv.status === 'accettata') ? `<button class="btn btn-outline-warning btn-sm py-0" onclick="event.stopPropagation(); markNonPresentato('${escapeAttr(tv.id)}')" style="color:#e65100;border-color:#e65100;"><i class="bi bi-person-x-fill me-1"></i>${t('btn_non_presentato')}</button>` : ''}
+${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclick="event.stopPropagation(); cancelVisit('${escapeAttr(tv.id)}')"><i class="bi bi-x-octagon me-1"></i>${t('btn_cancel_visit')}</button>` : ''}
                     ${tv.status === 'completata' ? `<span class="text-muted small"><i class="bi bi-check-all me-1"></i>${t('status_completata')}</span>` : ''}
                     ${tv.status === 'rifiutata' ? `<span class="text-danger small"><i class="bi bi-x-circle me-1"></i>${t('status_rifiutata')}</span>` : ''}
                     ${tv.status === 'annullata' ? `<span class="small" style="color:#880e4f;"><i class="bi bi-x-octagon me-1"></i>${t('status_annullata')}</span>` : ''}
