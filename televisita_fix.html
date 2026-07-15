@@ -6136,7 +6136,6 @@ function pushBrowserNotif(title, body, tag) {
         window.__testMode = _isTestEnv();
 
         function switchRole(role) {
-            if (!window.__testMode && !S.currentUser) return;
             S.role = role;
             const d = DOCTORS[role];
 
