@@ -3,6 +3,7 @@ name: Test & Deploy GitHub Pages
 on:
   push:
     branches: [main]
+  workflow_dispatch: {}
 
 concurrency:
   group: pages
