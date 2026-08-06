@@ -9873,7 +9873,9 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                 consentOtp: null,
                 scheduledBy: S.role,
                 type: 'urgente',
-                legalNote: `Visita avviata in regime d'urgenza — consenso presunto ai sensi dell'art. 54 c.p. e art. 8 L. 219/2017. Medico: ${DOCTORS[S.role].name}. ${new Date().toISOString()}`
+                legalNote: currentLang === 'fr'
+                    ? `Consultation démarrée en régime d'urgence — consentement présumé au sens de l'art. 54 c.p. et de l'art. 8 L. 219/2017. Médecin : ${DOCTORS[S.role].name}. ${new Date().toISOString()}`
+                    : `Visita avviata in regime d'urgenza — consenso presunto ai sensi dell'art. 54 c.p. e art. 8 L. 219/2017. Medico: ${DOCTORS[S.role].name}. ${new Date().toISOString()}`
             };
 
             // Aggiungi alla lista locale delle televisite
@@ -10023,7 +10025,9 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                 scheduledBy: S.role,
                 visitMode: 'centro',
                 type: 'centro',
-                legalNote: `Visita avviata in regime d'urgenza — consenso presunto ai sensi dell'art. 54 c.p. e art. 8 L. 219/2017. Medico: ${DOCTORS[S.role].name}. ${new Date().toISOString()}`
+                legalNote: currentLang === 'fr'
+                    ? `Consultation démarrée en régime d'urgence — consentement présumé au sens de l'art. 54 c.p. et de l'art. 8 L. 219/2017. Médecin : ${DOCTORS[S.role].name}. ${new Date().toISOString()}`
+                    : `Visita avviata in regime d'urgenza — consenso presunto ai sensi dell'art. 54 c.p. e art. 8 L. 219/2017. Medico: ${DOCTORS[S.role].name}. ${new Date().toISOString()}`
             };
 
             S.televisite.unshift(newTv);
