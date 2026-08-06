@@ -2718,17 +2718,6 @@
                         </button>
                     </div>
                 </div>
-                <div class="border-top pt-3 mt-1 mx-3 mb-3">
-                    <p class="small fw-semibold text-danger mb-1"><i class="bi bi-cone-striped me-1"></i>Area Test</p>
-                    <p class="text-muted mb-2 lh-sm" style="font-size:0.7rem;">
-                        Elimina tutte le visite e i pazienti dallo stato corrente. Non svuota la cache.
-                        Usare solo durante i test.
-                    </p>
-                    <button type="button" class="btn btn-outline-danger btn-sm w-100 fw-semibold"
-                        onclick="clearAllVisitsForTesting()" style="font-size:0.75rem;">
-                        <i class="bi bi-trash3 me-1"></i> Cancella tutte le visite (solo test)
-                    </button>
-                </div>
                 <div class="modal-footer border-0 pt-0">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Chiudi</button>
                 </div>
@@ -3734,6 +3723,11 @@
             activeRoom: null,
             emails: [],
             activeTvId: null,
+
+            // Log di audit degli accessi (login riusciti e falliti): non viaggia mai verso
+            // l'altra struttura via getShared(), solo verso il canale di backup admin cifrato
+            // (vedi getSharedStateForStorage, publishAdminSummary, buildBackupData).
+            auditLog: [],
             currentDoctor: null,
             patientNotes: {}
         };
@@ -3779,7 +3773,8 @@
                 activeRoom: S.activeRoom,
                 emails: S.emails,
                 immReqSender: S.immReqSender,
-                patientNotes: S.patientNotes || {}
+                patientNotes: S.patientNotes || {},
+                auditLog: S.auditLog || []
             };
         }
 
@@ -4215,7 +4210,8 @@
                         emails: S.emails,
                         immReq: S.immReq,
                         immRoom: S.immRoom,
-                        activeRoom: S.activeRoom
+                        activeRoom: S.activeRoom,
+                        auditLog: S.auditLog || []
                     },
                     exportDate: new Date().toISOString()
                 };
@@ -4828,9 +4824,9 @@
 
             html += '<div class="fw-semibold small mb-1">Documenti (' + docs.length + ')</div>';
             if (docs.length === 0) {
-                html += '<div class="text-muted small">Nessun documento.</div>';
+                html += '<div class="text-muted small mb-3">Nessun documento.</div>';
             } else {
-                html += '<ul class="list-unstyled small mb-0">';
+                html += '<ul class="list-unstyled small mb-3">';
                 docs.forEach(d => {
                     const sharedBadge = d.shared === false
                         ? '<span class="badge bg-secondary">privato</span>'
@@ -4838,6 +4834,23 @@
                     html += '<li class="mb-1">' + escapeHtml(d.name || d.id || '') + ' ' + sharedBadge + '</li>';
                 });
                 html += '</ul>';
+            }
+
+            const auditLog = ((entry.data.shared && entry.data.shared.auditLog) || []).slice().sort((a, b) => b.ts - a.ts);
+            html += '<div class="fw-semibold small mb-1">Accessi (' + auditLog.length + ')</div>';
+            if (auditLog.length === 0) {
+                html += '<div class="text-muted small">Nessun accesso registrato.</div>';
+            } else {
+                html += '<div class="table-responsive" style="max-height:260px;overflow-y:auto;"><table class="table table-sm mb-0"><tbody>';
+                auditLog.slice(0, 100).forEach(a => {
+                    const badge = a.event === 'login_success'
+                        ? '<span class="badge bg-success">riuscito</span>'
+                        : '<span class="badge bg-danger">fallito</span>';
+                    html += '<tr><td class="small text-nowrap">' + new Date(a.ts).toLocaleString('it-IT') + '</td>'
+                        + '<td class="small">' + escapeHtml(a.name || a.username || '') + '</td>'
+                        + '<td>' + badge + '</td></tr>';
+                });
+                html += '</tbody></table></div>';
             }
 
             contentEl.innerHTML = html;
@@ -5464,6 +5477,7 @@
                 if (d.emails) S.emails = d.emails;
                 S.immReqSender = d.immReqSender ?? null;
                 if (d.patientNotes) S.patientNotes = d.patientNotes;
+                if (d.auditLog) S.auditLog = d.auditLog;
 
                 if (S.activeRoom) {
                     const matchingTv = S.televisite.find(t => t.room === S.activeRoom);
@@ -5923,6 +5937,27 @@ function pushBrowserNotif(title, body, tag) {
             return sha256Fallback(text);
         }
 
+        // Registra un evento di login (riuscito o fallito) nel log di audit e lo salva subito in
+        // localStorage: un tentativo fallito avviene PRIMA che l'MQTT sia connesso (initMQTT parte
+        // solo dopo un login riuscito, vedi submitLogin), quindi non può essere trasmesso subito
+        // al pannello admin — resta in locale e viaggerà con il prossimo backup admin utile,
+        // cioè al primo login riuscito successivo su questo stesso browser.
+        function recordAuditEvent(username, name, event) {
+            S.auditLog = S.auditLog || [];
+            S.auditLog.push({
+                id: 'al_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8),
+                username: username,
+                name: name || username,
+                role: activeFacilityId,
+                facility: (DOCTORS[activeFacilityId] || {}).facility || activeFacilityId,
+                event: event, // 'login_success' | 'login_fail'
+                ts: Date.now()
+            });
+            // Tetto a 500 voci per non far crescere il log all'infinito nel localStorage.
+            if (S.auditLog.length > 500) S.auditLog = S.auditLog.slice(-500);
+            try { persistTvState(getSharedStateForStorage()); } catch (_) { }
+        }
+
         // Contatore tentativi login falliti per username: blocco esponenziale fino a 30s.
         const _loginAttempts = {};
         async function submitLogin() {
@@ -5951,6 +5986,7 @@ function pushBrowserNotif(title, body, tag) {
                 const delay = att.count >= 5 ? 30000 : att.count >= 3 ? 10000 : 0;
                 att.lockedUntil = delay > 0 ? now + delay : 0;
                 _loginAttempts[attemptKey] = att;
+                recordAuditEvent(username, user ? user.name : username, 'login_fail');
                 errEl.textContent = t('pwd_error');
                 cardEl.classList.remove('shake');
                 void cardEl.offsetWidth;
@@ -5970,6 +6006,7 @@ function pushBrowserNotif(title, body, tag) {
 
             // Traccia il medico loggato
             S.currentDoctor = { name: user.name, username: user.username };
+            recordAuditEvent(user.username, user.name, 'login_success');
 
             pwdEl.value = '';
             document.getElementById('login-overlay').style.display = 'none';
@@ -10365,17 +10402,6 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
 
         function resetImmediate() { S.immReq = null; S.immRoom = null; S.immReqSender = null; renderAll(); syncState({ kind: 'imm_cancel', sender: S.role }); }
 
-        function clearAllVisitsForTesting() {
-            if (!confirm('Sei sicuro? Verranno eliminate TUTTE le visite e i pazienti. Questa azione è irreversibile (usa solo durante i test).')) return;
-            S.televisite = [];
-            S.emails = [];
-            S.docs = [];
-            renderAll();
-            syncState({ kind: 'test_clear' });
-            bootstrap.Modal.getInstance(document.getElementById('backupModal'))?.hide();
-            showToast('🗑️ Tutte le visite eliminate (modalità test)', 'warning', 5000);
-        }
-
         // ---------------------------------------------------------------------------
         // INTEGRAZIONE JITSI
         // ---------------------------------------------------------------------------
@@ -11828,6 +11854,10 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
         // ---------------------------------------------------------------------------
         // DEMO FLUSSO COMPLETO, ANCORA NON FUNZIONA BENISSIMO, MA CI SIAMO QUASI!!!!!
         // ---------------------------------------------------------------------------
+        // Nessun pulsante in interfaccia richiama più questa funzione: dopo il lancio in
+        // produzione va invocata solo dalla console del browser (uno per uno, su ogni
+        // dispositivo/browser usato per i test), proprio per evitare che un medico reale la trovi
+        // per errore in un pulsante del pannello impostazioni.
         function resetAllData() {
             const msg = currentLang === 'fr'
                 ? 'Réinitialiser toutes les données de test ? Toutes les télévisites, documents et emails simulés seront supprimés.'
@@ -11837,6 +11867,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
             S.televisite = [];
             S.docs = [];
             S.emails = [];
+            S.auditLog = [];
             S.activeTvId = null;
             S.activeRoom = null;
             S.immReq = null;
