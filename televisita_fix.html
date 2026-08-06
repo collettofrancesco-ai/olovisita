@@ -1057,204 +1057,6 @@
             color: white;
         }
 
-        /* Stili del client webmail simulato */
-        .webmail-modal-body {
-            height: 620px;
-            display: flex;
-            background: var(--bg);
-        }
-
-        .webmail-sidebar {
-            width: 200px;
-            flex-shrink: 0;
-            background: var(--card);
-            border-right: 1px solid var(--border);
-            padding: 1.25rem 0.75rem;
-            display: flex;
-            flex-direction: column;
-            gap: 1.5rem;
-        }
-
-        .webmail-sidebar-title {
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            font-weight: 700;
-            color: var(--muted);
-            letter-spacing: 0.5px;
-            padding: 0 0.5rem;
-        }
-
-        .webmail-nav-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0.6rem 0.8rem;
-            border-radius: 10px;
-            font-size: 0.85rem;
-            font-weight: 500;
-            color: var(--text);
-            text-decoration: none;
-            transition: all 0.2s;
-            cursor: pointer;
-        }
-
-        .webmail-nav-item:hover {
-            background: var(--bg);
-            color: var(--s1);
-        }
-
-        .webmail-nav-item.active {
-            background: var(--s1-light);
-            color: var(--s1-dark);
-            font-weight: 600;
-        }
-
-        .webmail-list-pane {
-            width: 320px;
-            flex-shrink: 0;
-            background: var(--card);
-            border-right: 1px solid var(--border);
-            display: flex;
-            flex-direction: column;
-        }
-
-        .webmail-search-box {
-            padding: 1rem;
-            border-bottom: 1px solid var(--border);
-            background: #f8fafc;
-        }
-
-        .webmail-emails-scroll {
-            flex-grow: 1;
-            overflow-y: auto;
-        }
-
-        .webmail-email-item {
-            padding: 1rem;
-            border-bottom: 1px solid var(--border);
-            cursor: pointer;
-            transition: background 0.15s;
-            position: relative;
-        }
-
-        .webmail-email-item:hover {
-            background: #f8fafc;
-        }
-
-        .webmail-email-item.selected {
-            background: var(--s1-light) !important;
-            border-left: 4px solid var(--s1);
-        }
-
-        .webmail-email-item.unread::after {
-            content: '';
-            position: absolute;
-            top: 1.2rem;
-            right: 1rem;
-            width: 8px;
-            height: 8px;
-            background-color: var(--s1);
-            border-radius: 50%;
-        }
-
-        .webmail-email-avatar {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            font-size: 0.85rem;
-            background: var(--border);
-            color: var(--muted);
-            flex-shrink: 0;
-        }
-
-        .webmail-email-item.selected .webmail-email-avatar {
-            background: var(--s1);
-            color: #ffffff;
-        }
-
-        .webmail-detail-pane {
-            flex-grow: 1;
-            background: var(--bg);
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            min-width: 0;
-        }
-
-        .webmail-detail-header {
-            background: var(--card);
-            padding: 1.25rem 1.5rem;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .webmail-detail-scroll {
-            flex-grow: 1;
-            padding: 1.5rem;
-            overflow-y: auto;
-        }
-
-        .webmail-detail-body {
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-            color: var(--text);
-            font-size: 0.9rem;
-            line-height: 1.6;
-        }
-
-        .webmail-attachment-card {
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            background: var(--bg);
-            padding: 0.75rem 1rem;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-top: 1rem;
-        }
-
-        .doc-notif.clickable-notif:hover {
-            background: #f1f5f9;
-        }
-
-        @media (max-width: 768px) {
-            .webmail-modal-body {
-                flex-direction: column;
-                height: 550px;
-            }
-
-            .webmail-sidebar {
-                width: 100%;
-                border-right: none;
-                border-bottom: 1px solid var(--border);
-                flex-direction: row;
-                padding: 0.5rem;
-                gap: 0.5rem;
-            }
-
-            .webmail-sidebar-title,
-            .webmail-sidebar button {
-                display: none !important;
-            }
-
-            .webmail-list-pane {
-                width: 100%;
-                height: 200px;
-                border-right: none;
-                border-bottom: 1px solid var(--border);
-            }
-
-            .webmail-detail-pane {
-                height: 300px;
-            }
-        }
-
         /* Stampa/"Salva come PDF" del referto dalla pagina pubblica del paziente: isola il
            foglio bianco del referto, nascondendo sfondo colorato e bottoni dell'interfaccia. */
         @media print {
@@ -1773,15 +1575,6 @@
                 <button class="btn btn-link text-white p-1 me-2" onclick="openBackupModal()"
                     id="backup-modal-btn" style="display:none;" title="Backup & Ripristino dati">
                     <i class="bi bi-cloud-arrow-down-fill fs-5"></i>
-                </button>
-
-                <button class="btn btn-link text-white p-1 position-relative me-2"
-                    onclick="openEmailModal(selectedEmailId || (S.emails && S.emails.length > 0 ? S.emails[0].id : null))"
-                    title="Client E-mail Paziente" id="webmail-btn">
-                    <i class="bi bi-envelope-fill fs-5"></i>
-                    <span id="webmail-dot"
-                        class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
-                        style="display:none;font-size:.6rem;"></span>
                 </button>
 
                 <button class="btn btn-link text-white p-1 position-relative" onclick="toggleNotifPanel()"
@@ -2867,74 +2660,6 @@
         </div>
     </div>
 
-    <!-- Modal Client E-mail Simulato (Paziente) -->
-    <div class="modal fade" id="emailModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-            <div class="modal-content border-0 shadow-lg" style="border-radius:16px;overflow:hidden;">
-                <div class="modal-header text-white border-0 py-3"
-                    style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);">
-                    <div class="d-flex align-items-center gap-2">
-                        <i class="bi bi-envelope-paper-fill fs-5 text-info animate-pulse"></i>
-                        <h5 class="modal-title fw-bold m-0" style="font-size: 1.1rem; letter-spacing: 0.5px;"
-                            data-i18n="webmail_title">Client E-mail Simulato (Paziente)</h5>
-                    </div>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body p-0 webmail-modal-body">
-                    <!-- Sidebar -->
-                    <div class="webmail-sidebar">
-                        <button class="btn btn-primary text-white fw-bold mb-1 rounded-pill py-2 shadow-sm"
-                            style="font-size: 0.82rem; cursor:default;" disabled>
-                            <i class="bi bi-pencil-fill me-2"></i><span data-i18n="webmail_compose">Scrivi</span>
-                        </button>
-                        <div class="d-flex flex-column gap-1">
-                            <div class="webmail-sidebar-title" data-i18n="webmail_folders">Cartelle</div>
-                            <div class="webmail-nav-item active" onclick="setEmailFolder('inbox')">
-                                <span><i class="bi bi-inbox-fill me-2 text-primary"></i><span
-                                        data-i18n="webmail_inbox">Posta in arrivo</span></span>
-                                <span class="badge bg-danger rounded-pill" id="email-unread-badge"
-                                    style="font-size: 0.7rem; display:none;">0</span>
-                            </div>
-                            <div class="webmail-nav-item" onclick="setEmailFolder('sent')">
-                                <span><i class="bi bi-send-fill me-2 text-muted"></i><span
-                                        data-i18n="webmail_sent">Inviati</span></span>
-                            </div>
-                            <div class="webmail-nav-item" onclick="setEmailFolder('archive')">
-                                <span><i class="bi bi-archive-fill me-2 text-muted"></i><span
-                                        data-i18n="webmail_archive">Archivio</span></span>
-                            </div>
-                        </div>
-                        <div class="mt-auto border-top pt-3">
-                            <div class="webmail-sidebar-title mb-2" style="font-size: 0.7rem;"
-                                data-i18n="webmail_active_patient">Account Paziente</div>
-                            <select id="webmail-patient-select" class="form-select form-select-sm"
-                                style="font-size: 0.75rem;" onchange="changeWebmailPatient(this.value)">
-                                <!-- Popolato dinamicamente -->
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- Pannello Lista Email -->
-                    <div class="webmail-list-pane">
-                        <div class="webmail-search-box">
-                            <input type="text" class="form-control form-control-sm rounded-pill" id="email-search-input"
-                                data-i18n-holder="webmail_search_placeholder" placeholder="Cerca e-mail..."
-                                oninput="renderEmailList()">
-                        </div>
-                        <div class="webmail-emails-scroll" id="email-list-container">
-                            <!-- Popolato dinamicamente -->
-                        </div>
-                    </div>
-
-                    <!-- Pannello Dettaglio Email -->
-                    <div class="webmail-detail-pane" id="email-detail-container">
-                        <!-- Popolato dinamicamente -->
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- Modal per Dettaglio Statistiche (Visite/Documenti) -->
     <div class="modal fade" id="statsListModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
@@ -3253,20 +2978,6 @@
     <li>Acconsento, ove necessario, alla consultazione e alla condivisione dei documenti clinici tra le strutture sanitarie coinvolte nella TeleVisita.</li>
 </ul>
 <p class="text-center fw-bold mt-4" style="font-size:0.85rem;">Per confermare il consenso, dopo l'accettazione ti verrà mostrato un codice OTP da inserire per completare la firma.</p>`,
-                webmail_title: "Client E-mail Simulato (Paziente)",
-                webmail_active_patient: "Account Paziente",
-                webmail_compose: "Scrivi",
-                webmail_folders: "Cartelle",
-                webmail_inbox: "Posta in arrivo",
-                webmail_sent: "Inviati",
-                webmail_archive: "Archivio",
-                webmail_search_placeholder: "Cerca e-mail...",
-                webmail_no_emails: "Nessuna e-mail presente",
-                webmail_select_email: "Seleziona un'e-mail per leggerne il contenuto",
-                webmail_from: "Da:",
-                webmail_to: "A:",
-                webmail_subject: "Oggetto:",
-                webmail_date: "Data:",
                 doc_tab_current: "Paziente Corrente",
                 doc_tab_shared: "Condivisi",
                 doc_tab_private: "Bozze Locali",
@@ -3555,20 +3266,6 @@
     <li>Je consens, le cas échéant, à la consultation et au partage de documents cliniques entre les établissements de santé impliqués dans la Télévisite.</li>
 </ul>
 <p class="text-center fw-bold mt-4" style="font-size:0.85rem;">Pour confirmer le consentement, après l'acceptation un code OTP à saisir vous sera montré pour finaliser la signature.</p>`,
-                webmail_title: "Client E-mail Simulé (Patient)",
-                webmail_active_patient: "Compte Patient",
-                webmail_compose: "Écrire",
-                webmail_folders: "Dossiers",
-                webmail_inbox: "Boîte de réception",
-                webmail_sent: "Envoyés",
-                webmail_archive: "Archives",
-                webmail_search_placeholder: "Rechercher des e-mails...",
-                webmail_no_emails: "Aucun e-mail présent",
-                webmail_select_email: "Sélectionnez un e-mail pour lire son contenu",
-                webmail_from: "De:",
-                webmail_to: "À:",
-                webmail_subject: "Objet:",
-                webmail_date: "Date:",
                 doc_tab_current: "Patient Courant",
                 doc_tab_shared: "Partagés",
                 doc_tab_private: "Brouillons Locaux",
@@ -6254,8 +5951,6 @@ function pushBrowserNotif(title, body, tag) {
             renderImmCentro();
             renderSession();
             document.getElementById('doc-badge').textContent = S.docs.length;
-            renderEmailList();
-            renderEmailDetail();
         }
 
         function changeCalendarMonth(delta) {
@@ -6719,55 +6414,6 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
             return email;
         }
 
-        function sendMailtoDirect(id) {
-            const email = S.emails.find(x => x.id === id);
-            if (!email) return;
-            const cleanMessageText = email.body.replace(/<[^>]*>/g, '\n').trim();
-            const mailtoUrl = `mailto:${email.to}?subject=${encodeURIComponent(email.subject)}&body=${encodeURIComponent(cleanMessageText)}`;
-
-            // Usa un iframe nascosto per attivare il client mail senza aprire schede/pagine vuote
-            const tempIframe = document.createElement('iframe');
-            tempIframe.style.display = 'none';
-            tempIframe.src = mailtoUrl;
-            document.body.appendChild(tempIframe);
-
-            setTimeout(() => {
-                if (tempIframe.parentNode) {
-                    tempIframe.parentNode.removeChild(tempIframe);
-                }
-            }, 300);
-        }
-
-        function showEmailNotificationToast(email) {
-            const previewText = escapeHtml(email.body.replace(/<[^>]*>/g, '').substring(0, 75) + '...');
-
-            const msgHtml = `
-                <div class="d-flex flex-column gap-1 w-100" style="cursor:pointer;" onclick="openEmailModal('${email.id}')">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <span class="badge bg-primary text-white" style="font-size:0.65rem;"><i class="bi bi-envelope-fill me-1"></i>E-MAIL DI NOTIFICA</span>
-                        <small class="text-muted" style="font-size:0.65rem;">${email.time}</small>
-                    </div>
-                    <div class="fw-bold text-dark mt-1" style="font-size:0.8rem; line-height:1.2;">
-                        ${escapeHtml(email.subject)}
-                    </div>
-                    <div class="text-muted text-truncate" style="font-size:0.75rem;">
-                        A: <strong>${escapeHtml(email.patientName)}</strong> (${escapeHtml(email.to)})
-                    </div>
-                    <div class="text-muted text-truncate mb-2" style="font-size:0.72rem; max-width: 320px;">
-                        ${previewText}
-                    </div>
-                    <div class="d-flex gap-2 align-items-center" onclick="event.stopPropagation()">
-                        <button class="btn btn-primary btn-sm py-0.5 px-2 fw-semibold" onclick="openEmailModal('${email.id}')" style="font-size: 0.7rem;">
-                            <i class="bi bi-eye-fill"></i> Leggi
-                        </button>
-                        <button class="btn btn-outline-primary btn-sm py-0.5 px-2 fw-semibold" onclick="sendMailtoDirect('${email.id}')" style="font-size: 0.7rem;">
-                            <i class="bi bi-send-fill me-1"></i> Spedisci Reale (Mailto)
-                        </button>
-                    </div>
-                </div>
-            `;
-            showToast(msgHtml, 'info', 10000);
-        }
 
         function openBackupModal() {
             new bootstrap.Modal(document.getElementById('backupModal')).show();
@@ -7193,7 +6839,6 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                     tvId: tv.id,
                     inviteUrl: consentUrl
                 });
-                showEmailNotificationToast(email);
 
                 // Aggiunge anche l'E-mail alla lista notifiche della campana (stato bloccato)
                 addNotif('bi-envelope-fill', t('email_simulated_title', { patient: patientName }), t('email_otp_locked_body', { url: consentUrl }), 'incoming', email.id);
@@ -7229,15 +6874,6 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
 
         function viewConsentPDF(id) {
             pendingTvId = id;
-
-            const emailModalEl = document.getElementById('emailModal');
-            if (emailModalEl && emailModalEl.classList.contains('show')) {
-                const emailModalInstance = bootstrap.Modal.getInstance(emailModalEl);
-                if (emailModalInstance) emailModalInstance.hide();
-                emailModalEl.setAttribute('data-reopen-on-close', 'true');
-            } else if (emailModalEl) {
-                emailModalEl.removeAttribute('data-reopen-on-close');
-            }
 
             document.getElementById('pdf-modal-title').textContent = t('pdf_consent_title');
             document.getElementById('pdf-doc-title').textContent = t('pdf_consent_doc_title');
@@ -7319,7 +6955,6 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                     // L'OTP è già mostrato qui sopra, in questo stesso modale: niente invio email reale.
                     realSend: false
                 });
-                showEmailNotificationToast(email);
 
                 // Aggiunge la seconda E-mail con l'OTP alla lista notifiche
                 addNotif('bi-envelope-fill', t('email_simulated_title', { patient: patientName }), t('email_otp_unlocked_body', { code: otp }), 'incoming', email.id);
@@ -10189,7 +9824,6 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                         tvId: tv.id,
                         inviteUrl: callUrl
                     });
-                    showEmailNotificationToast(email);
 
                     // Aggiunge l'invito alla campana delle notifiche
                     addNotif('bi-envelope-fill', t('email_invite_simulated_title', { patient: patientName }), t('email_invite_simulated_body', { url: callUrl }), 'incoming', email.id);
@@ -10291,7 +9925,6 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                 tvId: newTv.id,
                 inviteUrl: callUrl
             });
-            showEmailNotificationToast(email);
             addNotif('bi-envelope-fill', t('email_invite_simulated_title', { patient: finalPatient }), t('email_invite_simulated_body', { url: callUrl }), 'incoming', email.id);
             flashBell();
 
@@ -10412,7 +10045,6 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                 tvId: newTv.id,
                 inviteUrl: callUrl
             });
-            showEmailNotificationToast(email);
             addNotif('bi-envelope-fill', t('email_invite_simulated_title', { patient: newTv.patient }), t('email_invite_simulated_body', { url: callUrl }), 'incoming', email.id);
             flashBell();
 
@@ -11388,11 +11020,9 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                 dot.style.display = 'none';
             }
             list.innerHTML = N.items.map(n => {
-                const clickable = n.emailId ? `style="cursor: pointer; transition: background 0.15s;" onclick="openEmailModal('${n.emailId}'); toggleNotifPanel(true);"` : '';
-                const hoverClass = n.emailId ? 'clickable-notif' : '';
                 const unreadStyle = !n.read ? 'border-left:3px solid #e65100;padding-left:8px;' : 'padding-left:11px;';
                 return `
-        <div class="doc-notif ${n.type === 'incoming' ? 'incoming' : ''} ${hoverClass} mb-2" style="${unreadStyle}" ${clickable}>
+        <div class="doc-notif ${n.type === 'incoming' ? 'incoming' : ''} mb-2" style="${unreadStyle}">
             <i class="${n.icon}" style="font-size:1.1rem;color:${n.type === 'incoming' ? '#e65100' : '#2e7d32'};flex-shrink:0;margin-top:2px;"></i>
             <div style="min-width:0;">
                 <div class="${!n.read ? 'fw-bold' : 'fw-semibold'}" style="font-size:.82rem;">${n.title}</div>
@@ -11401,246 +11031,6 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
             </div>
         </div>`;
             }).join('');
-        }
-
-        /* Logica del client Webmail simulato */
-        let currentEmailFolder = 'inbox';
-        let selectedEmailId = null;
-
-        function setEmailFolder(folder) {
-            currentEmailFolder = folder;
-            selectedEmailId = null;
-
-            document.querySelectorAll('.webmail-nav-item').forEach(el => {
-                el.classList.remove('active');
-            });
-            const folderIndex = { inbox: 0, sent: 1, archive: 2 }[folder];
-            const navItems = document.querySelectorAll('.webmail-nav-item');
-            if (navItems[folderIndex]) {
-                navItems[folderIndex].classList.add('active');
-            }
-
-            renderEmailList();
-            renderEmailDetail();
-        }
-
-        function renderWebmailPatientSelect() {
-            const select = document.getElementById('webmail-patient-select');
-            if (!select) return;
-
-            // Costruisce la lista delle opzioni, senza preselezionare il primo paziente. Uso
-            // visibleTelevisite() e non S.televisite direttamente: senza questo filtro, una
-            // televisita Centro dell'altra struttura comparirebbe qui col nome del paziente.
-            const opts = visibleTelevisite().map(tv => {
-                const selected = tv.id === S.activeTvId ? 'selected' : '';
-                return `<option value="${tv.id}" ${selected}>${escapeHtml(tv.patient)}</option>`;
-            });
-            // Aggiunge un'opzione vuota per scegliere il paziente se non c'è selezione
-            if (!S.activeTvId) {
-                opts.unshift(`<option value="" disabled selected>${currentLang === 'fr' ? '— Choisir un patient —' : '— Scegli un paziente —'}</option>`);
-            }
-            select.innerHTML = opts.join('');
-        }
-
-        function changeWebmailPatient(tvId) {
-            S.activeTvId = tvId;
-            selectedEmailId = null;
-            syncState(null);
-            renderAll();
-        }
-
-        function renderEmailList() {
-            renderWebmailPatientSelect();
-
-            const listContainer = document.getElementById('email-list-container');
-            if (!listContainer) return;
-            const searchInput = document.getElementById('email-search-input');
-            const searchQuery = searchInput ? searchInput.value.toLowerCase().trim() : '';
-
-            let filtered = (S.emails || []).filter(email => {
-                if (currentEmailFolder === 'inbox') {
-                    return email.tvId === S.activeTvId;
-                }
-                return false;
-            });
-
-            if (searchQuery) {
-                filtered = filtered.filter(email =>
-                    email.subject.toLowerCase().includes(searchQuery) ||
-                    email.patientName.toLowerCase().includes(searchQuery) ||
-                    email.body.toLowerCase().includes(searchQuery)
-                );
-            }
-
-            const unreadCount = (S.emails || []).filter(e => !e.read).length;
-            const unreadBadge = document.getElementById('email-unread-badge');
-            if (unreadBadge) {
-                if (unreadCount > 0) {
-                    unreadBadge.style.display = '';
-                    unreadBadge.textContent = unreadCount;
-                } else {
-                    unreadBadge.style.display = 'none';
-                }
-            }
-
-            const webmailDot = document.getElementById('webmail-dot');
-            if (webmailDot) {
-                if (unreadCount > 0) {
-                    webmailDot.style.display = '';
-                    webmailDot.textContent = unreadCount;
-                } else {
-                    webmailDot.style.display = 'none';
-                }
-            }
-
-            if (!filtered.length) {
-                listContainer.innerHTML = `<div class="text-muted text-center small py-5" data-i18n="webmail_no_emails">${t('webmail_no_emails')}</div>`;
-                return;
-            }
-
-            listContainer.innerHTML = filtered.map(email => {
-                const isSelected = email.id === selectedEmailId;
-                const isUnread = !email.read;
-                const activeClass = isSelected ? 'selected' : '';
-                const unreadClass = isUnread ? 'unread fw-bold' : '';
-                const initials = email.patientName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-
-                return `
-                    <div class="webmail-email-item d-flex gap-3 align-items-center ${activeClass} ${unreadClass}" onclick="selectEmail('${email.id}')">
-                        <div class="webmail-email-avatar">${escapeHtml(initials)}</div>
-                        <div class="flex-grow-1" style="min-width:0;">
-                            <div class="d-flex align-items-center justify-content-between">
-                                <span class="fw-semibold text-truncate text-dark" style="font-size:0.82rem;">${escapeHtml(email.patientName)}</span>
-                                <small class="text-muted" style="font-size:0.68rem;">${email.time}</small>
-                            </div>
-                            <div class="text-truncate text-secondary" style="font-size:0.75rem;">${escapeHtml(email.subject)}</div>
-                            <div class="text-truncate text-muted mt-1" style="font-size:0.7rem; max-width:220px;">${escapeHtml(email.body.replace(/<[^>]*>/g, ''))}</div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        function selectEmail(id) {
-            selectedEmailId = id;
-            const email = (S.emails || []).find(e => e.id === id);
-            if (email && !email.read) {
-                email.read = true;
-                syncState(null);
-            }
-            renderEmailList();
-            renderEmailDetail();
-        }
-
-        function renderEmailDetail() {
-            const container = document.getElementById('email-detail-container');
-            if (!container) return;
-            if (!selectedEmailId) {
-                container.innerHTML = `
-                    <div class="d-flex flex-column align-items-center justify-content-center flex-grow-1 text-muted p-4">
-                        <i class="bi bi-envelope fs-1 mb-2 text-muted opacity-50"></i>
-                        <p class="mb-0 small" data-i18n="webmail_select_email">${t('webmail_select_email')}</p>
-                    </div>
-                `;
-                return;
-            }
-
-            const email = (S.emails || []).find(e => e.id === selectedEmailId);
-            if (!email) {
-                selectedEmailId = null;
-                renderEmailDetail();
-                return;
-            }
-
-            let attachmentHtml = '';
-            if (email.type === 'consent_locked') {
-                attachmentHtml = `
-                    <div class="webmail-attachment-card">
-                        <span class="d-flex align-items-center gap-2">
-                            <i class="bi bi-file-earmark-pdf-fill text-danger fs-5"></i>
-                            <span style="font-size:0.8rem;"><strong>${t('pdf_consent_title')}</strong> <small class="text-muted">(142 KB)</small></span>
-                        </span>
-                        <div class="d-flex gap-2">
-                            <button class="btn btn-sm btn-outline-primary py-1 px-2" style="font-size: 0.75rem;" onclick="viewConsentPDF('${email.tvId}')">
-                                <i class="bi bi-eye-fill me-1"></i>${t('btn_view')}
-                            </button>
-                            <button class="btn btn-sm btn-light py-1 px-2" style="font-size: 0.75rem;" onclick="downloadConsentPDF()">
-                                <i class="bi bi-download"></i>
-                            </button>
-                        </div>
-                    </div>
-                `;
-            }
-
-            let actionButtonHtml = '';
-            if (email.type === 'consent_locked' && email.inviteUrl) {
-                actionButtonHtml = `
-                    <div class="mt-4 p-3 border rounded-3 bg-white shadow-sm d-flex align-items-center justify-content-between">
-                        <div>
-                            <div class="fw-bold text-dark small" style="font-size:0.8rem;">Link reale per il paziente</div>
-                            <div class="text-muted small" style="font-size:0.7rem;">Apre la pagina di consenso senza login</div>
-                        </div>
-                        <a href="${email.inviteUrl}" target="_blank" class="btn btn-primary btn-sm fw-bold px-3 py-1" style="font-size:0.78rem;">
-                            <i class="bi bi-box-arrow-up-right me-1"></i>Apri
-                        </a>
-                    </div>
-                `;
-            } else if (email.type === 'invite' && email.inviteUrl) {
-                actionButtonHtml = `
-                    <div class="mt-4 p-3 border rounded-3 bg-white shadow-sm d-flex align-items-center justify-content-between">
-                        <div>
-                            <div class="fw-bold text-dark small" style="font-size:0.8rem;">Stanza Televisita Attiva</div>
-                            <div class="text-muted small" style="font-size:0.7rem;">Accedi direttamente alla videoconferenza</div>
-                        </div>
-                        <a href="${email.inviteUrl}" target="_blank" class="btn btn-primary btn-sm fw-bold px-3 py-1" style="font-size:0.78rem;">
-                            <i class="bi bi-camera-video-fill me-1"></i>Entra ora
-                        </a>
-                    </div>
-                `;
-            }
-
-            container.innerHTML = `
-                <div class="webmail-detail-header d-flex align-items-start justify-content-between">
-                    <div>
-                        <h5 class="fw-bold text-dark mb-1" style="font-size: 1.05rem;">${email.subject}</h5>
-                        <div class="d-flex align-items-center gap-1 text-muted" style="font-size: 0.75rem;">
-                            <span>${t('webmail_from')} <strong>televisita@piattaforma.it</strong></span>
-                            <span>&bull;</span>
-                            <span>${t('webmail_to')} <strong>${escapeHtml(email.patientName)}</strong> (${escapeHtml(email.to)})</span>
-                        </div>
-                    </div>
-                    <div class="text-muted text-end" style="font-size: 0.72rem;">
-                        <div><i class="bi bi-clock me-1"></i>${email.time}</div>
-                    </div>
-                </div>
-                <div class="webmail-detail-scroll">
-                    <div class="webmail-detail-body">
-                        ${email.body}
-                        ${attachmentHtml}
-                        ${actionButtonHtml}
-                    </div>
-                </div>
-            `;
-        }
-
-        function openEmailModal(emailId) {
-            selectedEmailId = emailId;
-            const email = (S.emails || []).find(e => e.id === emailId);
-            if (email) {
-                email.read = true;
-                if (email.tvId) {
-                    S.activeTvId = email.tvId;
-                }
-                syncState(null);
-            }
-
-            setEmailFolder('inbox');
-
-            const emailModalEl = document.getElementById('emailModal');
-            if (emailModalEl) {
-                const modal = bootstrap.Modal.getOrCreateInstance(emailModalEl);
-                modal.show();
-            }
         }
 
         function clearNotifs() {
@@ -12744,21 +12134,6 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
             initDrop();
             tryResumeAutoBackup();
             initComuniAutocomplete();
-
-            // Riapre il modale email se era stato chiuso per guardare il PDF
-            const pdfModalEl = document.getElementById('pdfModal');
-            if (pdfModalEl) {
-                pdfModalEl.addEventListener('hidden.bs.modal', () => {
-                    const emailModalEl = document.getElementById('emailModal');
-                    if (emailModalEl && emailModalEl.getAttribute('data-reopen-on-close') === 'true') {
-                        emailModalEl.removeAttribute('data-reopen-on-close');
-                        setTimeout(() => {
-                            const modal = bootstrap.Modal.getOrCreateInstance(emailModalEl);
-                            modal.show();
-                        }, 150);
-                    }
-                });
-            }
 
             const docPreviewModalEl = document.getElementById('docPreviewModal');
             let lastScrollTime = 0;
