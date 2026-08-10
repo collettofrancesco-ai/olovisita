@@ -3530,6 +3530,17 @@
 
         let activeFacilityId = 'struttura1';
 
+        // true SOLO tra un login riuscito e il logout (mai durante la sola visualizzazione della
+        // schermata di scelta struttura/login). Serve a impedire che processi in background
+        // avviati incondizionatamente al caricamento della pagina (promemoria visite imminenti,
+        // backup automatico su disco) agiscano su S.televisite/S.docs — già in memoria da
+        // loadSharedState() ancora PRIMA che qualcuno abbia fatto login, per poter mostrare subito
+        // la dashboard dopo un login riuscito senza aspettare la sincronizzazione MQTT — quando
+        // nessuno si è ancora autenticato in questa sessione di pagina. Senza questo controllo, un
+        // promemoria per una visita imminente (con tanto di pulsante "Avvia ora" funzionante)
+        // poteva comparire SOPRA la schermata di login stessa.
+        let isDoctorAuthenticated = false;
+
         // ---------------------------------------------------------------------------
         // STATO APPLICAZIONE  (simulazione in-memory)
         // ---------------------------------------------------------------------------
@@ -6670,6 +6681,8 @@ function pushBrowserNotif(title, body, tag) {
 
             // Traccia il medico loggato
             S.currentDoctor = { name: user.name, username: user.username };
+            isDoctorAuthenticated = true;
+            tryResumeAutoBackup();
             recordAuditEvent(user.username, user.name, 'login_success');
 
             pwdEl.value = '';
@@ -6835,6 +6848,12 @@ function pushBrowserNotif(title, body, tag) {
                 clearInterval(adminBackupIntervalId);
                 adminBackupIntervalId = null;
             }
+            // isDoctorAuthenticated a false E S.currentDoctor a null: senza questo, dopo il
+            // logout, promemoria/azioni pensati solo per un medico collegato restavano abilitati
+            // (S.currentDoctor prima non veniva mai ripulito qui) — vedi il commento sulla
+            // dichiarazione di isDoctorAuthenticated per il quadro completo del problema.
+            isDoctorAuthenticated = false;
+            S.currentDoctor = null;
             S.immReq = null; S.immRoom = null; S.activeRoom = null; S.immReqSender = null;
             toggleNotifPanel(false);
             show('backup-modal-btn', false);
@@ -6880,7 +6899,14 @@ function pushBrowserNotif(title, body, tag) {
         // ---------------------------------------------------------------------------
         // RENDER
         // ---------------------------------------------------------------------------
+        // Punto centrale di difesa, non solo i singoli trigger: renderAll() è chiamata da
+        // decine di punti diversi (incluso bc.onmessage/handleIncomingSync, attivo su OGNI
+        // scheda dello stesso browser fin dal caricamento della pagina, quindi anche su una
+        // scheda ferma sulla schermata di login) — se un'altra scheda già collegata sincronizza
+        // qualcosa, senza questo controllo questa scheda disegnerebbe comunque i dati veri del
+        // paziente nella dashboard sotto l'overlay di login. Vedi isDoctorAuthenticated.
         function renderAll() {
+            if (!isDoctorAuthenticated) return;
             renderVisits();
             renderDocs();
             renderImm();
@@ -10535,6 +10561,11 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
         // PROMEMORIA VISITA IMMINENTE
         // -----------------------------------------------------------------------
         function checkUpcomingVisits() {
+            // Attivo dal caricamento della pagina (vedi setInterval sotto), quindi senza questo
+            // controllo mostrava il promemoria (con pulsante "Avvia ora" funzionante, senza
+            // nessuna verifica di identità) anche sulla schermata di login, usando i dati
+            // dell'ultima sessione già in memoria da loadSharedState(). Vedi isDoctorAuthenticated.
+            if (!isDoctorAuthenticated) return;
             if (!S || !S.televisite) return;
             const nowMs = Date.now();
             const WINDOW_MS = 15 * 60 * 1000;
@@ -10561,7 +10592,10 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                 : `Tra <strong>${mins} min</strong>: visita con <strong>${escapeHtml(tv.patient)}</strong>`;
             const overlay = document.createElement('div');
             overlay.id = 'visit-reminder-popup';
-            overlay.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:3000;max-width:320px;width:90%;animation:fadeInScale .25s ease;';
+            // z-index sotto quello di #login-overlay (2000): difesa aggiuntiva, oltre al
+            // controllo isDoctorAuthenticated in checkUpcomingVisits, perché questo popup non
+            // possa MAI comparire sopra la schermata di login anche in caso di un futuro bug.
+            overlay.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:1900;max-width:320px;width:90%;animation:fadeInScale .25s ease;';
             overlay.innerHTML = `
             <div style="background:#fff;border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,0.18);border-left:4px solid #1565c0;overflow:hidden;">
                 <div style="background:#e8f0fe;padding:10px 14px;display:flex;align-items:center;gap:10px;">
@@ -13097,7 +13131,10 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
             loadSharedState();
             applyTranslations();
             initDrop();
-            tryResumeAutoBackup();
+            // tryResumeAutoBackup() NON va richiamata qui: partirebbe (scrivendo su disco i dati
+            // dell'ultima sessione, già in memoria da loadSharedState() qui sopra) PRIMA che
+            // qualcuno abbia fatto login in questa pagina. Richiamata invece da submitLogin, vedi
+            // isDoctorAuthenticated.
             initComuniAutocomplete();
 
             const docPreviewModalEl = document.getElementById('docPreviewModal');
