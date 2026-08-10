@@ -12,10 +12,15 @@ async function loginBypass(page, role = 'struttura1') {
   // Blocca le chiamate EmailJS e MQTT reali prima che la pagina le avvii
   await page.route('**/*emailjs*/**', route => route.abort());
   await page.route('**/*.mqtt*/**', route => route.abort());
-  // Nasconde l'overlay di login ed entra nel cruscotto come se il login fosse avvenuto
+  // Nasconde l'overlay di login ed entra nel cruscotto come se il login fosse avvenuto.
+  // isDoctorAuthenticated (non su window: è un "let" a livello di script, visibile come
+  // identificatore libero nello stesso realm, non come proprietà di window) va impostato qui
+  // perché renderAll() ora rifiuta di disegnare qualunque cosa finché non è vero — altrimenti
+  // ogni test che passa da questo bypass vedrebbe liste/badge sempre vuoti.
   await page.evaluate((r) => {
     document.getElementById('login-overlay').style.display = 'none';
     window.switchRole(r);
+    isDoctorAuthenticated = true;
   }, role);
   // Verifica che il cruscotto sia effettivamente visibile
   await expect(page.locator('#role-badge')).toBeVisible();
