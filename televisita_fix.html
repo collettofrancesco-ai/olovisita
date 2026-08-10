@@ -1385,7 +1385,25 @@
                                 </button>
                             </div>
                             <div id="admin-status-struttura1" class="text-muted small mb-3">In attesa di dati...</div>
+                            <div class="d-flex gap-2 align-items-center mb-2">
+                                <input type="text" id="admin-tv-filter-struttura1" class="form-control form-control-sm"
+                                    style="font-size:.75rem;" placeholder="Filtra televisite (paziente, data, stato)..."
+                                    oninput="renderAdminDashboard('struttura1')">
+                                <button class="btn btn-outline-secondary btn-sm text-nowrap" style="font-size:0.7rem;"
+                                    onclick="exportAdminTelevisiteCsv('struttura1')" title="Esporta televisite in CSV">
+                                    <i class="bi bi-filetype-csv me-1"></i>CSV
+                                </button>
+                            </div>
                             <div id="admin-content-struttura1"></div>
+                            <div class="d-flex gap-2 align-items-center mt-2 mb-1">
+                                <input type="text" id="admin-audit-filter-struttura1" class="form-control form-control-sm"
+                                    style="font-size:.75rem;" placeholder="Filtra accessi per medico..."
+                                    oninput="renderAdminAuditLog('struttura1')">
+                                <button class="btn btn-outline-secondary btn-sm text-nowrap" style="font-size:0.7rem;"
+                                    onclick="exportAdminAccessiCsv('struttura1')" title="Esporta accessi in CSV">
+                                    <i class="bi bi-filetype-csv me-1"></i>CSV
+                                </button>
+                            </div>
                             <div id="admin-audit-struttura1"></div>
                         </div>
                     </div>
@@ -1399,7 +1417,25 @@
                                 </button>
                             </div>
                             <div id="admin-status-struttura2" class="text-muted small mb-3">In attesa di dati...</div>
+                            <div class="d-flex gap-2 align-items-center mb-2">
+                                <input type="text" id="admin-tv-filter-struttura2" class="form-control form-control-sm"
+                                    style="font-size:.75rem;" placeholder="Filtra televisite (paziente, data, stato)..."
+                                    oninput="renderAdminDashboard('struttura2')">
+                                <button class="btn btn-outline-secondary btn-sm text-nowrap" style="font-size:0.7rem;"
+                                    onclick="exportAdminTelevisiteCsv('struttura2')" title="Esporta televisite in CSV">
+                                    <i class="bi bi-filetype-csv me-1"></i>CSV
+                                </button>
+                            </div>
                             <div id="admin-content-struttura2"></div>
+                            <div class="d-flex gap-2 align-items-center mt-2 mb-1">
+                                <input type="text" id="admin-audit-filter-struttura2" class="form-control form-control-sm"
+                                    style="font-size:.75rem;" placeholder="Filtra accessi per medico..."
+                                    oninput="renderAdminAuditLog('struttura2')">
+                                <button class="btn btn-outline-secondary btn-sm text-nowrap" style="font-size:0.7rem;"
+                                    onclick="exportAdminAccessiCsv('struttura2')" title="Esporta accessi in CSV">
+                                    <i class="bi bi-filetype-csv me-1"></i>CSV
+                                </button>
+                            </div>
                             <div id="admin-audit-struttura2"></div>
                         </div>
                     </div>
@@ -3969,6 +4005,58 @@
             } catch (_) { }
         }
 
+        // Storico "punti di svolta" dello stato online/warning/offline di ciascuna struttura
+        // (non un campionamento continuo): una nuova voce viene aggiunta solo quando lo stato
+        // cambia rispetto all'ultima registrata, così lo storico resta compatto anche su mesi
+        // di attività. Da questi punti si ricostruisce poi la % di tempo online in una finestra
+        // (vedi computeAdminUptimePercent), corretta anche se il pannello admin resta chiuso
+        // per ore: non dipende da un timer che deve essere per forza in esecuzione in quel momento.
+        const ADMIN_STATUS_HISTORY_STORAGE_KEY = 'tv_admin_status_history';
+        const ADMIN_STATUS_HISTORY_MAX_ENTRIES = 1000;
+        let adminStatusHistory = { struttura1: [], struttura2: [] };
+
+        function loadAdminStatusHistory() {
+            try {
+                const raw = localStorage.getItem(ADMIN_STATUS_HISTORY_STORAGE_KEY);
+                if (raw) adminStatusHistory = JSON.parse(raw);
+            } catch (_) { }
+        }
+
+        function recordAdminStatusSample(role, status) {
+            const hist = adminStatusHistory[role] = adminStatusHistory[role] || [];
+            const last = hist[hist.length - 1];
+            if (last && last.status === status) return;
+            hist.push({ ts: Date.now(), status });
+            if (hist.length > ADMIN_STATUS_HISTORY_MAX_ENTRIES) {
+                hist.splice(0, hist.length - ADMIN_STATUS_HISTORY_MAX_ENTRIES);
+            }
+            try { localStorage.setItem(ADMIN_STATUS_HISTORY_STORAGE_KEY, JSON.stringify(adminStatusHistory)); } catch (_) { }
+        }
+
+        // Percentuale di tempo "online" nella finestra [ora-windowMs, ora], ricostruita a
+        // partire dai punti di svolta: ogni voce dello storico apre un segmento che dura fino
+        // alla voce successiva (o fino ad ora, per l'ultima). Ritorna null se non c'è ancora
+        // nessuno storico per questa struttura (mai avuta una prima misurazione).
+        function computeAdminUptimePercent(role, windowMs) {
+            const hist = adminStatusHistory[role] || [];
+            if (hist.length === 0) return null;
+            const now = Date.now();
+            const windowStart = now - windowMs;
+            let onlineMs = 0, coveredMs = 0;
+            for (let i = 0; i < hist.length; i++) {
+                const segStart = hist[i].ts;
+                const segEnd = (i + 1 < hist.length) ? hist[i + 1].ts : now;
+                const clipStart = Math.max(segStart, windowStart);
+                const clipEnd = Math.min(segEnd, now);
+                if (clipEnd <= clipStart) continue;
+                const dur = clipEnd - clipStart;
+                coveredMs += dur;
+                if (hist[i].status === 'online') onlineMs += dur;
+            }
+            if (coveredMs === 0) return null;
+            return Math.round((onlineMs / coveredMs) * 100);
+        }
+
         function mergeAdminAuditLog(role, incomingEntries) {
             if (!role || !Array.isArray(incomingEntries) || incomingEntries.length === 0) return;
             const existing = adminAuditLogMerged[role] || (adminAuditLogMerged[role] = []);
@@ -4038,6 +4126,7 @@
             document.getElementById('admin-key-section').style.display = 'none';
             document.getElementById('admin-dashboard-section').style.display = 'block';
             loadAdminAuditLogMerged();
+            loadAdminStatusHistory();
             renderAdminAuditLog('struttura1');
             renderAdminAuditLog('struttura2');
             connectAdminMqtt(0);
@@ -4495,11 +4584,17 @@
             const isWarn   = ageMs > ADMIN_STALE_THRESHOLD_MS;
             const dotColor = isDanger ? '#e53935' : isWarn ? '#f9a825' : '#43a047';
             const label    = isDanger ? '🔴' : isWarn ? '🟡' : '🟢';
+            recordAdminStatusSample(role, isDanger ? 'offline' : isWarn ? 'warning' : 'online');
+            const uptimePct = computeAdminUptimePercent(role, 24 * 60 * 60 * 1000);
+            const uptimeBadge = uptimePct !== null
+                ? `<span class="badge bg-light text-dark ms-1" style="font-size:0.65rem;border:1px solid #cfd8dc;" title="Percentuale di tempo online nelle ultime 24 ore, ricostruita dallo storico stati">Uptime 24h: ${uptimePct}%</span>`
+                : '';
             statusEl.innerHTML = `<span style="font-size:0.78rem; color:#546e7a;">
                 ${label} <strong>${escapeHtml(entry.facility)}</strong>
                 — ultimo backup: <strong>${fmtAgo(ageMs)}</strong>
                 <span class="text-muted" style="font-size:0.7rem;">(${new Date(entry.ts).toLocaleTimeString('it-IT', {hour:'2-digit',minute:'2-digit'})})</span>
                 ${isDanger ? '<span class="badge bg-danger ms-1" style="font-size:0.65rem;">OFFLINE?</span>' : ''}
+                ${uptimeBadge}
             </span>`;
             statusEl.className = 'mb-3';
         }
@@ -4535,12 +4630,23 @@
             const televisite = (entry.data.shared && entry.data.shared.televisite) || [];
             const docs = (entry.data.shared && entry.data.shared.docs) || [];
 
-            let html = '<div class="fw-semibold small mb-1">Televisite (' + televisite.length + ')</div>';
-            if (televisite.length === 0) {
-                html += '<div class="text-muted small mb-3">Nessuna televisita.</div>';
+            const tvFilterEl = document.getElementById('admin-tv-filter-' + role);
+            const tvFilter = (tvFilterEl ? tvFilterEl.value : '').trim().toLowerCase();
+            const filteredTv = tvFilter
+                ? televisite.filter(tv => [tv.date, tv.patient, tv.status].some(v => (v || '').toLowerCase().includes(tvFilter)))
+                : televisite;
+
+            let html = '<div class="fw-semibold small mb-1">Televisite (' + filteredTv.length
+                + (tvFilter ? ' di ' + televisite.length : '') + ')</div>';
+            if (filteredTv.length === 0) {
+                html += '<div class="text-muted small mb-3">'
+                    + (televisite.length === 0 ? 'Nessuna televisita.' : 'Nessun risultato per il filtro.') + '</div>';
             } else {
-                html += '<div class="table-responsive mb-3"><table class="table table-sm"><tbody>';
-                televisite.forEach(tv => {
+                html += '<div class="table-responsive mb-3" style="max-height:300px;overflow-y:auto;"><table class="table table-sm"><thead><tr>'
+                    + '<th class="small text-muted">Data</th><th class="small text-muted">Paziente</th>'
+                    + '<th class="small text-muted">Stato</th><th class="small text-muted">Tipo</th>'
+                    + '</tr></thead><tbody>';
+                filteredTv.forEach(tv => {
                     const modeBadge = tv.visitMode === 'centro'
                         ? '<span class="badge bg-warning text-dark">Centro</span>'
                         : '<span class="badge bg-info text-dark">Network</span>';
@@ -4578,13 +4684,32 @@
         function renderAdminAuditLog(role) {
             const el = document.getElementById('admin-audit-' + role);
             if (!el) return;
-            const auditLog = (adminAuditLogMerged[role] || []).slice().sort((a, b) => b.ts - a.ts);
+            const fullLog = (adminAuditLogMerged[role] || []).slice().sort((a, b) => b.ts - a.ts);
 
-            let html = '<div class="fw-semibold small mb-1 mt-2">Accessi (' + auditLog.length + ')</div>';
+            const auditFilterEl = document.getElementById('admin-audit-filter-' + role);
+            const auditFilter = (auditFilterEl ? auditFilterEl.value : '').trim().toLowerCase();
+            const auditLog = auditFilter
+                ? fullLog.filter(a => (a.name || a.username || '').toLowerCase().includes(auditFilter))
+                : fullLog;
+
+            // Tentativi falliti nelle ultime 24h calcolati sul log completo (non su quello
+            // filtrato): serve a far notare un possibile attacco anche se l'admin sta filtrando
+            // per un altro medico in quel momento.
+            const failedLast24h = fullLog.filter(a => a.event === 'login_fail' && (Date.now() - a.ts) < 24 * 60 * 60 * 1000).length;
+            const failBadge = failedLast24h > 0
+                ? ' <span class="badge ' + (failedLast24h >= 5 ? 'bg-danger' : 'bg-warning text-dark')
+                    + '" title="Tentativi di login falliti nelle ultime 24 ore">⚠️ ' + failedLast24h + ' falliti/24h</span>'
+                : '';
+
+            let html = '<div class="fw-semibold small mb-1 mt-2">Accessi (' + auditLog.length
+                + (auditFilter ? ' di ' + fullLog.length : '') + ')' + failBadge + '</div>';
             if (auditLog.length === 0) {
-                html += '<div class="text-muted small">Nessun accesso registrato.</div>';
+                html += '<div class="text-muted small">'
+                    + (fullLog.length === 0 ? 'Nessun accesso registrato.' : 'Nessun risultato per il filtro.') + '</div>';
             } else {
-                html += '<div class="table-responsive" style="max-height:260px;overflow-y:auto;"><table class="table table-sm mb-0"><tbody>';
+                html += '<div class="table-responsive" style="max-height:260px;overflow-y:auto;"><table class="table table-sm mb-0"><thead><tr>'
+                    + '<th class="small text-muted">Data/ora</th><th class="small text-muted">Medico</th><th class="small text-muted">Esito</th>'
+                    + '</tr></thead><tbody>';
                 auditLog.slice(0, 200).forEach(a => {
                     const badge = a.event === 'login_success'
                         ? '<span class="badge bg-success">riuscito</span>'
@@ -4596,6 +4721,45 @@
                 html += '</tbody></table></div>';
             }
             el.innerHTML = html;
+        }
+
+        // Serializza in CSV (con BOM per l'apertura corretta degli accenti in Excel) e avvia il
+        // download, stesso pattern del download JSON già esistente (downloadAdminBackup).
+        function csvEscape(val) {
+            return '"' + String(val ?? '').replace(/"/g, '""') + '"';
+        }
+
+        function downloadAdminCsv(filename, rows) {
+            const csv = rows.map(r => r.map(csvEscape).join(',')).join('\r\n');
+            const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function exportAdminTelevisiteCsv(role) {
+            const entry = adminReceivedBackups[role];
+            if (!entry) return;
+            const televisite = (entry.data.shared && entry.data.shared.televisite) || [];
+            const rows = [['Data', 'Paziente', 'Stato', 'Tipo']];
+            televisite.forEach(tv => rows.push([
+                tv.date || '', tv.patient || '', tv.status || '', tv.visitMode === 'centro' ? 'Centro' : 'Network'
+            ]));
+            downloadAdminCsv(`televisite_${role}_${new Date().toISOString().split('T')[0]}.csv`, rows);
+        }
+
+        function exportAdminAccessiCsv(role) {
+            const auditLog = (adminAuditLogMerged[role] || []).slice().sort((a, b) => b.ts - a.ts);
+            const rows = [['Data/ora', 'Medico', 'Esito']];
+            auditLog.forEach(a => rows.push([
+                new Date(a.ts).toLocaleString('it-IT'), a.name || a.username || '', a.event === 'login_success' ? 'riuscito' : 'fallito'
+            ]));
+            downloadAdminCsv(`accessi_${role}_${new Date().toISOString().split('T')[0]}.csv`, rows);
         }
 
         // Scarica il backup decifrato di una struttura come file .json, nello stesso formato di
