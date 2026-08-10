@@ -6190,9 +6190,22 @@
             // Unione per id invece di sovrascrittura totale: un dispositivo che si collega per la prima volta
             // (cache locale vuota, es. un'altra struttura/PC) ha uno stato vuoto finché non riceve la risposta
             // state_share. Se nel frattempo invia comunque un sync, una sostituzione totale (S.televisite =
-            // shared.televisite) cancellerebbe i dati già presenti sull'altro lato. L'app non ha una funzione
-            // per eliminare una televisita, quindi l'unione per id è sempre sicura: nulla va perso.
+            // shared.televisite) cancellerebbe i dati già presenti sull'altro lato. Per una vera televisita
+            // (un vero paziente) l'app non ha mai una funzione per eliminarla, quindi l'unione per id è
+            // sempre sicura: nulla va perso — annullare una visita reale infatti la marca solo "annullata"
+            // (vedi confirmCancelVisit), non la rimuove mai.
             S.televisite = mergeById(S.televisite, shared.televisite);
+
+            // Unica eccezione deliberata: le televisite create da una demo guidata (runDemo, campo
+            // isDemo) non sono mai state un vero paziente, quindi removeDemoPatients() le rimuove
+            // per davvero anche dall'altra struttura quando la demo finisce — l'unione per id qui
+            // sopra da sola non basterebbe (non toglie mai nulla), serve questo comando esplicito.
+            if (event && event.kind === 'demo_patients_removed' && Array.isArray(event.removedIds) && event.removedIds.length) {
+                S.televisite = S.televisite.filter(tv => !event.removedIds.includes(tv.id));
+                S.docs = S.docs.filter(d => !event.removedIds.includes(d.tvId));
+                if (S.activeTvId && event.removedIds.includes(S.activeTvId)) S.activeTvId = null;
+            }
+
             if (shared.patientNotes) S.patientNotes = Object.assign({}, shared.patientNotes, S.patientNotes);
 
             // Sincronizza i documenti preservando i dati Base64 locali se l'incoming non li possiede (es. per bozze private o risparmio banda)
@@ -10264,7 +10277,11 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                 createdByName: S.currentDoctor ? S.currentDoctor.name : DOCTORS[S.role].name,
                 room: isCentro ? genRoom(newTvId) : null,
                 consentStatus: 'non-inviato',
-                consentOtp: null
+                consentOtp: null,
+                // Marca le televisite create durante la demo guidata (vedi runDemo/S.demoMode):
+                // permette a removeDemoPatients() di eliminarle per davvero quando la demo finisce,
+                // invece di lasciarle per sempre nell'agenda del medico come pazienti reali.
+                isDemo: !!S.demoMode
             };
             S.televisite.unshift(tv);
 
@@ -10705,7 +10722,8 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                 type: 'urgente',
                 legalNote: currentLang === 'fr'
                     ? `Consultation démarrée en régime d'urgence — consentement présumé au sens de l'art. 54 c.p. et de l'art. 8 L. 219/2017. Médecin : ${DOCTORS[S.role].name}. ${new Date().toISOString()}`
-                    : `Visita avviata in regime d'urgenza — consenso presunto ai sensi dell'art. 54 c.p. e art. 8 L. 219/2017. Medico: ${DOCTORS[S.role].name}. ${new Date().toISOString()}`
+                    : `Visita avviata in regime d'urgenza — consenso presunto ai sensi dell'art. 54 c.p. e art. 8 L. 219/2017. Medico: ${DOCTORS[S.role].name}. ${new Date().toISOString()}`,
+                isDemo: !!S.demoMode
             };
 
             // Aggiungi alla lista locale delle televisite
@@ -10857,7 +10875,8 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                 type: 'centro',
                 legalNote: currentLang === 'fr'
                     ? `Consultation démarrée en régime d'urgence — consentement présumé au sens de l'art. 54 c.p. et de l'art. 8 L. 219/2017. Médecin : ${DOCTORS[S.role].name}. ${new Date().toISOString()}`
-                    : `Visita avviata in regime d'urgenza — consenso presunto ai sensi dell'art. 54 c.p. e art. 8 L. 219/2017. Medico: ${DOCTORS[S.role].name}. ${new Date().toISOString()}`
+                    : `Visita avviata in regime d'urgenza — consenso presunto ai sensi dell'art. 54 c.p. e art. 8 L. 219/2017. Medico: ${DOCTORS[S.role].name}. ${new Date().toISOString()}`,
+                isDemo: !!S.demoMode
             };
 
             S.televisite.unshift(newTv);
@@ -12201,12 +12220,28 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
             setTimeout(() => el.classList.remove('demo-pulse'), 3400);
         }
 
+        // Rimuove per DAVVERO (non solo "annulla", vedi confirmCancelVisit) le televisite create
+        // durante la demo guidata: a differenza di una vera visita non sono mai stati pazienti
+        // reali, quindi non ha senso che restino per sempre nell'agenda del medico. Sincronizzata
+        // esplicitamente anche all'altra struttura (una demo "Network" invia lì una delle
+        // televisite create), vedi il ramo dedicato in handleIncomingSync.
+        function removeDemoPatients() {
+            const demoIds = S.televisite.filter(tv => tv.isDemo).map(tv => tv.id);
+            if (demoIds.length === 0) return;
+            S.televisite = S.televisite.filter(tv => !tv.isDemo);
+            S.docs = S.docs.filter(d => !demoIds.includes(d.tvId));
+            if (S.activeTvId && demoIds.includes(S.activeTvId)) S.activeTvId = null;
+            renderAll();
+            syncState({ kind: 'demo_patients_removed', removedIds: demoIds });
+        }
+
         function stopDemo() {
             demoTimeouts.forEach(clearTimeout);
             demoTimeouts = [];
             hideDemoGuide();
             document.querySelectorAll('.demo-pulse').forEach(el => el.classList.remove('demo-pulse'));
             S.demoMode = false;
+            removeDemoPatients();
             showToast(currentLang === 'fr' ? 'Démo interrompue.' : 'Demo interrotta.', 'warning');
         }
 
