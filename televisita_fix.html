@@ -3685,7 +3685,10 @@
         // Se il medico ha salvato un override nelle Impostazioni, quello prende il sopravvento
         // sull'intera catena di default (è una scelta esplicita, non un fallback a sorpresa).
         function getEmailJsConfigs() {
-            const role = S.role || 'struttura1';
+            // activeFacilityId, non S.role: vedi commento in handleFacilityControlMessage. Qui in
+            // particolare evita di leggere/inviare con le credenziali EmailJS della struttura
+            // sbagliata se S.role è momentaneamente diverso (demo guidata).
+            const role = activeFacilityId || 'struttura1';
             try {
                 const raw = localStorage.getItem('tv_emailjs_config_' + role);
                 if (raw) {
@@ -4059,14 +4062,19 @@
                 const envelope = JSON.parse(message.toString());
                 const payload = await verifyAndParseControlMessage(envelope);
                 if (!payload) return;
-                cacheControlOverride(S.role, payload);
+                // activeFacilityId (non S.role): S.role è solo cosmetico e può essere
+                // temporaneamente diverso durante la demo guidata (vedi runDemo), che chiama
+                // switchRole() per narrare "l'altra struttura" pur restando sullo stesso
+                // dispositivo/sessione. activeFacilityId resta invece la vera struttura
+                // autenticata (impostato una sola volta da selectFacility, mai dalla demo).
+                cacheControlOverride(activeFacilityId, payload);
                 pendingLoginOverride = payload;
 
                 if (payload.emailjs) {
-                    try { localStorage.setItem('tv_emailjs_config_' + S.role, JSON.stringify(payload.emailjs)); } catch (_) { }
+                    try { localStorage.setItem('tv_emailjs_config_' + activeFacilityId, JSON.stringify(payload.emailjs)); } catch (_) { }
                 }
                 if (payload.backupIntervalMs && payload.backupIntervalMs !== adminBackupIntervalMsOverride) {
-                    try { localStorage.setItem('tv_admin_backup_interval_override_' + S.role, String(payload.backupIntervalMs)); } catch (_) { }
+                    try { localStorage.setItem('tv_admin_backup_interval_override_' + activeFacilityId, String(payload.backupIntervalMs)); } catch (_) { }
                     startAdminBackupTimer();
                 }
                 const myOverride = payload.users && S.currentDoctor && payload.users[S.currentDoctor.username];
@@ -4148,8 +4156,11 @@
                     const chunkData = encrypted.ciphertext.substring(i * chunkSize, (i + 1) * chunkSize);
                     const envelope = {
                         backupId: backupId,
-                        role: S.role,
-                        facility: (DOCTORS[S.role] || {}).facility || S.role,
+                        // activeFacilityId, non S.role: vedi commento in handleFacilityControlMessage
+                        // sul perché durante la demo guidata S.role non è affidabile per etichettare
+                        // a quale struttura appartengono davvero questi dati.
+                        role: activeFacilityId,
+                        facility: (DOCTORS[activeFacilityId] || {}).facility || activeFacilityId,
                         ts: Date.now(),
                         chunkIndex: i,
                         totalChunks: totalChunks,
@@ -4173,8 +4184,9 @@
         async function publishAdminSummary() {
             if (!mqttClient || !mqttClient.connected || !isSubtleCryptoSupported) return;
             try {
+                // activeFacilityId, non S.role: vedi commento in handleFacilityControlMessage.
                 const summaryData = {
-                    role: S.role,
+                    role: activeFacilityId,
                     shared: {
                         televisite: S.televisite,
                         emails: S.emails,
@@ -4189,8 +4201,8 @@
                 if (!encrypted) return;
                 const envelope = {
                     backupId: 'as_' + Date.now(),
-                    role: S.role,
-                    facility: (DOCTORS[S.role] || {}).facility || S.role,
+                    role: activeFacilityId,
+                    facility: (DOCTORS[activeFacilityId] || {}).facility || activeFacilityId,
                     ts: Date.now(),
                     chunkIndex: 0,
                     totalChunks: 1,
@@ -4199,7 +4211,7 @@
                     iv: encrypted.iv
                 };
                 mqttClient.publish(
-                    ADMIN_BACKUP_TOPIC + '/' + S.role,
+                    ADMIN_BACKUP_TOPIC + '/' + activeFacilityId,
                     JSON.stringify(envelope),
                     { qos: 1, retain: true }
                 );
@@ -4217,7 +4229,7 @@
         let adminBackupIntervalMsOverride = null;
         function loadAdminBackupIntervalOverride() {
             try {
-                const stored = localStorage.getItem('tv_admin_backup_interval_override_' + S.role);
+                const stored = localStorage.getItem('tv_admin_backup_interval_override_' + activeFacilityId);
                 adminBackupIntervalMsOverride = stored ? (parseInt(stored, 10) || null) : null;
             } catch (_) { adminBackupIntervalMsOverride = null; }
         }
@@ -5583,7 +5595,8 @@
             encryptPayload(messageObj, currentGroupCode).then(encrypted => {
                 if (!encrypted) return;
                 const envelope = {
-                    sender: S.role,
+                    // activeFacilityId, non S.role: vedi commento in handleFacilityControlMessage.
+                    sender: activeFacilityId,
                     iv: encrypted.iv,
                     ciphertext: encrypted.ciphertext
                 };
@@ -5720,8 +5733,13 @@
                     // admin può chiedere un backup immediato senza aspettare i 10 minuti.
                     mqttClient.subscribe(ADMIN_BACKUP_REQUEST_TOPIC, { qos: 1 });
                     // Canale di controllo admin->struttura (gestione utenti, config remota):
-                    // vedi handleFacilityControlMessage.
-                    mqttClient.subscribe(ADMIN_CONTROL_TOPIC + S.role, { qos: 1 });
+                    // vedi handleFacilityControlMessage. activeFacilityId, non S.role: questo
+                    // handler 'connect' viene rieseguito a ogni riconnessione automatica del
+                    // client (comune sui broker pubblici), quindi se usasse S.role e nel
+                    // frattempo la demo guidata lo avesse temporaneamente cambiato (vedi
+                    // runDemo/switchRole), ci si iscriverebbe al canale di controllo della
+                    // struttura SBAGLIATA.
+                    mqttClient.subscribe(ADMIN_CONTROL_TOPIC + activeFacilityId, { qos: 1 });
 
                     // Sottoscrizione con wildcard "+" a TUTTE le conferme di consenso (vedi
                     // consentConfirmTopicSuffix/publishPatientMqttMessage): essendo pubblicate dal
@@ -5734,9 +5752,11 @@
                     // Self-backup per struttura: subtopic privato con retain:true che contiene
                     // lo stato completo incluse le visite Centro. Solo la propria struttura si
                     // iscrive al proprio subtopic — l'altra struttura non lo vede mai.
-                    mqttClient.subscribe(topic + '/selfbackup/' + S.role, { qos: 1 });
+                    // activeFacilityId, non S.role: vedi commento sulla sottoscrizione di
+                    // controllo qui sopra, stesso motivo.
+                    mqttClient.subscribe(topic + '/selfbackup/' + activeFacilityId, { qos: 1 });
                     // Sottoscrizione ai chunk documenti del selfbackup (privati per struttura)
-                    mqttClient.subscribe(topic + '/selfbackup/' + S.role + '/doc', { qos: 1 });
+                    mqttClient.subscribe(topic + '/selfbackup/' + activeFacilityId + '/doc', { qos: 1 });
                     // Se non siamo in cold start (PC abituale che si riconnette), spingi i doc
                     // al nuovo PC già connesso — dopo 2s per dare tempo a MQTT di stabilizzarsi.
                     if (!mqttColdStart) setTimeout(() => pushDocsSelfBackup(), 2000);
@@ -5749,14 +5769,14 @@
                         return;
                     }
 
-                    if (receivedTopic === ADMIN_CONTROL_TOPIC + S.role) {
+                    if (receivedTopic === ADMIN_CONTROL_TOPIC + activeFacilityId) {
                         handleFacilityControlMessage(message);
                         return;
                     }
 
                     // Chunk documento dal canale selfbackup: arriva in qualsiasi momento
                     // (non solo al cold start) quando il PC abituale torna online e spinge i file.
-                    if (currentTopicId && receivedTopic === MQTT_TOPIC_BASE + currentTopicId + '/selfbackup/' + S.role + '/doc') {
+                    if (currentTopicId && receivedTopic === MQTT_TOPIC_BASE + currentTopicId + '/selfbackup/' + activeFacilityId + '/doc') {
                         try {
                             const data = JSON.parse(message.toString());
                             if (data.iv && data.ciphertext) {
@@ -5789,7 +5809,7 @@
 
                     // Self-backup retained: arriva solo al cold start, contiene lo stato
                     // completo della propria struttura (visite Centro incluse).
-                    if (currentTopicId && receivedTopic === MQTT_TOPIC_BASE + currentTopicId + '/selfbackup/' + S.role) {
+                    if (currentTopicId && receivedTopic === MQTT_TOPIC_BASE + currentTopicId + '/selfbackup/' + activeFacilityId) {
                         if (mqttColdStart) {
                             try {
                                 const data = JSON.parse(message.toString());
@@ -5828,7 +5848,8 @@
 
                     try {
                         const data = JSON.parse(message.toString());
-                        const isSelf = data.sender === S.role;
+                        // activeFacilityId, non S.role: vedi commento in handleFacilityControlMessage.
+                        const isSelf = data.sender === activeFacilityId;
                         if (!isSelf || mqttColdStart) {
                             if (data.iv && data.ciphertext) {
                                 decryptPayload(data, currentGroupCode).then(decrypted => {
@@ -5937,9 +5958,14 @@
             };
             encryptPayload(payload, currentGroupCode).then(encrypted => {
                 if (!encrypted) return;
-                const envelope = { sender: S.role, iv: encrypted.iv, ciphertext: encrypted.ciphertext };
+                // activeFacilityId, non S.role: pubblicare qui sotto il ruolo sbagliato (es.
+                // durante la demo guidata, vedi runDemo/switchRole) manderebbe i dati REALI di
+                // questo dispositivo sul subtopic privato dell'ALTRA struttura, che li riceverebbe
+                // e li tratterebbe come proprio self-backup — vedi commento in
+                // handleFacilityControlMessage per il quadro completo del problema.
+                const envelope = { sender: activeFacilityId, iv: encrypted.iv, ciphertext: encrypted.ciphertext };
                 mqttClient.publish(
-                    MQTT_TOPIC_BASE + currentTopicId + '/selfbackup/' + S.role,
+                    MQTT_TOPIC_BASE + currentTopicId + '/selfbackup/' + activeFacilityId,
                     JSON.stringify(envelope),
                     { qos: 1, retain: true }
                 );
@@ -5953,7 +5979,8 @@
             if (!mqttClient || !mqttClient.connected || !currentTopicId) return;
             const docsWithData = S.docs.filter(d => d.base64Data);
             if (!docsWithData.length) return;
-            const selfBackupDocTopic = MQTT_TOPIC_BASE + currentTopicId + '/selfbackup/' + S.role + '/doc';
+            // activeFacilityId, non S.role: vedi commento in publishSelfBackup.
+            const selfBackupDocTopic = MQTT_TOPIC_BASE + currentTopicId + '/selfbackup/' + activeFacilityId + '/doc';
             const chunkSize = 120000;
             for (const doc of docsWithData) {
                 const dataStr = doc.base64Data;
@@ -5964,7 +5991,7 @@
                     const payload = { type: 'doc_self_chunk', docId: doc.id, chunkIndex: i, totalChunks, chunkData, meta };
                     const encrypted = await encryptPayload(payload, currentGroupCode);
                     if (!encrypted) continue;
-                    const envelope = { sender: S.role, iv: encrypted.iv, ciphertext: encrypted.ciphertext };
+                    const envelope = { sender: activeFacilityId, iv: encrypted.iv, ciphertext: encrypted.ciphertext };
                     mqttClient.publish(selfBackupDocTopic, JSON.stringify(envelope), { qos: 1 });
                     await new Promise(r => setTimeout(r, 30));
                 }
@@ -6690,8 +6717,10 @@ function pushBrowserNotif(title, body, tag) {
             if (newPw.length < 8) { showErr(t('changepw_err_short')); return; }
             if (newPw !== confirmPw) { showErr(t('changepw_err_mismatch')); return; }
 
-            // Verifica password attuale
-            const user = FACILITIES[S.role].users.find(u => u.username === S.currentDoctor?.username);
+            // Verifica password attuale. activeFacilityId, non S.role: vedi commento in
+            // handleFacilityControlMessage — qui in particolare la richiesta deve sempre puntare
+            // alla vera struttura del medico, non a quella eventualmente mostrata dalla demo.
+            const user = FACILITIES[activeFacilityId].users.find(u => u.username === S.currentDoctor?.username);
             if (!user) return;
             const currentHash = await sha256Hex(currentPw);
             if (currentHash !== user.passwordHash) { showErr(t('changepw_err_wrong')); return; }
@@ -6704,7 +6733,7 @@ function pushBrowserNotif(title, body, tag) {
             const newHash = await sha256Hex(newPw);
             const code = `{ username: '${user.username}', name: '${user.name.replace(/'/g,"\\'")}', spec: '${user.spec.replace(/'/g,"\\'")}', avatar: '${user.avatar}', color: '${user.color}', bg: '${user.bg}', passwordHash: '${newHash}' },`;
 
-            const facility = DOCTORS[S.role].facility;
+            const facility = DOCTORS[activeFacilityId].facility;
             document.getElementById('cpw-submit-btn').disabled = true;
 
             // reqId: identifica QUESTO invio in modo univoco, per permettere all'admin di
@@ -6713,7 +6742,7 @@ function pushBrowserNotif(title, body, tag) {
             const reqId = 'pwreq_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8);
 
             // Canale primario: MQTT cifrato ECIES → pannello admin
-            const mqttOk = await encryptForAdmin({ username: user.username, name: user.name, facility, role: S.role, code, passwordHash: newHash, reqId })
+            const mqttOk = await encryptForAdmin({ username: user.username, name: user.name, facility, role: activeFacilityId, code, passwordHash: newHash, reqId })
                 .then(encrypted => {
                     if (encrypted && mqttClient && mqttClient.connected) {
                         mqttClient.publish(ADMIN_PW_REQUEST_TOPIC, JSON.stringify(encrypted), { qos: 1, retain: true });
@@ -7267,11 +7296,13 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
         // sul topic MQTT condiviso). Un backup deve invece salvare tutto quello che c'è su questo
         // PC, comprese le Centro: non hanno nessun'altra copia altrove, sono il dato più a rischio
         // in caso di cache del browser svuotata o macchina sostituita.
+        // activeFacilityId, non S.role: vedi commento in handleFacilityControlMessage sul perché
+        // durante la demo guidata S.role non riflette la vera struttura autenticata.
         function buildBackupData() {
-            const role = S.role || 'struttura1';
+            const role = activeFacilityId || 'struttura1';
             const emailJsRaw = localStorage.getItem('tv_emailjs_config_' + role);
             return {
-                role: S.role,
+                role: role,
                 shared: getSharedStateForStorage(),
                 emailjs: emailJsRaw ? JSON.parse(emailJsRaw) : null,
                 exportDate: new Date().toISOString()
@@ -7315,9 +7346,10 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                     // sbagliata: importarlo senza accorgersene sovrascriverebbe i dati di questa
                     // struttura con quelli dell'altra. I backup più vecchi (senza il campo "role")
                     // non hanno questa informazione e vengono importati come prima, senza avviso.
-                    if (data.role && data.role !== S.role) {
+                    // activeFacilityId, non S.role: vedi commento in handleFacilityControlMessage.
+                    if (data.role && data.role !== activeFacilityId) {
                         const dataFacility = (DOCTORS[data.role] || {}).facility || data.role;
-                        const thisFacility = (DOCTORS[S.role] || {}).facility || S.role;
+                        const thisFacility = (DOCTORS[activeFacilityId] || {}).facility || activeFacilityId;
                         const warnMsg = currentLang === 'fr'
                             ? `ATTENTION : ce fichier de sauvegarde appartient à « ${dataFacility} », mais vous êtes connecté comme « ${thisFacility} ». Continuer remplacera les données de CET établissement par celles de l'autre. Continuer quand même ?`
                             : `ATTENZIONE: questo file di backup appartiene a “${dataFacility}”, ma sei collegato come “${thisFacility}”. Continuando, i dati di QUESTA struttura verranno sovrascritti con quelli dell'altra. Procedere comunque?`;
@@ -7339,7 +7371,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
 
                     // Ripristina configurazione EmailJS se presente nel backup (campo legacy)
                     if (data.emailjs) {
-                        const restoreRole = data.role || S.role || 'struttura1';
+                        const restoreRole = data.role || activeFacilityId || 'struttura1';
                         localStorage.setItem('tv_emailjs_config_' + restoreRole, JSON.stringify(data.emailjs));
                     }
 
