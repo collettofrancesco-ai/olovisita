@@ -148,10 +148,20 @@
             box-sizing: border-box;
         }
 
+        /* overflow-x:hidden su ENTRAMBI html e body (serve su entrambi per bloccare davvero lo
+           scroll/pan orizzontale su Safari iOS): impedisce di "spostare" la pagina a destra/sinistra
+           se un elemento sfora la larghezza dello schermo, sia sulla schermata di login sia dentro
+           la dashboard dopo il login (nessuna eccezione: la regola è globale, non per singola vista). */
+        html {
+            overflow-x: hidden;
+        }
+
         body {
             background: var(--bg);
             color: var(--text);
             font-family: 'Outfit', 'Segoe UI', system-ui, sans-serif;
+            overflow-x: hidden;
+            max-width: 100%;
         }
 
         /* Intestazione */
