@@ -5387,6 +5387,11 @@
                             style="font-size:.75rem;" placeholder="Nuova password (min 8 caratteri)">
                         <button class="btn btn-outline-primary btn-sm text-nowrap" style="font-size:.7rem;"
                             onclick="resetAdminUserPassword('${role}','${escapeAttr(u.username)}')">Reimposta</button>
+                        <button class="btn btn-outline-dark btn-sm text-nowrap" style="font-size:.7rem;"
+                            title="Copia il codice da incollare in manage_users.py per rendere la password permanente nel sorgente"
+                            onclick="generateAdminPasswordResetCode('${role}','${escapeAttr(u.username)}')">
+                            <i class="bi bi-code-slash me-1"></i>Genera codice
+                        </button>
                     </div>
                     <div class="d-flex gap-2 align-items-center mt-2">
                         <input type="text" id="admin-profile-name-${role}-${escapeAttr(u.username)}" class="form-control form-control-sm"
@@ -5430,6 +5435,28 @@
                 if (input) input.value = '';
                 showToast('Password reimpostata: attiva da subito per i nuovi login', 'success');
             }
+        }
+
+        // Genera il frammento da incollare in manage_users.py (opzione 2) per rendere PERMANENTE
+        // nel sorgente lo stesso reset appena fatto dal vivo qui sopra. A differenza del codice
+        // per nome/specializzazione, qui serve l'oggetto COMPLETO (manage_users.py sostituisce
+        // l'intera riga): usa nome/specializzazione EFFETTIVI (con eventuale override già in
+        // vigore) così il codice generato riflette lo stato vero, non quello ormai superato nel
+        // sorgente.
+        async function generateAdminPasswordResetCode(role, username) {
+            const input = document.getElementById(`admin-newpw-${role}-${username}`);
+            const newPw = input ? input.value.trim() : '';
+            if (newPw.length < 8) { showToast('Password troppo corta (minimo 8 caratteri)', 'warning'); return; }
+            const users = (FACILITIES[role] && FACILITIES[role].users) || [];
+            const u = users.find(x => x.username === username);
+            if (!u) return;
+            const overrides = (adminControlState[role] && adminControlState[role].users) || {};
+            const ov = overrides[username] || {};
+            const name = ov.name || u.name;
+            const spec = ov.spec || u.spec;
+            const hash = await sha256Hex(newPw);
+            const code = `{ username: '${username}', name: '${name.replace(/'/g, "\\'")}', spec: '${spec.replace(/'/g, "\\'")}', avatar: '${u.avatar}', color: '${u.color}', bg: '${u.bg}', passwordHash: '${hash}' },`;
+            navigator.clipboard.writeText(code).then(() => showToast('✅ Codice copiato: incollalo in manage_users.py (opzione 2)', 'success'));
         }
 
         // ---------------------------------------------------------------------------
