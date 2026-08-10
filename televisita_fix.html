@@ -1382,6 +1382,33 @@
                         <i class="bi bi-box-arrow-right me-1"></i>Cambia chiave / disconnetti
                     </button>
                 </div>
+
+                <div class="row g-4 mb-1">
+                    <div class="col-12">
+                        <div id="admin-control-key-section" class="login-card" style="cursor:default; max-width:none; border-left:4px solid #7b1fa2;">
+                            <h6 class="fw-bold mb-1"><i class="bi bi-pencil-square me-1 text-purple" style="color:#7b1fa2;"></i>Chiave di controllo (gestione utenti / configurazione)</h6>
+                            <p class="text-muted small mb-2">
+                                Separata dalla chiave di lettura backup: senza questa il pannello resta di sola
+                                lettura. Incolla qui il contenuto di
+                                <code>admin_control_private_key.DO_NOT_SHARE.json</code> per abilitare
+                                attivazione/disattivazione utenti, reset password reali e configurazione remota.
+                            </p>
+                            <div class="d-flex gap-2 align-items-start">
+                                <textarea id="admin-control-key-input" class="form-control form-control-sm" rows="2"
+                                    style="font-size:.75rem;" placeholder='{"key_ops":["sign"],"ext":true,"kty":"EC", ...}'></textarea>
+                                <button class="btn btn-sm fw-semibold text-nowrap" style="background:#7b1fa2;color:#fff;" onclick="submitAdminControlKey()">
+                                    Sblocca scrittura
+                                </button>
+                            </div>
+                            <div id="admin-control-key-error" class="text-danger small mt-1" style="min-height:1.2em;"></div>
+                        </div>
+                        <div id="admin-control-unlocked-badge" class="d-flex justify-content-between align-items-center login-card" style="cursor:default; max-width:none; display:none; border-left:4px solid #43a047;">
+                            <span class="small"><i class="bi bi-unlock-fill me-1 text-success"></i>Scrittura abilitata: gestione utenti e configurazione remota sono attive.</span>
+                            <button class="btn btn-link btn-sm" onclick="forgetAdminControlKey()">Dimentica chiave di controllo</button>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="row g-4">
                     <div class="col-md-6">
                         <div class="login-card" style="cursor:default;">
@@ -1413,6 +1440,27 @@
                                 </button>
                             </div>
                             <div id="admin-audit-struttura1"></div>
+
+                            <div class="admin-control-locked-msg text-muted small mt-3 fst-italic">
+                                Carica la chiave di controllo (sopra) per gestire utenti e configurazione di questa struttura.
+                            </div>
+                            <div class="admin-control-gated" style="display:none;">
+                                <hr class="my-2">
+                                <div class="fw-semibold small mb-1">Gestione utenti</div>
+                                <div id="admin-users-struttura1"></div>
+                                <div class="fw-semibold small mb-1 mt-2">Configurazione operativa</div>
+                                <div class="row g-1 mb-1">
+                                    <div class="col-4"><input type="text" id="admin-emailjs-pk-struttura1" class="form-control form-control-sm" style="font-size:.7rem;" placeholder="EmailJS Public Key"></div>
+                                    <div class="col-4"><input type="text" id="admin-emailjs-svc-struttura1" class="form-control form-control-sm" style="font-size:.7rem;" placeholder="Service ID"></div>
+                                    <div class="col-4"><input type="text" id="admin-emailjs-tpl-struttura1" class="form-control form-control-sm" style="font-size:.7rem;" placeholder="Template ID"></div>
+                                </div>
+                                <button class="btn btn-outline-primary btn-sm mb-2" style="font-size:.7rem;" onclick="saveAdminEmailjsConfig('struttura1')">Salva ed invia config EmailJS</button>
+                                <div class="d-flex gap-2 align-items-center">
+                                    <label class="small text-muted mb-0 text-nowrap">Intervallo backup (min)</label>
+                                    <input type="number" id="admin-backup-interval-struttura1" class="form-control form-control-sm" style="font-size:.75rem; max-width:80px;" min="1">
+                                    <button class="btn btn-outline-primary btn-sm text-nowrap" style="font-size:.7rem;" onclick="saveAdminBackupInterval('struttura1')">Salva</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div class="col-md-6">
@@ -1445,6 +1493,27 @@
                                 </button>
                             </div>
                             <div id="admin-audit-struttura2"></div>
+
+                            <div class="admin-control-locked-msg text-muted small mt-3 fst-italic">
+                                Carica la chiave di controllo (sopra) per gestire utenti e configurazione di questa struttura.
+                            </div>
+                            <div class="admin-control-gated" style="display:none;">
+                                <hr class="my-2">
+                                <div class="fw-semibold small mb-1">Gestione utenti</div>
+                                <div id="admin-users-struttura2"></div>
+                                <div class="fw-semibold small mb-1 mt-2">Configurazione operativa</div>
+                                <div class="row g-1 mb-1">
+                                    <div class="col-4"><input type="text" id="admin-emailjs-pk-struttura2" class="form-control form-control-sm" style="font-size:.7rem;" placeholder="EmailJS Public Key"></div>
+                                    <div class="col-4"><input type="text" id="admin-emailjs-svc-struttura2" class="form-control form-control-sm" style="font-size:.7rem;" placeholder="Service ID"></div>
+                                    <div class="col-4"><input type="text" id="admin-emailjs-tpl-struttura2" class="form-control form-control-sm" style="font-size:.7rem;" placeholder="Template ID"></div>
+                                </div>
+                                <button class="btn btn-outline-primary btn-sm mb-2" style="font-size:.7rem;" onclick="saveAdminEmailjsConfig('struttura2')">Salva ed invia config EmailJS</button>
+                                <div class="d-flex gap-2 align-items-center">
+                                    <label class="small text-muted mb-0 text-nowrap">Intervallo backup (min)</label>
+                                    <input type="number" id="admin-backup-interval-struttura2" class="form-control form-control-sm" style="font-size:.75rem; max-width:80px;" min="1">
+                                    <button class="btn btn-outline-primary btn-sm text-nowrap" style="font-size:.7rem;" onclick="saveAdminBackupInterval('struttura2')">Salva</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1456,6 +1525,28 @@
                                 <i class="bi bi-key-fill me-1 text-warning"></i>Richieste Cambio Password
                             </h6>
                             <div id="admin-pw-requests-list"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-4 mt-1">
+                    <div class="col-12">
+                        <div class="login-card" style="cursor:default; max-width:none;">
+                            <h6 class="fw-bold mb-1"><i class="bi bi-sliders me-1"></i>Soglie di allarme (solo su questo browser)</h6>
+                            <p class="text-muted small mb-2">
+                                Non toccano le strutture, solo quando questo pannello colora di giallo/rosso lo stato di una struttura.
+                            </p>
+                            <div class="d-flex gap-3 align-items-end flex-wrap">
+                                <div>
+                                    <label class="form-label small fw-semibold text-muted mb-0">Giallo dopo (min)</label>
+                                    <input type="number" id="admin-threshold-stale" class="form-control form-control-sm" style="max-width:90px;" min="1">
+                                </div>
+                                <div>
+                                    <label class="form-label small fw-semibold text-muted mb-0">Rosso dopo (min)</label>
+                                    <input type="number" id="admin-threshold-danger" class="form-control form-control-sm" style="max-width:90px;" min="1">
+                                </div>
+                                <button class="btn btn-outline-secondary btn-sm" onclick="saveAdminThresholds()">Salva soglie</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -3839,9 +3930,154 @@
         const ADMIN_BACKUP_REQUEST_TOPIC = ADMIN_BACKUP_TOPIC + '/req';
         const ADMIN_PW_REQUEST_TOPIC    = ADMIN_BACKUP_TOPIC + '/pwreq';
         const ADMIN_BACKUP_PUBLIC_KEY_JWK = { "key_ops": [], "ext": true, "kty": "EC", "x": "Vtm2Bl5LqmCo3O5P1yP-Afa-7S4XnJ1cu7JINggaweA", "y": "EyGy2MuoAs2wxQ13Lzj8nwoCCqT5wXoPWPBowThbofQ", "crv": "P-256" };
+        // Canale di CONTROLLO (direzione opposta al backup: admin -> struttura), usato per
+        // gestione utenti (attiva/disattiva, reset password) e configurazione remota (EmailJS,
+        // intervallo di backup). A differenza del backup non porta dati sanitari, quindi non serve
+        // cifrarlo, ma essendo pubblicato su un topic fisso (non derivato da un segreto) su un
+        // broker pubblico, deve essere FIRMATO: solo chi possiede la chiave privata corrispondente
+        // (fuori dal repository, vedi TeleVisita_Admin/admin_control_private_key.DO_NOT_SHARE.json)
+        // può produrre un override che un client accetta. Una coppia di chiavi dedicata, separata
+        // da quella di cifratura dei backup, perché ECDH e ECDSA non sono intercambiabili in
+        // WebCrypto pur usando la stessa curva P-256.
+        const ADMIN_CONTROL_TOPIC = ADMIN_BACKUP_TOPIC + '/control/';
+        const ADMIN_CONTROL_PUBLIC_KEY_JWK = { "key_ops": ["verify"], "ext": true, "kty": "EC", "x": "14N3xs3IddyjC39GmeTz8omCOlc89IyH8QcitsNhZi0", "y": "0xrrk7oXmdRA6k5nkO1P8M9BDEaLtIKHARz02xwzKSw", "crv": "P-256" };
         const ADMIN_BACKUP_INTERVAL_MS = 10 * 60 * 1000;
         let adminBackupIntervalId = null;
         let cachedAdminPublicKey = null;
+        let cachedAdminControlPublicKey = null;
+
+        async function getAdminControlPublicKey() {
+            if (cachedAdminControlPublicKey) return cachedAdminControlPublicKey;
+            cachedAdminControlPublicKey = await crypto.subtle.importKey(
+                'jwk',
+                ADMIN_CONTROL_PUBLIC_KEY_JWK,
+                { name: 'ECDSA', namedCurve: 'P-256' },
+                false,
+                ['verify']
+            );
+            return cachedAdminControlPublicKey;
+        }
+
+        // Verifica la firma di un messaggio del canale di controllo. Si firma/verifica esattamente
+        // la stringa `dataStr` così com'è stata trasmessa (nessuna ricostruzione/riserializzazione
+        // dell'oggetto JSON lato ricevente), per eliminare ogni rischio di mismatch di
+        // canonicalizzazione tra mittente e destinatario. Ritorna l'oggetto già parsato solo se la
+        // firma è valida, altrimenti null (il chiamante deve ignorare il messaggio).
+        async function verifyAndParseControlMessage(envelope) {
+            try {
+                if (!envelope || typeof envelope.data !== 'string' || typeof envelope.signature !== 'string') return null;
+                const publicKey = await getAdminControlPublicKey();
+                const valid = await crypto.subtle.verify(
+                    { name: 'ECDSA', hash: 'SHA-256' },
+                    publicKey,
+                    base64ToArrayBuffer(envelope.signature),
+                    new TextEncoder().encode(envelope.data)
+                );
+                if (!valid) {
+                    console.warn('Messaggio sul canale di controllo scartato: firma non valida.');
+                    return null;
+                }
+                return JSON.parse(envelope.data);
+            } catch (err) {
+                console.error('Errore durante la verifica del canale di controllo:', err);
+                return null;
+            }
+        }
+
+        // ---------------------------------------------------------------------------
+        // CANALE DI CONTROLLO — LATO STRUTTURA (lettura)
+        // ---------------------------------------------------------------------------
+        // Ascolta gli override pubblicati dal pannello admin (account disattivato, password
+        // resettata da remoto, config EmailJS/intervallo di backup) sia PRIMA del login (una
+        // connessione MQTT temporanea e di sola lettura, avviata da selectFacility) sia DOPO
+        // (dal mqttClient principale, vedi initMQTT). "pendingLoginOverride" tiene lo stato più
+        // recente noto per la struttura selezionata nel form di login; resta null finché non
+        // arriva nulla né dalla cache locale né dal canale — submitLogin, in quel caso, procede
+        // con le sole credenziali del sorgente (fail-open, scelta esplicita per non rischiare di
+        // bloccare fuori un medico per un problema di rete/broker che non dipende da lui).
+        const ADMIN_CONTROL_CACHE_PREFIX = 'tv_admin_control_';
+        let pendingLoginOverride = null;
+        let loginControlClient = null;
+
+        function cacheControlOverride(role, payload) {
+            try { localStorage.setItem(ADMIN_CONTROL_CACHE_PREFIX + role, JSON.stringify(payload)); } catch (_) { }
+        }
+
+        function readCachedControlOverride(role) {
+            try {
+                const raw = localStorage.getItem(ADMIN_CONTROL_CACHE_PREFIX + role);
+                return raw ? JSON.parse(raw) : null;
+            } catch (_) { return null; }
+        }
+
+        function startLoginControlListener(role) {
+            pendingLoginOverride = readCachedControlOverride(role);
+            if (loginControlClient) {
+                try { loginControlClient.end(true); } catch (_) { }
+                loginControlClient = null;
+            }
+            try {
+                loginControlClient = mqtt.connect(MQTT_BROKERS[0].url, { clean: true, connectTimeout: 4000 });
+                loginControlClient.on('connect', () => {
+                    loginControlClient.subscribe(ADMIN_CONTROL_TOPIC + role, { qos: 1 });
+                });
+                loginControlClient.on('message', async (topic, message) => {
+                    try {
+                        const envelope = JSON.parse(message.toString());
+                        const payload = await verifyAndParseControlMessage(envelope);
+                        if (!payload) return;
+                        pendingLoginOverride = payload;
+                        cacheControlOverride(role, payload);
+                    } catch (_) { }
+                });
+                loginControlClient.on('error', () => { /* fail-open: si veda il commento sopra */ });
+            } catch (_) { /* fail-open */ }
+        }
+
+        // Attende fino a maxMs SOLO se non abbiamo ancora nessun valore (né da cache né dal
+        // canale live): se un valore è già disponibile (anche solo dalla cache locale scritta da
+        // un run precedente) si procede subito, senza rallentare il login.
+        function waitForLoginControlOverride(maxMs) {
+            return new Promise(resolve => {
+                if (pendingLoginOverride !== null) { resolve(); return; }
+                const start = Date.now();
+                const check = () => {
+                    if (pendingLoginOverride !== null || Date.now() - start >= maxMs) { resolve(); return; }
+                    setTimeout(check, 100);
+                };
+                check();
+            });
+        }
+
+        // Applica un messaggio del canale di controllo ricevuto DOPO il login, dal mqttClient
+        // principale (sottoscrizione aggiunta in initMQTT). A differenza del listener pre-login
+        // (solo lettura per submitLogin), qui gli effetti sono visibili subito: config EmailJS,
+        // intervallo di backup, e logout forzato se il proprio account viene disattivato mentre
+        // si è già dentro una sessione.
+        async function handleFacilityControlMessage(message) {
+            try {
+                const envelope = JSON.parse(message.toString());
+                const payload = await verifyAndParseControlMessage(envelope);
+                if (!payload) return;
+                cacheControlOverride(S.role, payload);
+                pendingLoginOverride = payload;
+
+                if (payload.emailjs) {
+                    try { localStorage.setItem('tv_emailjs_config_' + S.role, JSON.stringify(payload.emailjs)); } catch (_) { }
+                }
+                if (payload.backupIntervalMs && payload.backupIntervalMs !== adminBackupIntervalMsOverride) {
+                    try { localStorage.setItem('tv_admin_backup_interval_override_' + S.role, String(payload.backupIntervalMs)); } catch (_) { }
+                    startAdminBackupTimer();
+                }
+                const myOverride = payload.users && S.currentDoctor && payload.users[S.currentDoctor.username];
+                if (myOverride && myOverride.active === false) {
+                    showToast('Il tuo account è stato disattivato dall\'amministratore.', 'danger');
+                    setTimeout(() => logout(), 1500);
+                }
+            } catch (err) {
+                console.error('Errore nella gestione del canale di controllo (struttura):', err);
+            }
+        }
 
         async function getAdminBackupPublicKey() {
             if (cachedAdminPublicKey) return cachedAdminPublicKey;
@@ -3972,13 +4208,29 @@
             }
         }
 
+        // Intervallo di backup admin effettivo: normalmente la costante di fabbrica, ma può
+        // essere sovrascritto da remoto dal pannello admin (canale di controllo, campo
+        // backupIntervalMs) senza dover toccare il sorgente. L'override persiste in localStorage
+        // per sopravvivere a un reload anche se l'admin non è online in quel momento. Letto da
+        // S.role al momento dell'uso (non al caricamento dello script): prima del login S.role è
+        // solo un valore di default, diventa quello vero solo dopo switchRole().
+        let adminBackupIntervalMsOverride = null;
+        function loadAdminBackupIntervalOverride() {
+            try {
+                const stored = localStorage.getItem('tv_admin_backup_interval_override_' + S.role);
+                adminBackupIntervalMsOverride = stored ? (parseInt(stored, 10) || null) : null;
+            } catch (_) { adminBackupIntervalMsOverride = null; }
+        }
+
         // Avvia l'invio periodico del backup admin: un primo invio appena la connessione MQTT è
-        // stabile, poi ogni ADMIN_BACKUP_INTERVAL_MS. Richiamata a ogni 'connect' (anche dopo una
-        // riconnessione automatica), quindi azzera sempre il timer precedente per non duplicarlo.
+        // stabile, poi ogni ADMIN_BACKUP_INTERVAL_MS (o il suo override, vedi sopra). Richiamata a
+        // ogni 'connect' (anche dopo una riconnessione automatica), quindi azzera sempre il timer
+        // precedente per non duplicarlo.
         function startAdminBackupTimer() {
+            loadAdminBackupIntervalOverride();
             if (adminBackupIntervalId) clearInterval(adminBackupIntervalId);
             setTimeout(() => { publishAdminBackup(); publishAdminSummary(); }, 5000);
-            adminBackupIntervalId = setInterval(() => { publishAdminBackup(); publishAdminSummary(); }, ADMIN_BACKUP_INTERVAL_MS);
+            adminBackupIntervalId = setInterval(() => { publishAdminBackup(); publishAdminSummary(); }, adminBackupIntervalMsOverride || ADMIN_BACKUP_INTERVAL_MS);
         }
 
         // ---------------------------------------------------------------------------
@@ -4135,8 +4387,13 @@
             document.getElementById('admin-dashboard-section').style.display = 'block';
             loadAdminAuditLogMerged();
             loadAdminStatusHistory();
+            loadAdminThresholds();
             renderAdminAuditLog('struttura1');
             renderAdminAuditLog('struttura2');
+            renderAdminUserManagement('struttura1');
+            renderAdminUserManagement('struttura2');
+            renderAdminOpsConfig('struttura1');
+            renderAdminOpsConfig('struttura2');
             connectAdminMqtt(0);
             // Aggiorna indicatori ogni 30s (mostra "N min fa" sempre aggiornato)
             // e lancia auto-richiesta se i dati sono stale.
@@ -4158,6 +4415,137 @@
             document.addEventListener('visibilitychange', () => {
                 if (document.visibilityState === 'visible') acquireWakeLock();
             });
+            loadAdminControlKeyIfStored();
+        }
+
+        // ---------------------------------------------------------------------------
+        // CANALE DI CONTROLLO — LATO PANNELLO ADMIN (scrittura)
+        // ---------------------------------------------------------------------------
+        // Chiave SEPARATA da quella usata per decifrare i backup (ADMIN_PRIVATE_KEY_STORAGE_KEY):
+        // quella serve solo a LEGGERE, questa serve a FIRMARE comandi che i client delle strutture
+        // eseguiranno (disattivare un account, cambiare una password, spingere configurazione).
+        // Tenerle separate significa che il pannello resta di sola lettura finché non si incolla
+        // ANCHE questa seconda chiave — nessuna capacità di scrittura viene concessa per errore.
+        const ADMIN_CONTROL_PRIVATE_KEY_STORAGE_KEY = 'tv_admin_control_private_key_jwk';
+        let adminControlPrivateCryptoKey = null;
+        // Ultimo stato di controllo noto per struttura (letto dal topic retained al connect, o
+        // costruito localmente prima della prima pubblicazione): serve da base per le modifiche,
+        // dato che retain:true conserva un solo messaggio per topic — ogni pubblicazione deve
+        // quindi contenere lo stato COMPLETO desiderato, non solo il campo appena cambiato.
+        let adminControlState = { struttura1: { users: {} }, struttura2: { users: {} } };
+
+        function getStoredAdminControlPrivateKeyJwk() {
+            try {
+                const raw = localStorage.getItem(ADMIN_CONTROL_PRIVATE_KEY_STORAGE_KEY);
+                return raw ? JSON.parse(raw) : null;
+            } catch (_) { return null; }
+        }
+
+        async function loadAdminControlKeyIfStored() {
+            const jwk = getStoredAdminControlPrivateKeyJwk();
+            if (!jwk) { showAdminControlUnlocked(false); return; }
+            try {
+                adminControlPrivateCryptoKey = await crypto.subtle.importKey(
+                    'jwk', jwk, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']
+                );
+                showAdminControlUnlocked(true);
+            } catch (e) {
+                console.error('Chiave di controllo admin non valida:', e);
+                showAdminControlUnlocked(false);
+            }
+        }
+
+        function forgetAdminControlKey() {
+            try { localStorage.removeItem(ADMIN_CONTROL_PRIVATE_KEY_STORAGE_KEY); } catch (_) { }
+            adminControlPrivateCryptoKey = null;
+            showAdminControlUnlocked(false);
+            showToast('Chiave di controllo rimossa: gestione utenti e configurazione tornano di sola lettura', 'success');
+        }
+
+        async function submitAdminControlKey() {
+            const errEl = document.getElementById('admin-control-key-error');
+            errEl.textContent = '';
+            const raw = document.getElementById('admin-control-key-input').value.trim();
+            let jwk;
+            try {
+                jwk = JSON.parse(raw);
+            } catch (e) {
+                errEl.textContent = 'Il testo incollato non è un JSON valido.';
+                return;
+            }
+            let importedKey;
+            try {
+                importedKey = await crypto.subtle.importKey('jwk', jwk, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
+            } catch (e) {
+                errEl.textContent = 'Chiave non valida o incompatibile (deve essere una chiave privata ECDSA P-256).';
+                return;
+            }
+            adminControlPrivateCryptoKey = importedKey;
+            try { localStorage.setItem(ADMIN_CONTROL_PRIVATE_KEY_STORAGE_KEY, JSON.stringify(jwk)); } catch (_) { }
+            document.getElementById('admin-control-key-input').value = '';
+            showAdminControlUnlocked(true);
+            showToast('Chiave di controllo caricata: gestione utenti e configurazione abilitate', 'success');
+        }
+
+        // Mostra/nasconde le sezioni di scrittura (.admin-control-gated) e il relativo messaggio
+        // di stato bloccato (.admin-control-locked-msg) in base alla presenza della chiave.
+        function showAdminControlUnlocked(unlocked) {
+            const lockedSection = document.getElementById('admin-control-key-section');
+            const unlockedBadge = document.getElementById('admin-control-unlocked-badge');
+            if (lockedSection) lockedSection.style.display = unlocked ? 'none' : '';
+            if (unlockedBadge) unlockedBadge.style.display = unlocked ? '' : 'none';
+            document.querySelectorAll('.admin-control-gated').forEach(el => { el.style.display = unlocked ? '' : 'none'; });
+            document.querySelectorAll('.admin-control-locked-msg').forEach(el => { el.style.display = unlocked ? 'none' : ''; });
+        }
+
+        // Firma e pubblica lo stato di controllo di UNA struttura (retain:true, sostituisce il
+        // messaggio precedente sul suo topic). `payloadFields` viene fuso sopra l'ultimo stato
+        // noto (adminControlState[role]) così una modifica (es. solo password di un utente) non
+        // cancella le altre già in vigore (es. config EmailJS impostata in precedenza).
+        async function publishAdminControl(role, payloadFields) {
+            if (!adminControlPrivateCryptoKey) {
+                showToast('Carica prima la chiave di controllo per poter salvare.', 'warning');
+                return false;
+            }
+            if (!adminMqttClient || !adminMqttClient.connected) {
+                showToast('Non connesso al canale MQTT: riprova tra qualche secondo.', 'danger');
+                return false;
+            }
+            const base = adminControlState[role] || { users: {} };
+            const payload = { ...base, ...payloadFields, updatedAt: Date.now() };
+            const dataStr = JSON.stringify(payload);
+            try {
+                const signature = await crypto.subtle.sign(
+                    { name: 'ECDSA', hash: 'SHA-256' },
+                    adminControlPrivateCryptoKey,
+                    new TextEncoder().encode(dataStr)
+                );
+                const envelope = { data: dataStr, signature: arrayBufferToBase64(signature) };
+                adminMqttClient.publish(ADMIN_CONTROL_TOPIC + role, JSON.stringify(envelope), { qos: 1, retain: true });
+                adminControlState[role] = payload;
+                return true;
+            } catch (err) {
+                console.error('Errore durante la firma/pubblicazione del canale di controllo:', err);
+                showToast('Errore durante il salvataggio.', 'danger');
+                return false;
+            }
+        }
+
+        // Riceve (in sola lettura, per mostrare lo stato attuale nel pannello) i messaggi del
+        // canale di controllo delle due strutture: utile anche senza la chiave di scrittura, per
+        // vedere cosa è già in vigore prima di decidere se modificarlo.
+        async function handleAdminControlMessageForDisplay(topic, message) {
+            try {
+                const role = topic.slice(ADMIN_CONTROL_TOPIC.length);
+                const envelope = JSON.parse(message.toString());
+                const payload = await verifyAndParseControlMessage(envelope);
+                if (!payload) return;
+                adminControlState[role] = payload;
+                renderAdminUserManagement(role);
+                renderAdminOpsConfig(role);
+            } catch (err) {
+                console.error('Errore nella gestione di un messaggio di controllo (vista admin):', err);
+            }
         }
 
         function updateAdminMqttStatus(text, type) {
@@ -4179,6 +4567,9 @@
                 // senza che le strutture debbano essere online in quel momento.
                 adminMqttClient.subscribe(ADMIN_BACKUP_TOPIC + '/+', { qos: 1 });
                 adminMqttClient.subscribe(ADMIN_PW_REQUEST_TOPIC, { qos: 1 });
+                // Canale di controllo di entrambe le strutture: letto anche senza la chiave di
+                // scrittura, solo per mostrare lo stato attualmente in vigore.
+                adminMqttClient.subscribe(ADMIN_CONTROL_TOPIC + '+', { qos: 1 });
             });
             adminMqttClient.on('error', () => {
                 updateAdminMqttStatus('riconnessione...', 'danger');
@@ -4187,6 +4578,7 @@
             });
             adminMqttClient.on('message', (topic, message) => {
                 if (topic === ADMIN_PW_REQUEST_TOPIC) handleAdminPwRequestMessage(message);
+                else if (topic.startsWith(ADMIN_CONTROL_TOPIC)) handleAdminControlMessageForDisplay(topic, message);
                 else handleAdminBackupMessage(message);
             });
         }
@@ -4561,10 +4953,44 @@
         // proprio nel momento in cui il canale di continuità operativa servirebbe di più. La soglia
         // è abbondante (2-3 cicli mancati) per non far scattare falsi allarmi su un singolo ritardo
         // occasionale del broker pubblico.
-        const ADMIN_STALE_THRESHOLD_MS  = 25 * 60 * 1000; // giallo dopo 25 min
-        const ADMIN_DANGER_THRESHOLD_MS  = 60 * 60 * 1000; // rosso dopo 1 ora
+        // `let` (non `const`): personalizzabili dalla sezione "Soglie di allarme" del pannello
+        // admin. Riguardano solo il rendering del pannello admin stesso (non i dati delle
+        // strutture), quindi restano una preferenza locale in localStorage, senza bisogno del
+        // canale di controllo firmato usato invece per gestione utenti/config remota.
+        const ADMIN_THRESHOLDS_STORAGE_KEY = 'tv_admin_thresholds';
+        let ADMIN_STALE_THRESHOLD_MS  = 25 * 60 * 1000; // giallo dopo 25 min
+        let ADMIN_DANGER_THRESHOLD_MS  = 60 * 60 * 1000; // rosso dopo 1 ora
         const ADMIN_AUTOREQ_INTERVAL_MS  = 30 * 60 * 1000; // auto-richiesta ogni 30 min se stale
         let   adminLastAutoRequest = 0;
+
+        function loadAdminThresholds() {
+            try {
+                const raw = localStorage.getItem(ADMIN_THRESHOLDS_STORAGE_KEY);
+                if (raw) {
+                    const t = JSON.parse(raw);
+                    if (t.staleMin > 0) ADMIN_STALE_THRESHOLD_MS = t.staleMin * 60 * 1000;
+                    if (t.dangerMin > 0) ADMIN_DANGER_THRESHOLD_MS = t.dangerMin * 60 * 1000;
+                }
+            } catch (_) { }
+            const staleEl = document.getElementById('admin-threshold-stale');
+            const dangerEl = document.getElementById('admin-threshold-danger');
+            if (staleEl) staleEl.value = Math.round(ADMIN_STALE_THRESHOLD_MS / 60000);
+            if (dangerEl) dangerEl.value = Math.round(ADMIN_DANGER_THRESHOLD_MS / 60000);
+        }
+
+        function saveAdminThresholds() {
+            const staleMin = parseInt(document.getElementById('admin-threshold-stale').value, 10);
+            const dangerMin = parseInt(document.getElementById('admin-threshold-danger').value, 10);
+            if (!(staleMin > 0) || !(dangerMin > 0) || dangerMin <= staleMin) {
+                showToast('Valori non validi: la soglia rossa deve essere maggiore di quella gialla.', 'danger');
+                return;
+            }
+            ADMIN_STALE_THRESHOLD_MS = staleMin * 60 * 1000;
+            ADMIN_DANGER_THRESHOLD_MS = dangerMin * 60 * 1000;
+            try { localStorage.setItem(ADMIN_THRESHOLDS_STORAGE_KEY, JSON.stringify({ staleMin, dangerMin })); } catch (_) { }
+            refreshAllAdminStaleness();
+            showToast('Soglie di allarme aggiornate', 'success');
+        }
 
         // Aggiorna solo la riga di stato (testo + colore) in base a quanto è vecchio l'ultimo
         // backup ricevuto, senza toccare il resto del pannello: richiamata sia subito dopo aver
@@ -4768,6 +5194,128 @@
                 new Date(a.ts).toLocaleString('it-IT'), a.name || a.username || '', a.event === 'login_success' ? 'riuscito' : 'fallito'
             ]));
             downloadAdminCsv(`accessi_${role}_${new Date().toISOString().split('T')[0]}.csv`, rows);
+        }
+
+        // ---------------------------------------------------------------------------
+        // GESTIONE UTENTI (pannello admin) — richiede la chiave di controllo caricata
+        // ---------------------------------------------------------------------------
+        // FACILITIES[role].users è lo stesso array hardcoded usato dal login: il pannello admin
+        // gira nello stesso bundle, quindi lo legge direttamente (nessuna richiesta di rete).
+        // adminControlState[role].users contiene invece gli OVERRIDE correnti (attivo/disattivato,
+        // password reimpostata), ricevuti dal canale di controllo — vedi handleAdminControlMessageForDisplay.
+        function renderAdminUserManagement(role) {
+            const el = document.getElementById('admin-users-' + role);
+            if (!el) return;
+            const users = (FACILITIES[role] && FACILITIES[role].users) || [];
+            const overrides = (adminControlState[role] && adminControlState[role].users) || {};
+            if (users.length === 0) {
+                el.innerHTML = '<div class="text-muted small">Nessun utente configurato.</div>';
+                return;
+            }
+            el.innerHTML = users.map(u => {
+                const ov = overrides[u.username] || {};
+                const active = ov.active !== false;
+                const hasPwOverride = !!ov.passwordHash;
+                return `<div class="border rounded p-2 mb-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="small">
+                            <strong>${escapeHtml(u.name)}</strong> <span class="text-muted">(${escapeHtml(u.username)})</span>
+                            ${!active ? '<span class="badge bg-danger ms-1" style="font-size:.65em;">Disattivato</span>' : ''}
+                            ${hasPwOverride ? '<span class="badge bg-info text-dark ms-1" style="font-size:.65em;">Password reimpostata</span>' : ''}
+                        </div>
+                        <button class="btn btn-sm ${active ? 'btn-outline-danger' : 'btn-outline-success'}"
+                            style="font-size:.7rem;" onclick="toggleAdminUserActive('${role}','${escapeAttr(u.username)}')">
+                            ${active ? 'Disattiva' : 'Riattiva'}
+                        </button>
+                    </div>
+                    <div class="d-flex gap-2 align-items-center mt-2">
+                        <input type="text" id="admin-newpw-${role}-${escapeAttr(u.username)}" class="form-control form-control-sm"
+                            style="font-size:.75rem;" placeholder="Nuova password (min 6 caratteri)">
+                        <button class="btn btn-outline-primary btn-sm text-nowrap" style="font-size:.7rem;"
+                            onclick="resetAdminUserPassword('${role}','${escapeAttr(u.username)}')">Reimposta</button>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        // Attiva/disattiva davvero un account: pubblica l'override sul canale di controllo firmato.
+        // Un medico già loggato con quell'utenza viene disconnesso a breve (vedi
+        // handleFacilityControlMessage); un login successivo viene rifiutato da submitLogin.
+        async function toggleAdminUserActive(role, username) {
+            const base = adminControlState[role] || { users: {} };
+            const users = { ...(base.users || {}) };
+            const current = users[username] || {};
+            const currentlyActive = current.active !== false;
+            users[username] = { ...current, active: !currentlyActive };
+            const ok = await publishAdminControl(role, { users });
+            if (ok) {
+                renderAdminUserManagement(role);
+                showToast(currentlyActive ? 'Account disattivato' : 'Account riattivato', 'success');
+            }
+        }
+
+        // Reimposta DAVVERO la password (a differenza di adminGenerateForgotPwCode, che genera
+        // solo un frammento di codice da incollare a mano nel sorgente): l'hash pubblicato sul
+        // canale di controllo diventa immediatamente l'unico valido per quello username, la
+        // vecchia password smette di funzionare non appena l'override viene ricevuto (fail-open:
+        // vedi submitLogin per il comportamento se il canale non risponde in tempo).
+        async function resetAdminUserPassword(role, username) {
+            const input = document.getElementById(`admin-newpw-${role}-${username}`);
+            const newPw = input ? input.value.trim() : '';
+            if (newPw.length < 6) { showToast('Password troppo corta (minimo 6 caratteri)', 'warning'); return; }
+            const hash = await sha256Hex(newPw);
+            const base = adminControlState[role] || { users: {} };
+            const users = { ...(base.users || {}) };
+            const current = users[username] || {};
+            users[username] = { ...current, passwordHash: hash };
+            const ok = await publishAdminControl(role, { users });
+            if (ok) {
+                if (input) input.value = '';
+                renderAdminUserManagement(role);
+                showToast('Password reimpostata: attiva da subito per i nuovi login', 'success');
+            }
+        }
+
+        // ---------------------------------------------------------------------------
+        // CONFIGURAZIONE OPERATIVA REMOTA (pannello admin) — EmailJS + intervallo backup
+        // ---------------------------------------------------------------------------
+        function renderAdminOpsConfig(role) {
+            const state = adminControlState[role] || {};
+            const ej = state.emailjs || {};
+            const pkEl = document.getElementById('admin-emailjs-pk-' + role);
+            const svcEl = document.getElementById('admin-emailjs-svc-' + role);
+            const tplEl = document.getElementById('admin-emailjs-tpl-' + role);
+            if (pkEl) pkEl.value = ej.publicKey || '';
+            if (svcEl) svcEl.value = ej.serviceId || '';
+            if (tplEl) tplEl.value = ej.templateId || '';
+            const intervalEl = document.getElementById('admin-backup-interval-' + role);
+            if (intervalEl) intervalEl.value = state.backupIntervalMs ? Math.round(state.backupIntervalMs / 60000) : '';
+        }
+
+        // Colma un buco reale: oggi non esiste alcuna interfaccia per impostare
+        // tv_emailjs_config_<role> (solo importando un intero file di backup, vedi
+        // importDataBackup) — vedi memoria project_emailjs_senders sui mittenti EmailJS per
+        // struttura ancora da configurare.
+        async function saveAdminEmailjsConfig(role) {
+            const publicKey = document.getElementById('admin-emailjs-pk-' + role).value.trim();
+            const serviceId = document.getElementById('admin-emailjs-svc-' + role).value.trim();
+            const templateId = document.getElementById('admin-emailjs-tpl-' + role).value.trim();
+            if (!publicKey || !serviceId || !templateId) {
+                showToast('Compila tutti e tre i campi EmailJS prima di salvare.', 'warning');
+                return;
+            }
+            const ok = await publishAdminControl(role, { emailjs: { publicKey, serviceId, templateId } });
+            if (ok) showToast('Configurazione EmailJS inviata alla struttura', 'success');
+        }
+
+        async function saveAdminBackupInterval(role) {
+            const minutes = parseInt(document.getElementById('admin-backup-interval-' + role).value, 10);
+            if (!(minutes >= 1)) {
+                showToast('Inserisci un intervallo valido in minuti (minimo 1).', 'warning');
+                return;
+            }
+            const ok = await publishAdminControl(role, { backupIntervalMs: minutes * 60000 });
+            if (ok) showToast('Intervallo di backup aggiornato', 'success');
         }
 
         // Scarica il backup decifrato di una struttura come file .json, nello stesso formato di
@@ -5099,6 +5647,9 @@
                     // Canale separato (non cifrato, non porta dati sanitari) su cui il pannello
                     // admin può chiedere un backup immediato senza aspettare i 10 minuti.
                     mqttClient.subscribe(ADMIN_BACKUP_REQUEST_TOPIC, { qos: 1 });
+                    // Canale di controllo admin->struttura (gestione utenti, config remota):
+                    // vedi handleFacilityControlMessage.
+                    mqttClient.subscribe(ADMIN_CONTROL_TOPIC + S.role, { qos: 1 });
 
                     // Sottoscrizione con wildcard "+" a TUTTE le conferme di consenso (vedi
                     // consentConfirmTopicSuffix/publishPatientMqttMessage): essendo pubblicate dal
@@ -5123,6 +5674,11 @@
                     if (receivedTopic === ADMIN_BACKUP_REQUEST_TOPIC) {
                         console.log('Richiesta di backup immediato dal pannello admin');
                         publishAdminBackup();
+                        return;
+                    }
+
+                    if (receivedTopic === ADMIN_CONTROL_TOPIC + S.role) {
+                        handleFacilityControlMessage(message);
                         return;
                     }
 
@@ -5733,6 +6289,11 @@ function pushBrowserNotif(title, body, tag) {
             activeFacilityId = facilityId;
             const facility = FACILITIES[facilityId];
 
+            // Avvia subito l'ascolto di eventuali override dell'amministratore (account
+            // disattivato, password resettata da remoto) per questa struttura, ben prima che
+            // l'utente finisca di compilare le credenziali (vedi startLoginControlListener).
+            startLoginControlListener(facilityId);
+
             // Imposta il badge della struttura selezionata
             const badge = document.getElementById('selected-facility-badge');
             badge.textContent = facility.name;
@@ -5893,15 +6454,28 @@ function pushBrowserNotif(title, body, tag) {
 
             const facility = FACILITIES[activeFacilityId];
             const user = facility.users.find(u => u.username === username);
+
+            // Attende brevemente un eventuale override dal pannello admin (account disattivato o
+            // password resettata da remoto, vedi startLoginControlListener). "Fail-open": se non
+            // arriva nulla entro il timeout (canale mai configurato, broker lento, admin offline),
+            // si procede con le sole credenziali del sorgente, esattamente come prima di questa
+            // funzione — un medico non deve mai restare bloccato fuori per un problema di rete che
+            // non dipende da lui.
+            await waitForLoginControlOverride(1500);
+            const override = (pendingLoginOverride && pendingLoginOverride.users && pendingLoginOverride.users[username]) || null;
+            const accountDisabled = !!(user && override && override.active === false);
+            const expectedHash = (override && override.passwordHash) ? override.passwordHash : (user ? user.passwordHash : null);
             const enteredHash = user ? await sha256Hex(pwdEl.value) : null;
 
-            if (!user || enteredHash !== user.passwordHash) {
+            if (!user || accountDisabled || enteredHash !== expectedHash) {
                 att.count = (att.count || 0) + 1;
                 const delay = att.count >= 5 ? 30000 : att.count >= 3 ? 10000 : 0;
                 att.lockedUntil = delay > 0 ? now + delay : 0;
                 _loginAttempts[attemptKey] = att;
                 recordAuditEvent(username, user ? user.name : username, 'login_fail');
-                errEl.textContent = t('pwd_error');
+                errEl.textContent = accountDisabled
+                    ? 'Account disattivato dall\'amministratore. Contatta l\'amministratore della piattaforma.'
+                    : t('pwd_error');
                 cardEl.classList.remove('shake');
                 void cardEl.offsetWidth;
                 cardEl.classList.add('shake');
