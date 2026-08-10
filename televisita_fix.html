@@ -4081,6 +4081,13 @@
                 if (myOverride && myOverride.active === false) {
                     showToast('Il tuo account è stato disattivato dall\'amministratore.', 'danger');
                     setTimeout(() => logout(), 1500);
+                } else if (myOverride && (myOverride.name || myOverride.spec) && DOCTORS[S.role]) {
+                    // Profilo aggiornato dall'admin mentre si è già collegati: applica subito,
+                    // senza dover rifare il login (switchRole ri-renderizza badge/header da DOCTORS).
+                    if (myOverride.name) DOCTORS[S.role].name = myOverride.name;
+                    if (myOverride.spec) DOCTORS[S.role].spec = myOverride.spec;
+                    switchRole(S.role);
+                    showToast('Il tuo profilo è stato aggiornato dall\'amministratore.', 'success');
                 }
             } catch (err) {
                 console.error('Errore nella gestione del canale di controllo (struttura):', err);
@@ -5009,17 +5016,42 @@
             }
         }
 
-        // Base comune a resetAdminUserPassword (sezione "Gestione utenti") e alle due funzioni
-        // sopra: fonde il nuovo hash nello stato di controllo corrente della struttura e lo
-        // ripubblica firmato. Centralizzata qui per non triplicare la logica di merge.
-        async function applyAdminPasswordOverride(role, username, passwordHash) {
+        // Base comune a tutte le modifiche di un singolo utente (password, attivo/disattivo,
+        // profilo): fonde i campi nuovi nello stato di controllo corrente della struttura e lo
+        // ripubblica firmato. Centralizzata qui per non duplicare la logica di merge.
+        async function applyAdminUserFieldsOverride(role, username, fields) {
             const base = adminControlState[role] || { users: {} };
             const users = { ...(base.users || {}) };
             const current = users[username] || {};
-            users[username] = { ...current, passwordHash };
+            users[username] = { ...current, ...fields };
             const ok = await publishAdminControl(role, { users });
             if (ok) renderAdminUserManagement(role);
             return ok;
+        }
+
+        async function applyAdminPasswordOverride(role, username, passwordHash) {
+            return applyAdminUserFieldsOverride(role, username, { passwordHash });
+        }
+
+        // Cambia nome e/o specializzazione mostrati per un medico, senza dover incollare codice
+        // nel sorgente: utile per correggere un refuso o una specializzazione cambiata nel tempo.
+        // Si applica al prossimo login, o subito se il medico è già collegato (vedi
+        // handleFacilityControlMessage).
+        async function updateAdminUserProfile(role, username) {
+            const nameInput = document.getElementById(`admin-profile-name-${role}-${username}`);
+            const specInput = document.getElementById(`admin-profile-spec-${role}-${username}`);
+            const name = nameInput ? nameInput.value.trim() : '';
+            const spec = specInput ? specInput.value.trim() : '';
+            if (!name && !spec) { showToast('Inserisci nome e/o specializzazione da modificare.', 'warning'); return; }
+            const fields = {};
+            if (name) fields.name = name;
+            if (spec) fields.spec = spec;
+            const ok = await applyAdminUserFieldsOverride(role, username, fields);
+            if (ok) {
+                if (nameInput) nameInput.value = '';
+                if (specInput) specInput.value = '';
+                showToast('Profilo aggiornato: attivo dal prossimo login (o subito se già collegato)', 'success');
+            }
         }
 
         // escapeAttr: come escapeHtml ma include anche le virgolette singole — usare
@@ -5305,12 +5337,17 @@
                 const ov = overrides[u.username] || {};
                 const active = ov.active !== false;
                 const hasPwOverride = !!ov.passwordHash;
+                // Nome/specializzazione EFFETTIVI: l'override vince se presente, altrimenti quelli
+                // hardcoded nel sorgente — stessa precedenza già usata per passwordHash al login.
+                const effectiveName = ov.name || u.name;
+                const effectiveSpec = ov.spec || u.spec;
                 return `<div class="border rounded p-2 mb-2">
                     <div class="d-flex justify-content-between align-items-center">
                         <div class="small">
-                            <strong>${escapeHtml(u.name)}</strong> <span class="text-muted">(${escapeHtml(u.username)})</span>
+                            <strong>${escapeHtml(effectiveName)}</strong> <span class="text-muted">(${escapeHtml(u.username)}) — ${escapeHtml(effectiveSpec)}</span>
                             ${!active ? '<span class="badge bg-danger ms-1" style="font-size:.65em;">Disattivato</span>' : ''}
                             ${hasPwOverride ? '<span class="badge bg-info text-dark ms-1" style="font-size:.65em;">Password reimpostata</span>' : ''}
+                            ${(ov.name || ov.spec) ? '<span class="badge bg-secondary ms-1" style="font-size:.65em;">Profilo modificato</span>' : ''}
                         </div>
                         <button class="btn btn-sm ${active ? 'btn-outline-danger' : 'btn-outline-success'}"
                             style="font-size:.7rem;" onclick="toggleAdminUserActive('${role}','${escapeAttr(u.username)}')">
@@ -5323,6 +5360,14 @@
                         <button class="btn btn-outline-primary btn-sm text-nowrap" style="font-size:.7rem;"
                             onclick="resetAdminUserPassword('${role}','${escapeAttr(u.username)}')">Reimposta</button>
                     </div>
+                    <div class="d-flex gap-2 align-items-center mt-2">
+                        <input type="text" id="admin-profile-name-${role}-${escapeAttr(u.username)}" class="form-control form-control-sm"
+                            style="font-size:.75rem;" placeholder="Nuovo nome (es. Dr. Mario Rossi)">
+                        <input type="text" id="admin-profile-spec-${role}-${escapeAttr(u.username)}" class="form-control form-control-sm"
+                            style="font-size:.75rem;" placeholder="Nuova specializzazione">
+                        <button class="btn btn-outline-secondary btn-sm text-nowrap" style="font-size:.7rem;"
+                            onclick="updateAdminUserProfile('${role}','${escapeAttr(u.username)}')">Salva profilo</button>
+                    </div>
                 </div>`;
             }).join('');
         }
@@ -5331,16 +5376,10 @@
         // Un medico già loggato con quell'utenza viene disconnesso a breve (vedi
         // handleFacilityControlMessage); un login successivo viene rifiutato da submitLogin.
         async function toggleAdminUserActive(role, username) {
-            const base = adminControlState[role] || { users: {} };
-            const users = { ...(base.users || {}) };
-            const current = users[username] || {};
+            const current = ((adminControlState[role] || {}).users || {})[username] || {};
             const currentlyActive = current.active !== false;
-            users[username] = { ...current, active: !currentlyActive };
-            const ok = await publishAdminControl(role, { users });
-            if (ok) {
-                renderAdminUserManagement(role);
-                showToast(currentlyActive ? 'Account disattivato' : 'Account riattivato', 'success');
-            }
+            const ok = await applyAdminUserFieldsOverride(role, username, { active: !currentlyActive });
+            if (ok) showToast(currentlyActive ? 'Account disattivato' : 'Account riattivato', 'success');
         }
 
         // Reimposta DAVVERO la password (a differenza di adminGenerateForgotPwCode, che genera
@@ -6597,9 +6636,12 @@ function pushBrowserNotif(title, body, tag) {
             }
             _loginAttempts[attemptKey] = { count: 0, lockedUntil: 0 };
 
-            // Sincronizza i dati medici correnti per compatibilità con il resto del cruscotto
-            DOCTORS[activeFacilityId].name = user.name;
-            DOCTORS[activeFacilityId].spec = user.spec;
+            // Sincronizza i dati medici correnti per compatibilità con il resto del cruscotto.
+            // Nome/specializzazione: l'override dal pannello admin (se presente) vince su quelli
+            // hardcoded nel sorgente — permette di correggerli senza ripubblicare l'app, vedi
+            // updateAdminUserProfile.
+            DOCTORS[activeFacilityId].name = (override && override.name) || user.name;
+            DOCTORS[activeFacilityId].spec = (override && override.spec) || user.spec;
             DOCTORS[activeFacilityId].avatar = user.avatar;
             DOCTORS[activeFacilityId].color = user.color;
             DOCTORS[activeFacilityId].bg = user.bg;
