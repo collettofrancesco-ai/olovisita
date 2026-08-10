@@ -1377,6 +1377,13 @@
                             <i class="bi bi-arrow-repeat me-1"></i>Forza backup immediato
                         </button>
                         <span id="admin-request-backup-feedback" class="small ms-2"></span>
+                        <span id="admin-deploy-status" class="ms-2">
+                            <span class="badge bg-secondary">Pubblicazione: verifica in corso...</span>
+                        </span>
+                        <button class="btn btn-link btn-sm text-white-50 py-0" style="font-size:.75rem;"
+                            title="Aggiorna stato pubblicazione" onclick="fetchDeployStatus()">
+                            <i class="bi bi-arrow-clockwise"></i>
+                        </button>
                     </div>
                     <button class="btn btn-link btn-sm text-white-50" onclick="forgetAdminKey()">
                         <i class="bi bi-box-arrow-right me-1"></i>Cambia chiave / disconnetti
@@ -4428,6 +4435,8 @@
             // Aggiorna indicatori ogni 30s (mostra "N min fa" sempre aggiornato)
             // e lancia auto-richiesta se i dati sono stale.
             setInterval(refreshAllAdminStaleness, 30 * 1000);
+            fetchDeployStatus();
+            deployStatusIntervalId = setInterval(fetchDeployStatus, 3 * 60 * 1000);
             tryResumeAdminAutoBackup();
             // Wake Lock: impedisce al browser/OS di sospendere il tab quando il PC
             // è usato come server 24/7. Richiesto ogni volta che il lock decade (es.
@@ -5152,6 +5161,50 @@
             if (m < 60) return m + ' min fa';
             const h = Math.floor(m / 60), rm = m % 60;
             return h + 'h ' + (rm > 0 ? rm + 'min ' : '') + 'fa';
+        }
+
+        // ---------------------------------------------------------------------------
+        // STATO PUBBLICAZIONE (pannello admin)
+        // ---------------------------------------------------------------------------
+        // Il deploy dipende dal successo dei test E2E (vedi .github/workflows/deploy.yml, job
+        // "deploy" con needs: test): un push può quindi arrivare su GitHub senza mai finire
+        // online, senza alcun avviso visibile nell'app stessa (solo un'email di GitHub). Questo
+        // indicatore legge lo stato dell'ultima esecuzione tramite l'API pubblica di GitHub —
+        // essendo il repository pubblico, non serve alcun token: sola lettura, nessun segreto.
+        const GITHUB_REPO_API = 'https://api.github.com/repos/collettofrancesco-ai/olovisita';
+        const DEPLOY_WORKFLOW_FILE = 'deploy.yml';
+        let deployStatusIntervalId = null;
+
+        async function fetchDeployStatus() {
+            const el = document.getElementById('admin-deploy-status');
+            if (!el) return;
+            try {
+                const res = await fetch(`${GITHUB_REPO_API}/actions/workflows/${DEPLOY_WORKFLOW_FILE}/runs?per_page=1`, {
+                    headers: { 'Accept': 'application/vnd.github+json' }
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                const run = data.workflow_runs && data.workflow_runs[0];
+                if (!run) {
+                    el.innerHTML = '<span class="badge bg-secondary">Pubblicazione: nessun dato</span>';
+                    return;
+                }
+                const ago = fmtAgo(Date.now() - new Date(run.created_at).getTime());
+                const title = escapeHtml((run.display_title || (run.head_commit && run.head_commit.message) || '').split('\n')[0]);
+                let badge;
+                if (run.status !== 'completed') {
+                    badge = '<span class="badge bg-warning text-dark">🟡 Pubblicazione in corso...</span>';
+                } else if (run.conclusion === 'success') {
+                    badge = '<span class="badge bg-success">🟢 Ultimo deploy OK</span>';
+                } else {
+                    badge = '<span class="badge bg-danger">🔴 Ultimo deploy FALLITO</span>';
+                }
+                el.innerHTML = `<a href="${run.html_url}" target="_blank" rel="noopener" class="text-decoration-none">${badge}</a>` +
+                    ` <span class="text-white-50 small ms-1" title="${title}">${ago}</span>`;
+            } catch (err) {
+                console.error('Errore nel controllo stato pubblicazione:', err);
+                el.innerHTML = '<span class="badge bg-secondary">Pubblicazione: non disponibile</span>';
+            }
         }
 
         function updateAdminStaleness(role) {
