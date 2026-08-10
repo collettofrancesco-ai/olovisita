@@ -33,20 +33,27 @@ def extract_field(code_line, field):
     return m.group(1) if m else None
 
 
+def get_users_raw(text, facility):
+    """Ritorna la lista degli oggetti utente di una struttura, come testo grezzo (una riga
+    ciascuno), letti direttamente dal sorgente. Base comune a list_users() qui sotto e al
+    controllo di struttura in check_health.py: un'unica implementazione della ricerca nel
+    sorgente, per non rischiare che due copie della stessa regex divergano nel tempo."""
+    pattern = re.compile(
+        r"(" + re.escape(facility) + r":\s*\{.*?users:\s*\[)(.*?)(\n(\s*)\])",
+        re.S,
+    )
+    match = pattern.search(text)
+    if not match:
+        return []
+    return re.findall(r"\{[^\n]*\}", match.group(2))
+
+
 def list_users(text):
     """Restituisce una lista di (facility, username, name) per tutti gli utenti già presenti
     in FACILITIES, leggendo direttamente il sorgente (non serve eseguire il JS)."""
     results = []
     for facility in ("struttura1", "struttura2"):
-        pattern = re.compile(
-            r"(" + re.escape(facility) + r":\s*\{.*?users:\s*\[)(.*?)(\n(\s*)\])",
-            re.S,
-        )
-        match = pattern.search(text)
-        if not match:
-            continue
-        for obj_match in re.finditer(r"\{[^\n]*\}", match.group(2)):
-            obj_text = obj_match.group(0)
+        for obj_text in get_users_raw(text, facility):
             u = re.search(r"username:\s*'([^']*)'", obj_text)
             n = re.search(r"\bname:\s*'([^']*)'", obj_text)
             if u and n:
