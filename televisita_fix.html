@@ -4868,7 +4868,19 @@
                 if (!raw) return; // payload vuoto = cancellazione del retained
                 const envelope = JSON.parse(raw);
                 const payload = await decryptAdminBackup(envelope.ephemeralPublicJwk, envelope.iv, envelope.ciphertext);
-                adminPwRequests.unshift({ ...payload, receivedAt: Date.now() });
+                // Il topic è retained: ogni riconnessione al broker (frequente sui broker pubblici
+                // gratuiti — MQTT.js si riconnette da solo e rifà le subscribe, vedi commenti su
+                // initMQTT) fa sì che il broker ri-consegni lo STESSO messaggio già ricevuto in
+                // precedenza. Senza un id per riconoscerlo, questo produceva richieste duplicate
+                // identiche nella lista a ogni riconnessione. reqId manca solo per richieste
+                // pubblicate da PRIMA di questa correzione: in quel caso resta il comportamento
+                // precedente (nessuna deduplica possibile senza un identificativo).
+                const existingIndex = payload.reqId ? adminPwRequests.findIndex(r => r.reqId === payload.reqId) : -1;
+                if (existingIndex !== -1) {
+                    adminPwRequests[existingIndex] = { ...payload, receivedAt: adminPwRequests[existingIndex].receivedAt };
+                } else {
+                    adminPwRequests.unshift({ ...payload, receivedAt: Date.now() });
+                }
                 renderAdminPwRequests();
             } catch (err) {
                 console.error('Errore nella gestione di una richiesta cambio password:', err);
@@ -6606,7 +6618,9 @@ function pushBrowserNotif(title, body, tag) {
                 color: user.color,
                 bg: user.bg,
                 facility,
-                role: activeFacilityId
+                role: activeFacilityId,
+                // reqId: vedi commento in submitPasswordChangeRequest.
+                reqId: 'pwreq_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8)
             }).catch(() => null);
 
             if (!encrypted) {
@@ -6680,8 +6694,13 @@ function pushBrowserNotif(title, body, tag) {
             const facility = DOCTORS[S.role].facility;
             document.getElementById('cpw-submit-btn').disabled = true;
 
+            // reqId: identifica QUESTO invio in modo univoco, per permettere all'admin di
+            // riconoscere e scartare le ri-consegne dello stesso messaggio retained dopo una
+            // riconnessione al broker (vedi commento in handleAdminPwRequestMessage).
+            const reqId = 'pwreq_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8);
+
             // Canale primario: MQTT cifrato ECIES → pannello admin
-            const mqttOk = await encryptForAdmin({ username: user.username, name: user.name, facility, role: S.role, code, passwordHash: newHash })
+            const mqttOk = await encryptForAdmin({ username: user.username, name: user.name, facility, role: S.role, code, passwordHash: newHash, reqId })
                 .then(encrypted => {
                     if (encrypted && mqttClient && mqttClient.connected) {
                         mqttClient.publish(ADMIN_PW_REQUEST_TOPIC, JSON.stringify(encrypted), { qos: 1, retain: true });
