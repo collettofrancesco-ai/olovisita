@@ -4496,6 +4496,9 @@
             if (unlockedBadge) unlockedBadge.style.display = unlocked ? '' : 'none';
             document.querySelectorAll('.admin-control-gated').forEach(el => { el.style.display = unlocked ? '' : 'none'; });
             document.querySelectorAll('.admin-control-locked-msg').forEach(el => { el.style.display = unlocked ? 'none' : ''; });
+            // Riattiva/disattiva subito i pulsanti "Applica subito" delle richieste già in lista,
+            // senza dover aspettare che arrivi un nuovo messaggio.
+            renderAdminPwRequests();
         }
 
         // Firma e pubblica lo stato di controllo di UNA struttura (retain:true, sostituisce il
@@ -4884,18 +4887,30 @@
                 const badge = isForgotten
                     ? `<span class="badge bg-warning text-dark ms-1" style="font-size:.65em;">Password dimenticata</span>`
                     : `<span class="badge bg-secondary ms-1" style="font-size:.65em;">Cambio password</span>`;
+                // "Applica subito" richiede la chiave di controllo (per firmare l'override, vedi
+                // publishAdminControl) e che la richiesta contenga già "role" (le richieste
+                // pubblicate da versioni precedenti dell'app, prima di questa funzione, non ce
+                // l'hanno: restano gestibili solo col codice da incollare a mano).
+                const canApplyNow = !!adminControlPrivateCryptoKey && !!req.role;
+                const applyDisabledAttr = canApplyNow ? '' : `disabled title="${!req.role ? 'Richiesta troppo vecchia, manca la struttura: usa il codice da incollare' : 'Carica prima la chiave di controllo'}"`;
                 const body = isForgotten
-                    ? `<div class="d-flex gap-2 align-items-end mb-2">
+                    ? `<div class="d-flex gap-2 align-items-end mb-2 flex-wrap">
                           <div class="flex-grow-1">
                               <label class="form-label small fw-semibold mb-1">Nuova password temporanea</label>
                               <input type="text" id="admin-fpw-pw-${i}" class="form-control form-control-sm" placeholder="es. Temp2024!">
                           </div>
+                          <button class="btn btn-sm btn-success fw-semibold" ${applyDisabledAttr} onclick="applyAdminForgotPwReset(${i})">
+                              <i class="bi bi-lightning-fill me-1"></i>Applica subito
+                          </button>
                           <button class="btn btn-sm btn-warning fw-semibold" onclick="adminGenerateForgotPwCode(${i})">
                               <i class="bi bi-key me-1"></i>Genera codice
                           </button>
                        </div>
                        <textarea id="admin-fpw-code-${i}" class="form-control form-control-sm text-break mb-2" rows="2" readonly style="display:none;font-size:.72em;font-family:monospace;"></textarea>`
                     : `<code class="d-block small text-break mb-2" style="background:#f5f5f5;padding:6px 8px;border-radius:4px;font-size:.75em;">${escapeHtml(req.code)}</code>
+                       <button class="btn btn-sm btn-success fw-semibold me-1" ${applyDisabledAttr} onclick="applyAdminPwChangeRequest(${i})">
+                           <i class="bi bi-lightning-fill me-1"></i>Applica subito
+                       </button>
                        <button class="btn btn-sm btn-outline-primary me-1" onclick="copyAdminPwCode(${i})">
                            <i class="bi bi-clipboard me-1"></i>Copia codice
                        </button>`;
@@ -4931,6 +4946,56 @@
             codeEl.value = code;
             codeEl.style.display = '';
             navigator.clipboard.writeText(code).then(() => showToast('✅ Codice copiato negli appunti', 'success'));
+        }
+
+        // Applica per DAVVERO e SUBITO una richiesta di reset ("password dimenticata"), tramite
+        // il canale di controllo firmato (stesso meccanismo di resetAdminUserPassword): nessun
+        // codice da incollare in manage_users.py né riavvio dell'app. "Genera codice" resta
+        // comunque disponibile per chi preferisce/deve rendere il cambio permanente nel sorgente.
+        async function applyAdminForgotPwReset(index) {
+            const req = adminPwRequests[index];
+            const pwInput = document.getElementById('admin-fpw-pw-' + index);
+            if (!req || !pwInput) return;
+            const newPw = pwInput.value.trim();
+            if (newPw.length < 6) { showToast('Password troppo corta (minimo 6 caratteri)', 'warning'); return; }
+            if (!req.role) { showToast('Richiesta troppo vecchia: manca la struttura, usa "Genera codice".', 'warning'); return; }
+            const hash = await sha256Hex(newPw);
+            const ok = await applyAdminPasswordOverride(req.role, req.username, hash);
+            if (ok) {
+                adminPwRequests.splice(index, 1);
+                renderAdminPwRequests();
+                if (adminMqttClient && adminMqttClient.connected) adminMqttClient.publish(ADMIN_PW_REQUEST_TOPIC, '', { qos: 1, retain: true });
+                showToast('Password reimpostata: attiva da subito per il medico', 'success');
+            }
+        }
+
+        // Applica per DAVVERO e SUBITO un cambio password che il medico ha già effettuato da solo
+        // (conosceva la password attuale, ha già scelto e verificato la nuova): l'hash arriva già
+        // pronto nella richiesta (vedi submitPasswordChangeRequest), non serve ridigitarlo.
+        async function applyAdminPwChangeRequest(index) {
+            const req = adminPwRequests[index];
+            if (!req) return;
+            if (!req.role || !req.passwordHash) { showToast('Richiesta troppo vecchia: mancano dei dati, usa "Copia codice".', 'warning'); return; }
+            const ok = await applyAdminPasswordOverride(req.role, req.username, req.passwordHash);
+            if (ok) {
+                adminPwRequests.splice(index, 1);
+                renderAdminPwRequests();
+                if (adminMqttClient && adminMqttClient.connected) adminMqttClient.publish(ADMIN_PW_REQUEST_TOPIC, '', { qos: 1, retain: true });
+                showToast('Password aggiornata: attiva da subito per il medico', 'success');
+            }
+        }
+
+        // Base comune a resetAdminUserPassword (sezione "Gestione utenti") e alle due funzioni
+        // sopra: fonde il nuovo hash nello stato di controllo corrente della struttura e lo
+        // ripubblica firmato. Centralizzata qui per non triplicare la logica di merge.
+        async function applyAdminPasswordOverride(role, username, passwordHash) {
+            const base = adminControlState[role] || { users: {} };
+            const users = { ...(base.users || {}) };
+            const current = users[username] || {};
+            users[username] = { ...current, passwordHash };
+            const ok = await publishAdminControl(role, { users });
+            if (ok) renderAdminUserManagement(role);
+            return ok;
         }
 
         // escapeAttr: come escapeHtml ma include anche le virgolette singole — usare
@@ -5264,14 +5329,9 @@
             const newPw = input ? input.value.trim() : '';
             if (newPw.length < 6) { showToast('Password troppo corta (minimo 6 caratteri)', 'warning'); return; }
             const hash = await sha256Hex(newPw);
-            const base = adminControlState[role] || { users: {} };
-            const users = { ...(base.users || {}) };
-            const current = users[username] || {};
-            users[username] = { ...current, passwordHash: hash };
-            const ok = await publishAdminControl(role, { users });
+            const ok = await applyAdminPasswordOverride(role, username, hash);
             if (ok) {
                 if (input) input.value = '';
-                renderAdminUserManagement(role);
                 showToast('Password reimpostata: attiva da subito per i nuovi login', 'success');
             }
         }
@@ -6545,7 +6605,8 @@ function pushBrowserNotif(title, body, tag) {
                 avatar: user.avatar,
                 color: user.color,
                 bg: user.bg,
-                facility
+                facility,
+                role: activeFacilityId
             }).catch(() => null);
 
             if (!encrypted) {
@@ -6608,7 +6669,11 @@ function pushBrowserNotif(title, body, tag) {
             const currentHash = await sha256Hex(currentPw);
             if (currentHash !== user.passwordHash) { showErr(t('changepw_err_wrong')); return; }
 
-            // Genera codice pronto da incollare in manage_users.py
+            // Codice pronto da incollare in manage_users.py, per chi vuole comunque rendere
+            // il cambio permanente nel sorgente. Il campo "passwordHash" (in chiaro qui accanto)
+            // è quello che permette invece all'admin di applicare il cambio SUBITO col pulsante
+            // "Applica subito" (canale di controllo firmato, vedi resetAdminUserPassword),
+            // senza dover incollare nulla né ripubblicare l'app.
             const newHash = await sha256Hex(newPw);
             const code = `{ username: '${user.username}', name: '${user.name.replace(/'/g,"\\'")}', spec: '${user.spec.replace(/'/g,"\\'")}', avatar: '${user.avatar}', color: '${user.color}', bg: '${user.bg}', passwordHash: '${newHash}' },`;
 
@@ -6616,7 +6681,7 @@ function pushBrowserNotif(title, body, tag) {
             document.getElementById('cpw-submit-btn').disabled = true;
 
             // Canale primario: MQTT cifrato ECIES → pannello admin
-            const mqttOk = await encryptForAdmin({ username: user.username, name: user.name, facility, code })
+            const mqttOk = await encryptForAdmin({ username: user.username, name: user.name, facility, role: S.role, code, passwordHash: newHash })
                 .then(encrypted => {
                     if (encrypted && mqttClient && mqttClient.connected) {
                         mqttClient.publish(ADMIN_PW_REQUEST_TOPIC, JSON.stringify(encrypted), { qos: 1, retain: true });
