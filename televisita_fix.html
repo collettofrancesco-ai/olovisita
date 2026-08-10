@@ -5054,6 +5054,23 @@
             }
         }
 
+        // Genera il frammento da incollare in manage_users.py (opzione 5) per rendere PERMANENTE
+        // (nel sorgente, non solo sul canale di controllo) la modifica di nome/specializzazione —
+        // stesso principio di "Genera Codice" per nuovo utente/reset password: qui non serve
+        // ripubblicare via MQTT, l'admin decide se e quando applicarla anche al sorgente.
+        function generateAdminUserProfileCode(role, username) {
+            const nameInput = document.getElementById(`admin-profile-name-${role}-${username}`);
+            const specInput = document.getElementById(`admin-profile-spec-${role}-${username}`);
+            const name = nameInput ? nameInput.value.trim() : '';
+            const spec = specInput ? specInput.value.trim() : '';
+            if (!name && !spec) { showToast('Inserisci nome e/o specializzazione da mettere nel codice.', 'warning'); return; }
+            const parts = [`username: '${username}'`];
+            if (name) parts.push(`name: '${name.replace(/'/g, "\\'")}'`);
+            if (spec) parts.push(`spec: '${spec.replace(/'/g, "\\'")}'`);
+            const code = `{ ${parts.join(', ')} }`;
+            navigator.clipboard.writeText(code).then(() => showToast('✅ Codice copiato: incollalo in manage_users.py (opzione 5)', 'success'));
+        }
+
         // escapeAttr: come escapeHtml ma include anche le virgolette singole — usare
         // in tutti i contesti onclick="...func('VALORE')..." dove il valore può arrivare via MQTT.
         function escapeAttr(str) {
@@ -5367,6 +5384,11 @@
                             style="font-size:.75rem;" placeholder="Nuova specializzazione">
                         <button class="btn btn-outline-secondary btn-sm text-nowrap" style="font-size:.7rem;"
                             onclick="updateAdminUserProfile('${role}','${escapeAttr(u.username)}')">Salva profilo</button>
+                        <button class="btn btn-outline-dark btn-sm text-nowrap" style="font-size:.7rem;"
+                            title="Copia il codice da incollare in manage_users.py per rendere la modifica permanente nel sorgente"
+                            onclick="generateAdminUserProfileCode('${role}','${escapeAttr(u.username)}')">
+                            <i class="bi bi-code-slash me-1"></i>Genera codice
+                        </button>
                     </div>
                 </div>`;
             }).join('');

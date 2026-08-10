@@ -25,6 +25,14 @@ def extract_username(code_line):
     return m.group(1) if m else None
 
 
+def extract_field(code_line, field):
+    """Estrae il valore di un campo (es. 'name', 'spec') da una riga di codice tipo
+    "{ username: '...', name: '...', ... }", sia essa incollata dal pannello admin sia
+    una riga già presente nel sorgente. Restituisce None se il campo non è presente."""
+    m = re.search(r"\b" + field + r":\s*'([^']*)'", code_line)
+    return m.group(1) if m else None
+
+
 def list_users(text):
     """Restituisce una lista di (facility, username, name) per tutti gli utenti già presenti
     in FACILITIES, leggendo direttamente il sorgente (non serve eseguire il JS)."""
@@ -146,22 +154,18 @@ def edit_user_info(text, username, new_name=None, new_spec=None):
     indent = re.match(r"[ \t]*", old_line).group(0)
     trailing_comma = "," if old_line.rstrip().endswith(",") else ""
 
-    def get_field(field):
-        m = re.search(r"\b" + field + r":\s*'([^']*)'", old_line)
-        return m.group(1) if m else ""
-
-    name = new_name.strip() if new_name else get_field("name")
-    spec = new_spec.strip() if new_spec else get_field("spec")
-    color = get_field("color")
-    bg = get_field("bg")
-    password_hash = get_field("passwordHash")
+    name = new_name.strip() if new_name else (extract_field(old_line, "name") or "")
+    spec = new_spec.strip() if new_spec else (extract_field(old_line, "spec") or "")
+    color = extract_field(old_line, "color") or ""
+    bg = extract_field(old_line, "bg") or ""
+    password_hash = extract_field(old_line, "passwordHash") or ""
 
     if new_name:
         name_for_initials = re.sub(r"^(dr|prof)\.?(ssa)?\.?\s+", "", name, flags=re.I)
         words = [w for w in name_for_initials.split() if w]
         initials = "".join(w[0].upper() for w in words[:2]) or "??"
     else:
-        initials = get_field("avatar")
+        initials = extract_field(old_line, "avatar") or "??"
 
     name_escaped = name.replace("'", "\\'")
     spec_escaped = spec.replace("'", "\\'")
@@ -238,16 +242,31 @@ def main():
         print("Non potrà più accedere finché non lo ricrei da capo (con una password nuova).")
         action_desc = f"Elimino l'utente {username}"
     else:
-        username = input("\nUsername dell'utente da modificare: ").strip()
-        if not username:
-            sys.exit("Username vuoto.")
-        print("\nLascia vuoto un campo per non modificarlo.")
-        new_name = input("Nuovo nome (es. 'Dr. Mario Rossi'): ").strip()
-        new_spec = input("Nuova specializzazione: ").strip()
-        if not new_name and not new_spec:
-            sys.exit("Nessuna modifica indicata.")
+        print("\nIncolla qui sotto il codice generato dal pannello admin ('Genera codice' nella")
+        print("scheda del medico, sezione Gestione utenti), oppure lascia vuoto per inserire")
+        print("i dati a mano:")
+        code_line = input("> ").strip()
+        if code_line:
+            if not code_line.startswith("{") or "username:" not in code_line:
+                sys.exit("Il codice incollato non sembra valido (deve iniziare con '{' e contenere 'username:').")
+            username = extract_username(code_line)
+            if not username:
+                sys.exit("Non trovo lo username nel codice incollato.")
+            new_name = extract_field(code_line, "name")
+            new_spec = extract_field(code_line, "spec")
+            if not new_name and not new_spec:
+                sys.exit("Il codice incollato non contiene né 'name' né 'spec' da modificare.")
+        else:
+            username = input("\nUsername dell'utente da modificare: ").strip()
+            if not username:
+                sys.exit("Username vuoto.")
+            print("\nLascia vuoto un campo per non modificarlo.")
+            new_name = input("Nuovo nome (es. 'Dr. Mario Rossi'): ").strip() or None
+            new_spec = input("Nuova specializzazione: ").strip() or None
+            if not new_name and not new_spec:
+                sys.exit("Nessuna modifica indicata.")
         try:
-            new_text, username = edit_user_info(text, username, new_name or None, new_spec or None)
+            new_text, username = edit_user_info(text, username, new_name, new_spec)
         except ValueError as e:
             sys.exit(str(e))
         action_desc = f"Modifico i dati dell'utente {username}"
