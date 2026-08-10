@@ -4952,7 +4952,7 @@
             const codeEl = document.getElementById('admin-fpw-code-' + index);
             if (!req || !pwInput || !codeEl) return;
             const newPw = pwInput.value.trim();
-            if (newPw.length < 6) { showToast('Password troppo corta (minimo 6 caratteri)', 'warning'); return; }
+            if (newPw.length < 8) { showToast('Password troppo corta (minimo 8 caratteri)', 'warning'); return; }
             const hash = await sha256Hex(newPw);
             const code = `{ username: '${req.username}', name: '${req.name.replace(/'/g,"\\'")}', spec: '${req.spec.replace(/'/g,"\\'")}', avatar: '${req.avatar}', color: '${req.color}', bg: '${req.bg}', passwordHash: '${hash}' },`;
             codeEl.value = code;
@@ -4969,7 +4969,7 @@
             const pwInput = document.getElementById('admin-fpw-pw-' + index);
             if (!req || !pwInput) return;
             const newPw = pwInput.value.trim();
-            if (newPw.length < 6) { showToast('Password troppo corta (minimo 6 caratteri)', 'warning'); return; }
+            if (newPw.length < 8) { showToast('Password troppo corta (minimo 8 caratteri)', 'warning'); return; }
             if (!req.role) { showToast('Richiesta troppo vecchia: manca la struttura, usa "Genera codice".', 'warning'); return; }
             const hash = await sha256Hex(newPw);
             const ok = await applyAdminPasswordOverride(req.role, req.username, hash);
@@ -5307,7 +5307,7 @@
                     </div>
                     <div class="d-flex gap-2 align-items-center mt-2">
                         <input type="text" id="admin-newpw-${role}-${escapeAttr(u.username)}" class="form-control form-control-sm"
-                            style="font-size:.75rem;" placeholder="Nuova password (min 6 caratteri)">
+                            style="font-size:.75rem;" placeholder="Nuova password (min 8 caratteri)">
                         <button class="btn btn-outline-primary btn-sm text-nowrap" style="font-size:.7rem;"
                             onclick="resetAdminUserPassword('${role}','${escapeAttr(u.username)}')">Reimposta</button>
                     </div>
@@ -5339,7 +5339,7 @@
         async function resetAdminUserPassword(role, username) {
             const input = document.getElementById(`admin-newpw-${role}-${username}`);
             const newPw = input ? input.value.trim() : '';
-            if (newPw.length < 6) { showToast('Password troppo corta (minimo 6 caratteri)', 'warning'); return; }
+            if (newPw.length < 8) { showToast('Password troppo corta (minimo 8 caratteri)', 'warning'); return; }
             const hash = await sha256Hex(newPw);
             const ok = await applyAdminPasswordOverride(role, username, hash);
             if (ok) {
