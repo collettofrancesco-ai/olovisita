@@ -8185,6 +8185,12 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
 
             renderAll();
             showToast(t('toast_consent_sent'), 'info');
+            // syncState PRIMA della costruzione (asincrona) del link paziente: deve restare
+            // sempre raggiunto subito, esattamente come prima che buildPatientConsentUrl
+            // diventasse async (F-01) — altrimenti un eventuale rallentamento o errore nella
+            // parte email ritarderebbe/bloccherebbe la sincronizzazione reale verso l'altra
+            // struttura, che non ha nulla a che vedere con l'invio dell'email.
+            syncState({ kind: 'consent_sent', tvId: id, consentStatus: 'inviato' });
 
             const patientName = tv.patient;
             const patientEmail = tv.email || 'paziente@email.com';
@@ -8207,8 +8213,6 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                 addNotif('bi-envelope-fill', t('email_simulated_title', { patient: patientName }), t('email_otp_locked_body', { url: consentUrl }), 'incoming', email.id);
                 flashBell();
             }, 800);
-
-            syncState({ kind: 'consent_sent', tvId: id, consentStatus: 'inviato' });
         }
 
 
@@ -11290,6 +11294,10 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
 
             renderAll();
             showToast(t('toast_imm_sent'), 'info');
+            // Sincronizza lo stato su MQTT PRIMA della costruzione (asincrona) del link paziente,
+            // stesso motivo di sendConsentEmail: la sincronizzazione reale verso l'altra struttura
+            // non deve mai dipendere dal completamento della parte email.
+            syncState({ kind: 'imm_request', sender: S.role });
 
             // Invia la mail di invito al paziente (con link alla videochiamata e link al portale)
             const callUrl = await buildPatientCallUrl(room, newTv.id);
@@ -11308,9 +11316,6 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
             });
             addNotif('bi-envelope-fill', t('email_invite_simulated_title', { patient: finalPatient }), t('email_invite_simulated_body', { url: callUrl }), 'incoming', email.id);
             flashBell();
-
-            // Sincronizza lo stato su MQTT
-            syncState({ kind: 'imm_request', sender: S.role });
         }
 
         function submitUrgentRequest(event) {
@@ -11414,6 +11419,15 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
             S.activeTvId = newTv.id;
             S.activeRoom = newTv.room;
 
+            // renderAll/launchJitsi/syncState PRIMA della costruzione (asincrona) del link
+            // paziente: il medico deve entrare in videochiamata subito, senza dipendere dal
+            // completamento della parte email (stesso motivo di sendConsentEmail/requestImmediate).
+            renderAll();
+            launchJitsi(newTv.room);
+            scrollToVideo();
+            showToast(t('toast_imm_centro_started', { patient: newTv.patient }), 'success');
+            syncState(null);
+
             // Invia mail al paziente con link diretto alla videochiamata (no flusso consenso)
             const callUrl = await buildPatientCallUrl(newTv.room, newTv.id);
             const mailBody = currentLang === 'fr'
@@ -11431,12 +11445,6 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
             });
             addNotif('bi-envelope-fill', t('email_invite_simulated_title', { patient: newTv.patient }), t('email_invite_simulated_body', { url: callUrl }), 'incoming', email.id);
             flashBell();
-
-            renderAll();
-            launchJitsi(newTv.room);
-            scrollToVideo();
-            showToast(t('toast_imm_centro_started', { patient: newTv.patient }), 'success');
-            syncState(null);
         }
 
         function cancelImmediate() {
