@@ -11332,6 +11332,8 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
             // Carica automaticamente il Consenso Informato per questo paziente (se non esiste già)
             const consentDoc = {
                 id: 'D_CONS_' + Date.now() + Math.floor(Math.random() * 100),
+                tvId: newTv.id, // collega il documento alla visita: senza questo, removeDemoPatients()
+                                // (e qualunque altro filtro per tvId) non riesce a trovarlo e ripulirlo
                 name: 'Consenso_Televisita.pdf',
                 ext: 'pdf',
                 size: '124 KB',

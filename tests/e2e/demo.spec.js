@@ -42,4 +42,32 @@ test.describe('Demo guidata', () => {
     const demoMode = await page.evaluate(() => window._S.demoMode);
     expect(demoMode).toBe(false);
   });
+
+  test('removeDemoPatients rimuove anche il documento di consenso della richiesta urgente', async ({ page }) => {
+    await loginBypass(page, 'struttura1');
+
+    // requestImmediate (usata dalla demo per la "Second Opinion Urgente") crea sia la televisita
+    // sia un documento di consenso collegato: entrambi devono sparire, non solo la televisita
+    // (bug reale: il documento non aveva tvId e restava orfano dopo la pulizia).
+    await page.evaluate(() => {
+      window._S.demoMode = true;
+      window.requestImmediate('Demo Doc Test', 'demo.doc@test.invalid', '', '1980-01-01', 'M', 'Roma', 'CF', '');
+    });
+
+    const before = await page.evaluate(() => ({
+      tv: window._S.televisite.some(t => t.patient === 'Demo Doc Test'),
+      doc: window._S.docs.some(d => d.patient === 'Demo Doc Test')
+    }));
+    expect(before.tv).toBe(true);
+    expect(before.doc).toBe(true);
+
+    await page.evaluate(() => window.removeDemoPatients());
+
+    const after = await page.evaluate(() => ({
+      tv: window._S.televisite.some(t => t.patient === 'Demo Doc Test'),
+      doc: window._S.docs.some(d => d.patient === 'Demo Doc Test')
+    }));
+    expect(after.tv).toBe(false);
+    expect(after.doc).toBe(false);
+  });
 });
