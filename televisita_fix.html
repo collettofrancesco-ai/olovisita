@@ -12916,6 +12916,10 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                     'Télévisite planifiée',
                     `La televisita per <strong>${DEMO_PATIENT}</strong> è stata creata e inviata alla Struttura 2 per l\'accettazione. Il consenso informato è già pronto, ma resta "Non inviato" finché il medico non decide di mandarlo al paziente.`,
                     `La télévisite pour <strong>${DEMO_PATIENT}</strong> a été créée et envoyée à l\'Établissement 2 pour acceptation. Le consentement est déjà prêt, mais reste "Non envoyé" jusqu\'à ce que le médecin décide de l\'envoyer au patient.`);
+                // Il pannello guida è centrato sullo schermo (copre il centro della pagina): senza
+                // uno scroll esplicito verso la lista, la nuova televisita appena creata resta
+                // fuori vista in basso e sembra che non sia successo nulla.
+                highlightDemoEl('#vlist-s1');
             });
 
             scheduleDemo(31700, () => {
@@ -13194,6 +13198,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                     'Télévisite Centre déjà prête',
                     `Il modulo è identico a quello di prima, solo con il tipo cambiato. Niente "in attesa di conferma": la televisita per <strong>${DEMO_CENTRO_PATIENT}</strong> è già "Accettata", perché l'altra struttura non viene proprio coinvolta. Manca solo il consenso del paziente per poter partire.`,
                     `Le formulaire est identique à celui d'avant, seul le type a changé. Pas d'"attente de confirmation" : la télévisite pour <strong>${DEMO_CENTRO_PATIENT}</strong> est déjà "Acceptée", car l'autre établissement n'est même pas concerné. Il ne manque que le consentement du patient pour pouvoir démarrer.`);
+                highlightDemoEl('#vlist-s1');
             });
 
             scheduleDemo(308500, () => {
