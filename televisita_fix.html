@@ -6762,28 +6762,34 @@
                 flashBell();
             }
             if (ev === 'visit_accepted' && event.scheduledBy === S.role && event.visitMode !== 'centro') {
-                const fromD = DOCTORS[event.scheduledBy === 'struttura1' ? 'struttura2' : 'struttura1'] || {};
+                // event.doctorName: il medico che ha davvero accettato (vedi acceptSched). Il
+                // DOCTORS[ruolo] locale serve solo più come riserva per il caso di un evento
+                // arrivato da una versione precedente dell'app senza questo campo, e per il nome
+                // della struttura (facility), che invece è statico e corretto anche da qui.
+                const otherRole = event.scheduledBy === 'struttura1' ? 'struttura2' : 'struttura1';
+                const fromD = { facility: (DOCTORS[otherRole] || {}).facility, name: event.doctorName || (DOCTORS[otherRole] || {}).name };
                 showVisitUpdatePopup('accepted', event.patient, event.date, event.time, fromD);
                 addNotif('bi-calendar-check-fill', t('notif_sched_acc_title'), t('notif_sched_acc_body', { patient: event.patient }), 'sent');
                 pushBrowserNotif('✅ Visita accettata', `${event.patient} — ${fmtDate(event.date)} ${event.time || ''}`, 'visit_accepted');
                 flashBell();
             }
             if (ev === 'visit_rejected' && event.scheduledBy === S.role && event.visitMode !== 'centro') {
-                const fromD = DOCTORS[event.scheduledBy === 'struttura1' ? 'struttura2' : 'struttura1'] || {};
+                const otherRole = event.scheduledBy === 'struttura1' ? 'struttura2' : 'struttura1';
+                const fromD = { facility: (DOCTORS[otherRole] || {}).facility, name: event.doctorName || (DOCTORS[otherRole] || {}).name };
                 showVisitUpdatePopup('rejected', event.patient, event.date, event.time, fromD);
                 addNotif('bi-calendar-x-fill', t('notif_sched_rej_title'), t('notif_sched_rej_body', { patient: event.patient }), 'incoming');
                 pushBrowserNotif('❌ Visita rifiutata', `${event.patient} — ${fmtDate(event.date)} ${event.time || ''}`, 'visit_rejected');
                 flashBell();
             }
             if (ev === 'visit_cancelled' && event.cancelledBy !== S.role && event.visitMode !== 'centro') {
-                const fromD = DOCTORS[event.cancelledBy] || {};
+                const fromD = { facility: (DOCTORS[event.cancelledBy] || {}).facility, name: event.doctorName || (DOCTORS[event.cancelledBy] || {}).name };
                 showVisitUpdatePopup('cancelled', event.patient, event.date, event.time, fromD);
                 addNotif('bi-x-octagon-fill', t('notif_visit_cancelled_title'), t('notif_visit_cancelled_body', { patient: event.patient, facility: fromD.facility || event.cancelledBy }), 'incoming');
                 pushBrowserNotif('🚫 Visita annullata', `${event.patient} annullata da ${fromD.facility || event.cancelledBy}`, 'visit_cancelled');
                 flashBell();
             }
             if (ev === 'doc_shared' && event.fromRole !== S.role) {
-                const fromD = DOCTORS[event.fromRole];
+                const fromD = { facility: (DOCTORS[event.fromRole] || {}).facility, name: event.doctorName || (DOCTORS[event.fromRole] || {}).name };
                 showToast(`<i class="bi bi-share-fill me-1"></i>${t('toast_doc_received', { name: fromD.name, names: event.docName })}`, 'info');
                 addNotif('bi-share-fill', t('notif_doc_shared_title', { facility: fromD.facility }), t('notif_doc_shared_body', { name: event.docName, sender: fromD.name }), 'incoming');
                 showBanner(`<i class="bi bi-share-fill me-2"></i>${t('banner_doc_shared', { name: event.docName, facility: fromD.facility })}`, 'info');
@@ -10629,8 +10635,14 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                 } else if (r === 'waiting') {
                     show('q-incoming', true);
 
-                    // Personalizza il nome del mittente e i dettagli in modo dinamico
-                    const senderDoctor = DOCTORS[sender] || { name: 'Collegio Medico', spec: 'Specialista', facility: 'Struttura' };
+                    // Personalizza il nome del mittente e i dettagli in modo dinamico. Il nome
+                    // viene dalla televisita stessa (tv.doctor, impostato dal vero richiedente in
+                    // requestImmediate) non da DOCTORS[sender]: quella copia locale riflette solo
+                    // l'ultimo login fatto su QUESTO dispositivo per quel ruolo, non chi sta
+                    // davvero chiamando (stesso bug già corretto per accetta/rifiuta/annulla).
+                    const immTv = S.televisite.find(t => t.room === S.immRoom);
+                    const fallbackDoctor = DOCTORS[sender] || { name: 'Collegio Medico', spec: 'Specialista', facility: 'Struttura' };
+                    const senderDoctor = { name: (immTv && immTv.doctor) || fallbackDoctor.name, spec: fallbackDoctor.spec, facility: fallbackDoctor.facility };
                     const senderNameEl = document.getElementById('imm-recv-sender-name');
                     const senderDetailsEl = document.getElementById('imm-recv-sender-details');
                     if (senderNameEl) {
@@ -10894,7 +10906,12 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
             renderAll();
             showToast(t('toast_sched_accepted', { patient: tv.patient }), 'success');
             showBanner(t('banner_sched_accepted', { patient: tv.patient }), 'success');
-            syncState({ kind: 'visit_accepted', patient: tv.patient, scheduledBy: tv.scheduledBy, date: fmtDate(tv.date), time: tv.time, tvId: id, visitMode: tv.visitMode });
+            // doctorName: chi ha DAVVERO accettato (S.currentDoctor, mai toccato dalla demo), non
+            // il DOCTORS[ruolo] locale di chi riceve l'evento — quella copia riflette solo l'ultimo
+            // login fatto su QUEL dispositivo, non il medico reale dell'altra struttura, e senza
+            // questo campo resterebbe al nome di default scritto nel sorgente (vedi handler
+            // 'visit_accepted' più sopra, stesso schema già usato per 'visit_scheduled').
+            syncState({ kind: 'visit_accepted', patient: tv.patient, scheduledBy: tv.scheduledBy, date: fmtDate(tv.date), time: tv.time, tvId: id, visitMode: tv.visitMode, doctorName: (S.currentDoctor && S.currentDoctor.name) || DOCTORS[S.role].name });
         }
 
         function rejectSched(id) {
@@ -10903,7 +10920,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
             tv.status = 'rifiutata';
             renderAll();
             showToast(t('toast_sched_rejected', { patient: tv.patient }), 'warning');
-            syncState({ kind: 'visit_rejected', patient: tv.patient, scheduledBy: tv.scheduledBy, date: fmtDate(tv.date), time: tv.time, tvId: id, visitMode: tv.visitMode });
+            syncState({ kind: 'visit_rejected', patient: tv.patient, scheduledBy: tv.scheduledBy, date: fmtDate(tv.date), time: tv.time, tvId: id, visitMode: tv.visitMode, doctorName: (S.currentDoctor && S.currentDoctor.name) || DOCTORS[S.role].name });
         }
 
         function rescheduleVisit(id) {
@@ -11176,7 +11193,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
             tv.status = 'annullata';
             renderAll();
             showToast(t('toast_visit_cancelled', { patient: tv.patient }), 'warning');
-            syncState({ kind: 'visit_cancelled', patient: tv.patient, tvId: id, cancelledBy: S.role, date: fmtDate(tv.date), time: tv.time, visitMode: tv.visitMode });
+            syncState({ kind: 'visit_cancelled', patient: tv.patient, tvId: id, cancelledBy: S.role, date: fmtDate(tv.date), time: tv.time, visitMode: tv.visitMode, doctorName: (S.currentDoctor && S.currentDoctor.name) || DOCTORS[S.role].name });
         }
 
         function selectPatientContext(id) {
@@ -12631,7 +12648,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                         renderAll();
                         showToast(t('toast_quick_shared', { facility: otherD.facility }), 'success');
                         addNotif('bi-share-fill', t('notif_doc_sent_title', { facility: otherD.facility }), t('notif_doc_shared_body', { name: files.map(f=>f.name).join(', '), sender: DOCTORS[S.role].name }), 'sent');
-                        syncState({ kind: 'doc_shared', fromRole: S.role, docName: files.map(f=>f.name).join(', ') });
+                        syncState({ kind: 'doc_shared', fromRole: S.role, docName: files.map(f=>f.name).join(', '), doctorName: (S.currentDoctor && S.currentDoctor.name) || DOCTORS[S.role].name });
                         newDocs.forEach(d => {
                             if (d.base64Data && mqttClient && mqttClient.connected) {
                                 sendDocumentInChunks(d);
@@ -12671,7 +12688,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
             renderAll();
             showToast(t('toast_doc_shared', { facility: otherD.facility }), 'success');
             addNotif('bi-share-fill', t('notif_doc_sent_title', { facility: otherD.facility }), t('notif_doc_shared_body', { name: d.name, sender: DOCTORS[S.role].name }), 'sent');
-            syncState({ kind: 'doc_shared', fromRole: S.role, docName: d.name });
+            syncState({ kind: 'doc_shared', fromRole: S.role, docName: d.name, doctorName: (S.currentDoctor && S.currentDoctor.name) || DOCTORS[S.role].name });
 
             // Trasferisci il contenuto effettivo del file via MQTT in chunk
             if (d.base64Data && mqttClient && mqttClient.connected) {
