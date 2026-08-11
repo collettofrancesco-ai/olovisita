@@ -136,11 +136,38 @@ Nessun input utente va inserito nel DOM con `innerHTML` senza sanitizzazione.
 liberi. Non usare `.textContent` per aggirare il problema se poi il valore finisce
 in un attributo HTML.
 
-### 5.5 Password: hash SHA-256 lato client, mai testo in chiaro
+### 5.5 Password: SHA-256 + stretching PBKDF2, mai testo in chiaro
 
-Le password degli utenti sono confrontate come hash SHA-256 (hex). Gli hash sono
-hardcoded in `FACILITIES` per ogni utente (riga 3677). Non si memorizzano mai
-password in chiaro — né in localStorage, né in MQTT, né in log.
+Le password degli utenti sono confrontate come SHA-256(password) ulteriormente
+"allungato" con PBKDF2 (100.000 iterazioni, salt = username) tramite
+`computeStoredPasswordHash(password, username)` — **mai** calcolare a mano
+`sha256Hex()` da solo per un `passwordHash` da salvare, usare sempre questa funzione.
+Lo stretching è stato aggiunto l'11/08/2026 sopra gli hash SHA-256 già esistenti
+(nessun utente ha dovuto reimpostare nulla: i nuovi hash sono stati derivati dai
+vecchi, non dalle password in chiaro). Gli hash sono hardcoded in `FACILITIES` per
+ogni utente. Non si memorizzano mai password in chiaro — né in localStorage, né in
+MQTT, né in log.
+
+### 5.6 localStorage cifrato a riposo
+
+Da quando introdotta (11/08/2026), `persistTvState()`/`loadSharedState()` cifrano
+`tv_state` con AES-GCM-256, chiave dedicata derivata da `currentGroupCode +
+'::localstorage'` (dominio separato dalla chiave MQTT — vedi `getLocalStorageCryptoKey`,
+mai riusare `getCryptoKey`/`cachedCryptoKey`, che ignora il roomCode una volta che ha
+già una chiave in cache). `loadSharedState()` riconosce ancora il vecchio formato in
+chiaro (nessun campo `iv`/`ciphertext`) per i dispositivi non ancora aggiornati e lo
+migra automaticamente al primo salvataggio successivo — non rimuovere questo fallback
+senza un piano di migrazione esplicito.
+
+### 5.7 Pannello admin: la chiave privata è il secondo fattore
+
+Il pannello (`?admin=1`) non ha un proprio login: chiunque conosca l'URL vede la
+schermata di richiesta chiave. La sicurezza dipende **interamente** dalla segretezza
+delle chiavi private (ECDH per la lettura backup, ECDSA per il canale di controllo),
+mai presenti nel repository, incollate una tantum nel browser dell'amministratore.
+Questo è il comportamento voluto: va trattato e comunicato come equivalente a un
+secondo fattore di autenticazione, non come un pannello "senza protezione" solo
+perché non c'è un form di username/password.
 
 ---
 

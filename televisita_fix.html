@@ -3520,9 +3520,9 @@
                 color: '#1565c0',
                 bg: '#e8f0fe',
                 users: [
-                    { username: 'sonia.mahjoub', name: 'Dr.ssa Sonia Mahjoub', spec: 'Ematologia', avatar: 'SM', color: '#1565c0', bg: '#e8f0fe', passwordHash: 'f250d0ac2a8c1d4f75f3d4130312654b44b31c13c5a34a742711bc9aa8d02e22' },
-                    { username: 'Mimma.dérangement', name: 'Dr. Mimma 	Dérangement', spec: 'Ematologia', avatar: 'JD', color: '#0d47a1', bg: '#d0e1fd', passwordHash: '18a7b0c92e9f41b0afee27ed2c04e49192489f06489940f61661e3a8e43dfedd' },
-                    { username: 'jerome.dubois', name: 'Dr. Jerome Dubois', spec: 'Ematologia', avatar: 'JD', color: '#1565c0', bg: '#e8f0fe', passwordHash: 'a168e4e2373155d66e615d4c75643f549e21ccef35468e1d3a6f6e0296810e33' }
+                    { username: 'sonia.mahjoub', name: 'Dr.ssa Sonia Mahjoub', spec: 'Ematologia', avatar: 'SM', color: '#1565c0', bg: '#e8f0fe', passwordHash: 'f056d11d58f2fa88dfa3e6d7a3d4655bdb73293d4cc2ca09840a2159e255d1e1' },
+                    { username: 'Mimma.dérangement', name: 'Dr. Mimma 	Dérangement', spec: 'Ematologia', avatar: 'JD', color: '#0d47a1', bg: '#d0e1fd', passwordHash: 'ec18a57ef279400d26ca8da1145f52b13ea568dc9ee090f81590201f7b02d892' },
+                    { username: 'jerome.dubois', name: 'Dr. Jerome Dubois', spec: 'Ematologia', avatar: 'JD', color: '#1565c0', bg: '#e8f0fe', passwordHash: '4eca547d545413f0130c7ddeb72f32b7647be15cdf58f943cd4f0a40537c5dec' }
                 ]
             },
             struttura2: {
@@ -3533,9 +3533,9 @@
                 color: '#00796b',
                 bg: '#e0f2f1',
                 users: [
-                    { username: 'aurelio.maggio', name: 'Prof. Aurelio Maggio', spec: 'Ematologia', avatar: 'AM', color: '#00796b', bg: '#e0f2f1', passwordHash: '59c7c3326613ad512ba1da2a43c473bce87871d5f2c72d1a2ca6ba9a4141d966' },
-                    { username: 'simona.raso', name: 'Dr.ssa Simona Raso', spec: 'Ematologia', avatar: 'SR', color: '#004d40', bg: '#b2dfdb', passwordHash: 'f17db51f4de23a968634ea2b89478a71f835ceadaaa209d4f7ba39258f76b1f7' },
-                    { username: 'francesco.colletto', name: 'Dr. Francesco Colletto', spec: 'Ematologia', avatar: 'FC', color: '#00796b', bg: '#e0f2f1', passwordHash: '7bf0ecdc6e2dde9167e3f82d622ed5ba2cef88133dd6948f9b67823776806b0a' }
+                    { username: 'aurelio.maggio', name: 'Prof. Aurelio Maggio', spec: 'Ematologia', avatar: 'AM', color: '#00796b', bg: '#e0f2f1', passwordHash: '59f6d4f1e99ea65613ddcb31fa843bcfcfce8ac4f9bc504ae9af590920a7dcbe' },
+                    { username: 'simona.raso', name: 'Dr.ssa Simona Raso', spec: 'Ematologia', avatar: 'SR', color: '#004d40', bg: '#b2dfdb', passwordHash: '864b9f774780984cd1738599e27d56684c290c5a457db17ccc9d017a09bbe558' },
+                    { username: 'francesco.colletto', name: 'Dr. Francesco Colletto', spec: 'Ematologia', avatar: 'FC', color: '#00796b', bg: '#e0f2f1', passwordHash: '2fcc4aa76ab5f20303e7772377bbe189889e9c11f167187287d4bed881d6ce4b' }
                 ]
             }
         };
@@ -3932,6 +3932,68 @@
                 return JSON.parse(plaintext);
             } catch (err) {
                 console.error('Errore durante la decifratura E2EE:', err);
+                return null;
+            }
+        }
+
+        // ---------------------------------------------------------------------------
+        // CIFRATURA A RIPOSO DEL LOCALSTORAGE (tv_state)
+        // ---------------------------------------------------------------------------
+        // Chiave DEDICATA, con cache SEPARATA da cachedCryptoKey (usata da getCryptoKey per MQTT):
+        // getCryptoKey ignora il parametro roomCode una volta che ha già una chiave in cache,
+        // quindi riusarla per un dominio diverso (locale invece che MQTT) restituirebbe la stessa
+        // chiave del canale di sincronizzazione invece di una realmente separata. Stesso principio
+        // di dominio separato già usato per il topic MQTT (vedi deriveTopicId, suffisso "::topic")
+        // applicato qui con "::localstorage".
+        let cachedLocalStorageCryptoKey = null;
+        let cachedLocalStorageCryptoKeyContext = null;
+
+        async function getLocalStorageCryptoKey() {
+            if (!isSubtleCryptoSupported) return null;
+            const context = currentGroupCode + '::localstorage';
+            if (cachedLocalStorageCryptoKey && cachedLocalStorageCryptoKeyContext === context) {
+                return cachedLocalStorageCryptoKey;
+            }
+            const rawKey = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(context));
+            cachedLocalStorageCryptoKey = await crypto.subtle.importKey(
+                'raw', rawKey, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']
+            );
+            cachedLocalStorageCryptoKeyContext = context;
+            return cachedLocalStorageCryptoKey;
+        }
+
+        // A differenza del canale MQTT, qui NON esiste un fallback XOR per i contesti non sicuri
+        // (HTTP non-localhost): quel fallback è già una debolezza nota e documentata del canale
+        // MQTT, non va replicata su una nuova superficie. Se Web Crypto non è disponibile, il
+        // salvataggio locale resta in chiaro esattamente come si è sempre comportato finora —
+        // nessuna regressione, solo l'assenza (non peggioramento) della nuova protezione.
+        async function encryptForLocalStorage(payloadObj) {
+            if (!isSubtleCryptoSupported) return null;
+            try {
+                const aesKey = await getLocalStorageCryptoKey();
+                const iv = crypto.getRandomValues(new Uint8Array(12));
+                const ciphertext = await crypto.subtle.encrypt(
+                    { name: 'AES-GCM', iv },
+                    aesKey,
+                    new TextEncoder().encode(JSON.stringify(payloadObj))
+                );
+                return { iv: arrayBufferToBase64(iv), ciphertext: arrayBufferToBase64(ciphertext) };
+            } catch (err) {
+                console.error('Errore durante la cifratura del localStorage:', err);
+                return null;
+            }
+        }
+
+        async function decryptFromLocalStorage(encryptedObj) {
+            try {
+                const aesKey = await getLocalStorageCryptoKey();
+                if (!aesKey) return null;
+                const ivBuffer = base64ToArrayBuffer(encryptedObj.iv);
+                const ciphertextBuffer = base64ToArrayBuffer(encryptedObj.ciphertext);
+                const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: ivBuffer }, aesKey, ciphertextBuffer);
+                return JSON.parse(new TextDecoder().decode(decrypted));
+            } catch (err) {
+                console.error('Errore durante la decifratura del localStorage:', err);
                 return null;
             }
         }
@@ -5002,7 +5064,7 @@
             if (!req || !pwInput || !codeEl) return;
             const newPw = pwInput.value.trim();
             if (newPw.length < 8) { showToast('Password troppo corta (minimo 8 caratteri)', 'warning'); return; }
-            const hash = await sha256Hex(newPw);
+            const hash = await computeStoredPasswordHash(newPw, req.username);
             const code = `{ username: '${req.username}', name: '${req.name.replace(/'/g,"\\'")}', spec: '${req.spec.replace(/'/g,"\\'")}', avatar: '${req.avatar}', color: '${req.color}', bg: '${req.bg}', passwordHash: '${hash}' },`;
             codeEl.value = code;
             codeEl.style.display = '';
@@ -5020,7 +5082,7 @@
             const newPw = pwInput.value.trim();
             if (newPw.length < 8) { showToast('Password troppo corta (minimo 8 caratteri)', 'warning'); return; }
             if (!req.role) { showToast('Richiesta troppo vecchia: manca la struttura, usa "Genera codice".', 'warning'); return; }
-            const hash = await sha256Hex(newPw);
+            const hash = await computeStoredPasswordHash(newPw, req.username);
             const ok = await applyAdminPasswordOverride(req.role, req.username, hash);
             if (ok) {
                 adminPwRequests.splice(index, 1);
@@ -5492,7 +5554,7 @@
             const input = document.getElementById(`admin-newpw-${role}-${username}`);
             const newPw = input ? input.value.trim() : '';
             if (newPw.length < 8) { showToast('Password troppo corta (minimo 8 caratteri)', 'warning'); return; }
-            const hash = await sha256Hex(newPw);
+            const hash = await computeStoredPasswordHash(newPw, username);
             const ok = await applyAdminPasswordOverride(role, username, hash);
             if (ok) {
                 if (input) input.value = '';
@@ -5517,7 +5579,7 @@
             const ov = overrides[username] || {};
             const name = ov.name || u.name;
             const spec = ov.spec || u.spec;
-            const hash = await sha256Hex(newPw);
+            const hash = await computeStoredPasswordHash(newPw, username);
             const code = `{ username: '${username}', name: '${name.replace(/'/g, "\\'")}', spec: '${spec.replace(/'/g, "\\'")}', avatar: '${u.avatar}', color: '${u.color}', bg: '${u.bg}', passwordHash: '${hash}' },`;
             navigator.clipboard.writeText(code).then(() => showToast('✅ Codice copiato: incollalo in manage_users.py (opzione 2)', 'success'));
         }
@@ -5617,7 +5679,7 @@
             const nameForInitials = name.replace(/^(dr|prof)\.?(ssa)?\.?\s+/i, '');
             const initials = nameForInitials.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('') || '??';
 
-            const passwordHash = await sha256Hex(password);
+            const passwordHash = await computeStoredPasswordHash(password, username);
             const fac = FACILITIES[facility];
 
             const code = `{ username: '${username}', name: '${name.replace(/'/g, "\\'")}', spec: '${spec.replace(/'/g, "\\'")}', avatar: '${initials}', color: '${fac.color}', bg: '${fac.bg}', passwordHash: '${passwordHash}' },`;
@@ -5676,7 +5738,7 @@
                 return;
             }
 
-            const passwordHash = await sha256Hex(password);
+            const passwordHash = await computeStoredPasswordHash(password, user.username);
             const code = `{ username: '${user.username}', name: '${user.name.replace(/'/g, "\\'")}', spec: '${user.spec.replace(/'/g, "\\'")}', avatar: '${user.avatar}', color: '${user.color}', bg: '${user.bg}', passwordHash: '${passwordHash}' },`;
 
             document.getElementById('resetpw-result-username').textContent = user.username;
@@ -6078,9 +6140,14 @@
         // stesso avviso ad ogni singola azione finché il problema non si risolve (es. cancellando
         // qualche documento) o la pagina non viene ricaricata.
         let localStorageQuotaWarningShown = false;
-        function persistTvState(storageState) {
+        // async, ma i ~20 punti del codice che la richiamano non fanno await: non dipendono dal
+        // completamento sincrono (il salvataggio è sempre stato "fire and forget"), quindi restano
+        // invariati. Cifra a riposo con la chiave dedicata sopra; se Web Crypto non è disponibile
+        // salva in chiaro come sempre (encryptForLocalStorage ritorna null in quel caso).
+        async function persistTvState(storageState) {
             try {
-                localStorage.setItem('tv_state', JSON.stringify(storageState));
+                const encrypted = await encryptForLocalStorage(storageState);
+                localStorage.setItem('tv_state', encrypted ? JSON.stringify(encrypted) : JSON.stringify(storageState));
                 localStorageQuotaWarningShown = false;
             } catch (err) {
                 // Senza questo avviso, un salvataggio locale che fallisce per spazio esaurito
@@ -6195,11 +6262,20 @@
             }
         }
 
-        function loadSharedState() {
+        // async (cifratura a riposo): chiamata una sola volta al boot (vedi DOMContentLoaded, che
+        // la attende) prima che qualunque altra cosa dipenda dallo stato caricato.
+        async function loadSharedState() {
             try {
                 const raw = localStorage.getItem('tv_state');
                 if (!raw) return;
-                const d = JSON.parse(raw);
+                const parsed = JSON.parse(raw);
+                // Un blob cifrato ha SEMPRE i campi iv+ciphertext (mai televisite/docs/ecc.), un
+                // salvataggio in chiaro di un dispositivo non ancora passato alla cifratura a
+                // riposo (introdotta l'11/08/2026) no: distingue i due formati senza ambiguità,
+                // senza dover contare su un try/catch della decifratura come segnale di formato.
+                const isEncrypted = parsed && typeof parsed === 'object' && parsed.iv && parsed.ciphertext;
+                const d = isEncrypted ? (await decryptFromLocalStorage(parsed)) : parsed;
+                if (!d) return;
                 if (d.televisite) S.televisite = d.televisite;
                 if (d.docs) S.docs = d.docs;
                 S.immReq = d.immReq ?? null;
@@ -6686,6 +6762,36 @@ function pushBrowserNotif(title, body, tag) {
             return sha256Fallback(text);
         }
 
+        // Applica PBKDF2 (100.000 iterazioni) SOPRA lo SHA-256 già in uso, invece di sostituirlo:
+        // chi rubasse gli hash dal sorgente pubblico (sono hardcoded, quindi visibili a chiunque)
+        // pagherebbe il costo di PBKDF2 per ogni tentativo di forzatura offline, invece di un
+        // singolo SHA-256 — calcolabile a miliardi al secondo su una GPU moderna, a milioni al
+        // massimo con PBKDF2-100k. Lo username fa da salt: pubblico e univoco per utente, non deve
+        // essere segreto — serve solo a impedire un attacco con tabelle precalcolate condivise tra
+        // utenti diversi. Richiede Web Crypto: dove non disponibile (contesto non sicuro) il
+        // confronto ricade sul solo SHA-256, esattamente il comportamento di sempre.
+        const PASSWORD_STRETCH_ITERATIONS = 100000;
+        async function stretchPasswordHash(sha256HexValue, username) {
+            if (!isSubtleCryptoSupported) return sha256HexValue;
+            const enc = new TextEncoder();
+            const keyMaterial = await crypto.subtle.importKey(
+                'raw', enc.encode(sha256HexValue), { name: 'PBKDF2' }, false, ['deriveBits']
+            );
+            const bits = await crypto.subtle.deriveBits(
+                { name: 'PBKDF2', salt: enc.encode(username || ''), iterations: PASSWORD_STRETCH_ITERATIONS, hash: 'SHA-256' },
+                keyMaterial,
+                256
+            );
+            return Array.from(new Uint8Array(bits)).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        // Punto unico da cui calcolare l'hash da salvare per una password (creazione utente,
+        // reset, cambio): mai calcolare a mano sha256Hex + stretchPasswordHash separatamente, per
+        // non rischiare che un punto di chiamata dimentichi il secondo passaggio.
+        async function computeStoredPasswordHash(password, username) {
+            return stretchPasswordHash(await sha256Hex(password), username);
+        }
+
         // Registra un evento di login (riuscito o fallito) nel log di audit e lo salva subito in
         // localStorage: un tentativo fallito avviene PRIMA che l'MQTT sia connesso (initMQTT parte
         // solo dopo un login riuscito, vedi submitLogin), quindi non può essere trasmesso subito
@@ -6708,7 +6814,19 @@ function pushBrowserNotif(title, body, tag) {
         }
 
         // Contatore tentativi login falliti per username: blocco esponenziale fino a 30s.
-        const _loginAttempts = {};
+        // Persistito in localStorage (in chiaro: sono solo conteggi/timestamp, non dati sensibili)
+        // così un semplice refresh della pagina non annulla più il blocco — prima bastava
+        // ricaricare per azzerarlo, vanificando il rate limiting a ogni tentativo.
+        let _loginAttempts = {};
+        try {
+            const storedAttempts = localStorage.getItem('tv_login_attempts');
+            if (storedAttempts) _loginAttempts = JSON.parse(storedAttempts);
+        } catch (_) { _loginAttempts = {}; }
+
+        function persistLoginAttempts() {
+            try { localStorage.setItem('tv_login_attempts', JSON.stringify(_loginAttempts)); } catch (_) { }
+        }
+
         async function submitLogin() {
             const username = document.getElementById('user-select').value;
             const pwdEl = document.getElementById('pwd-input');
@@ -6739,13 +6857,14 @@ function pushBrowserNotif(title, body, tag) {
             const override = (pendingLoginOverride && pendingLoginOverride.users && pendingLoginOverride.users[username]) || null;
             const accountDisabled = !!(user && override && override.active === false);
             const expectedHash = (override && override.passwordHash) ? override.passwordHash : (user ? user.passwordHash : null);
-            const enteredHash = user ? await sha256Hex(pwdEl.value) : null;
+            const enteredHash = user ? await computeStoredPasswordHash(pwdEl.value, username) : null;
 
             if (!user || accountDisabled || enteredHash !== expectedHash) {
                 att.count = (att.count || 0) + 1;
                 const delay = att.count >= 5 ? 30000 : att.count >= 3 ? 10000 : 0;
                 att.lockedUntil = delay > 0 ? now + delay : 0;
                 _loginAttempts[attemptKey] = att;
+                persistLoginAttempts();
                 recordAuditEvent(username, user ? user.name : username, 'login_fail');
                 // Distingue "hai digitato la tua VECCHIA password, ormai superata da un reset
                 // dell'amministratore" da un normale errore di battitura: senza questo, chi ha
@@ -6765,6 +6884,7 @@ function pushBrowserNotif(title, body, tag) {
                 return;
             }
             _loginAttempts[attemptKey] = { count: 0, lockedUntil: 0 };
+            persistLoginAttempts();
 
             // Sincronizza i dati medici correnti per compatibilità con il resto del cruscotto.
             // Nome/specializzazione: l'override dal pannello admin (se presente) vince su quelli
@@ -6896,7 +7016,7 @@ function pushBrowserNotif(title, body, tag) {
             // alla vera struttura del medico, non a quella eventualmente mostrata dalla demo.
             const user = FACILITIES[activeFacilityId].users.find(u => u.username === S.currentDoctor?.username);
             if (!user) return;
-            const currentHash = await sha256Hex(currentPw);
+            const currentHash = await computeStoredPasswordHash(currentPw, user.username);
             if (currentHash !== user.passwordHash) { showErr(t('changepw_err_wrong')); return; }
 
             // Codice pronto da incollare in manage_users.py, per chi vuole comunque rendere
@@ -6904,7 +7024,7 @@ function pushBrowserNotif(title, body, tag) {
             // è quello che permette invece all'admin di applicare il cambio SUBITO col pulsante
             // "Applica subito" (canale di controllo firmato, vedi resetAdminUserPassword),
             // senza dover incollare nulla né ripubblicare l'app.
-            const newHash = await sha256Hex(newPw);
+            const newHash = await computeStoredPasswordHash(newPw, user.username);
             const code = `{ username: '${user.username}', name: '${user.name.replace(/'/g,"\\'")}', spec: '${user.spec.replace(/'/g,"\\'")}', avatar: '${user.avatar}', color: '${user.color}', bg: '${user.bg}', passwordHash: '${newHash}' },`;
 
             const facility = DOCTORS[activeFacilityId].facility;
@@ -13175,7 +13295,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
         // ---------------------------------------------------------------------------
         // INIZIALIZZAZIONE
         // ---------------------------------------------------------------------------
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             // Vista amministratore: bypassa interamente login/dashboard delle strutture, mostra
             // solo la vista in sola lettura dei dati di entrambe (vedi initAdminView).
             if (isAdminViewMode()) {
@@ -13225,7 +13345,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
             document.getElementById('f2-date').value = todayStr();
             document.getElementById('f2-date').min = todayStr();
 
-            loadSharedState();
+            await loadSharedState();
             applyTranslations();
             initDrop();
             // tryResumeAutoBackup() NON va richiamata qui: partirebbe (scrivendo su disco i dati
