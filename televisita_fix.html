@@ -5125,6 +5125,16 @@
             return applyAdminUserFieldsOverride(role, username, { passwordHash });
         }
 
+        // Ritira l'override live della password dopo che è stata resa permanente nel sorgente
+        // (manage_users.py). Senza questo passaggio l'override resta agganciato (retain:true) e
+        // continua a vincere su un hash nuovo pubblicato in seguito, perché submitLogin dà sempre
+        // la precedenza all'override quando presente (riga ~6859): il medico si ritrova bloccato
+        // fuori con la password "vera" perché ne resta attiva una di prova ormai dimenticata.
+        async function clearAdminPasswordOverride(role, username) {
+            const ok = await applyAdminUserFieldsOverride(role, username, { passwordHash: null });
+            if (ok) showToast('Override rimosso: da ora vale l\'hash presente nel sorgente', 'success');
+        }
+
         // Cambia nome e/o specializzazione mostrati per un medico, senza dover incollare codice
         // nel sorgente: utile per correggere un refuso o una specializzazione cambiata nel tempo.
         // Si applica al prossimo login, o subito se il medico è già collegato (vedi
@@ -5517,6 +5527,11 @@
                             onclick="generateAdminPasswordResetCode('${role}','${escapeAttr(u.username)}')">
                             <i class="bi bi-code-slash me-1"></i>Genera codice
                         </button>
+                        ${hasPwOverride ? `<button class="btn btn-outline-secondary btn-sm text-nowrap" style="font-size:.7rem;"
+                            title="Da usare dopo aver reso permanente la password nel sorgente con manage_users.py: rimuove l'override di prova, altrimenti resta attivo per sempre e blocca la password vera"
+                            onclick="clearAdminPasswordOverride('${role}','${escapeAttr(u.username)}')">
+                            <i class="bi bi-x-circle me-1"></i>Rimuovi override
+                        </button>` : ''}
                     </div>
                     <div class="d-flex gap-2 align-items-center mt-2">
                         <input type="text" id="admin-profile-name-${role}-${escapeAttr(u.username)}" class="form-control form-control-sm"
