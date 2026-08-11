@@ -1423,6 +1423,27 @@
                             <span class="small"><i class="bi bi-unlock-fill me-1 text-success"></i>Scrittura abilitata: gestione utenti e configurazione remota sono attive.</span>
                             <button class="btn btn-link btn-sm" onclick="forgetAdminControlKey()">Dimentica chiave di controllo</button>
                         </div>
+                        <div class="admin-control-gated login-card" style="cursor:default; max-width:none; display:none; border-left:4px solid #b71c1c;">
+                            <h6 class="fw-bold mb-1"><i class="bi bi-key-fill me-1" style="color:#b71c1c;"></i>Codice Stanza (segreto di rete)</h6>
+                            <p class="text-muted small mb-2">
+                                Da questo derivano topic MQTT e chiave di cifratura del canale Network tra le due
+                                strutture. Va applicato a <strong>entrambe insieme</strong>, identico: viene generato
+                                qui e distribuito via canale firmato, mai digitato a mano dal personale.
+                            </p>
+                            <div id="admin-groupcode-status" class="small mb-2 text-muted">Stato: verifica in corso...</div>
+                            <div class="d-flex gap-2 align-items-center mb-2">
+                                <input type="password" id="admin-groupcode-input" class="form-control form-control-sm"
+                                    style="font-size:.75rem;" placeholder="Nuovo Codice Stanza" readonly>
+                                <button class="btn btn-outline-secondary btn-sm text-nowrap" style="font-size:.7rem;" type="button"
+                                    onclick="toggleAdminGroupCodeVisibility()"><i id="admin-groupcode-eye" class="bi bi-eye"></i></button>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-outline-dark btn-sm text-nowrap" style="font-size:.7rem;"
+                                    onclick="generateAdminGroupCode()">Genera nuovo casuale</button>
+                                <button class="btn btn-danger btn-sm text-nowrap" style="font-size:.7rem;"
+                                    onclick="applyAdminGroupCode()">Applica a entrambe le strutture</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -3786,6 +3807,13 @@
         // solo sul PC del destinatario. Nessun intermediario (incluso il broker) può leggerli.
 
         let cachedCryptoKey = null; // Cache per evitare di ricalcolare la chiave a ogni pacchetto (es. durante il disegno)
+        // Context associato alla chiave in cache: senza questo, getCryptoKey ignorerebbe il
+        // roomCode passato una volta che ha già una chiave (comportamento innocuo finché è sempre
+        // stato lo stesso currentGroupCode per tutta la sessione, ma diventato scorretto da quando
+        // lo stesso medico può richiedere anche chiavi per-visita del paziente, vedi
+        // derivePatientVisitSecret): con il context, la cache resta valida ma si ricalcola subito
+        // se il roomCode richiesto cambia, invece di restituire silenziosamente la chiave sbagliata.
+        let cachedCryptoKeyContext = null;
 
         // Converte un ArrayBuffer (formato binario usato dalle Web Crypto API) in una stringa Base64 (sicura per il transito JSON)
         function arrayBufferToBase64(buffer) {
@@ -3835,7 +3863,7 @@
         // Deriva una chiave crittografica AES-GCM-256 a partire dal codice della stanza (roomCode)
         async function getCryptoKey(roomCode) {
             if (!isSubtleCryptoSupported) return null;
-            if (cachedCryptoKey) return cachedCryptoKey;
+            if (cachedCryptoKey && cachedCryptoKeyContext === roomCode) return cachedCryptoKey;
 
             const rawKey = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(roomCode));
             cachedCryptoKey = await crypto.subtle.importKey(
@@ -3845,6 +3873,7 @@
                 false,
                 ['encrypt', 'decrypt']
             );
+            cachedCryptoKeyContext = roomCode;
             return cachedCryptoKey;
         }
 
@@ -3856,6 +3885,27 @@
         // chiave né sul codice stanza in chiaro (resistenza al preimage di SHA-256).
         async function deriveTopicId(roomCode) {
             const seed = (roomCode || '') + '::topic';
+            if (!isSubtleCryptoSupported) {
+                let hash = 0;
+                for (let i = 0; i < seed.length; i++) {
+                    hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
+                }
+                return hash.toString(16).padStart(8, '0');
+            }
+            const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(seed));
+            return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        // Deriva un segreto dedicato a UNA SOLA televisita, usato per tutte le comunicazioni
+        // cifrate che il browser del PAZIENTE deve generare (conferma consenso, OTP, notifica
+        // sala d'attesa) — MAI il currentGroupCode reale, che finora finiva in chiaro nel link
+        // inviato via email (vedi buildPatientConsentUrl/buildPatientCallUrl). Essendo un hash
+        // SHA-256, non è invertibile verso currentGroupCode (resistenza al preimage) né riusabile
+        // per altre visite (dipende da tvId): anche se un'email al paziente venisse letta da terzi,
+        // permetterebbe al più di impersonare QUELLA visita, mai di leggere/scrivere sul canale
+        // Network reale tra le due strutture.
+        async function derivePatientVisitSecret(tvId) {
+            const seed = currentGroupCode + '::visit::' + tvId;
             if (!isSubtleCryptoSupported) {
                 let hash = 0;
                 for (let i = 0; i < seed.length; i++) {
@@ -4166,6 +4216,17 @@
                 if (payload.backupIntervalMs && payload.backupIntervalMs !== adminBackupIntervalMsOverride) {
                     try { localStorage.setItem('tv_admin_backup_interval_override_' + activeFacilityId, String(payload.backupIntervalMs)); } catch (_) { }
                     startAdminBackupTimer();
+                }
+                // Rotazione del Codice Stanza (F-01): initMQTT gestisce già riconnessione e
+                // invalidazione di cachedCryptoKey (righe ~5904-5915); getLocalStorageCryptoKey si
+                // autoinvalida confrontando il context, quindi la cifratura a riposo segue da sola.
+                // Il valore va anche cachato localmente PRIMA di loadSharedState al prossimo boot
+                // (vedi DOMContentLoaded), altrimenti dopo un riavvio la decifratura userebbe ancora
+                // il vecchio codice mentre lo stato su disco è già stato scritto con quello nuovo.
+                if (payload.groupCode && payload.groupCode !== currentGroupCode) {
+                    try { localStorage.setItem('tv_current_group_code', payload.groupCode); } catch (_) { }
+                    showToast('Il Codice Stanza è stato aggiornato dall\'amministratore: riconnessione in corso…', 'warning');
+                    initMQTT(payload.groupCode, currentBrokerIndex); // non awaited: gestisce da sola riconnessione/cache
                 }
                 const myOverride = payload.users && S.currentDoctor && payload.users[S.currentDoctor.username];
                 if (myOverride && myOverride.active === false) {
@@ -4657,6 +4718,7 @@
                 adminControlState[role] = payload;
                 renderAdminUserManagement(role);
                 renderAdminOpsConfig(role);
+                renderAdminGroupCodeStatus();
             } catch (err) {
                 console.error('Errore nella gestione di un messaggio di controllo (vista admin):', err);
             }
@@ -5641,6 +5703,71 @@
             if (ok) showToast('Intervallo di backup aggiornato', 'success');
         }
 
+        // ---------------------------------------------------------------------------
+        // CODICE STANZA (F-01): rotazione del segreto reale da cui derivano topic MQTT e
+        // chiave AES-GCM del canale Network, distribuita via canale di controllo firmato invece
+        // che digitata a mano dal personale delle strutture (vedi commento a currentGroupCode,
+        // righe ~3733-3738, sul motivo per cui la vecchia UI configurabile era stata rimossa).
+        // ---------------------------------------------------------------------------
+        function toggleAdminGroupCodeVisibility() {
+            const input = document.getElementById('admin-groupcode-input');
+            const eye = document.getElementById('admin-groupcode-eye');
+            if (!input) return;
+            const showing = input.type === 'text';
+            input.type = showing ? 'password' : 'text';
+            if (eye) eye.className = showing ? 'bi bi-eye' : 'bi bi-eye-slash';
+        }
+
+        function generateAdminGroupCode() {
+            const bytes = crypto.getRandomValues(new Uint8Array(16));
+            const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+            const input = document.getElementById('admin-groupcode-input');
+            if (!input) return;
+            input.readOnly = false;
+            input.value = hex;
+            input.type = 'text';
+            const eye = document.getElementById('admin-groupcode-eye');
+            if (eye) eye.className = 'bi bi-eye-slash';
+        }
+
+        // Pubblica lo STESSO codice su entrambe le strutture. Se una delle due pubblicazioni
+        // fallisse (es. connessione MQTT caduta a metà), è meglio avvisare esplicitamente che
+        // lasciarle disallineate in silenzio: smetterebbero di sincronizzarsi tra loro senza
+        // alcun errore visibile per il personale, esattamente il rischio che l'intero meccanismo
+        // (canale firmato invece di digitazione manuale) vuole eliminare.
+        async function applyAdminGroupCode() {
+            const input = document.getElementById('admin-groupcode-input');
+            const code = input ? input.value.trim() : '';
+            if (code.length < 16) { showToast('Genera prima un nuovo codice.', 'warning'); return; }
+            const ok1 = await publishAdminControl('struttura1', { groupCode: code });
+            const ok2 = await publishAdminControl('struttura2', { groupCode: code });
+            if (ok1 && ok2) {
+                showToast('Codice Stanza applicato a entrambe le strutture', 'success');
+                input.value = '';
+                input.readOnly = true;
+                input.type = 'password';
+                const eye = document.getElementById('admin-groupcode-eye');
+                if (eye) eye.className = 'bi bi-eye';
+            } else {
+                showToast('Errore nell\'applicare il Codice Stanza su una o entrambe le strutture: NON considerarlo attivo, riprova.', 'danger');
+            }
+            renderAdminGroupCodeStatus();
+        }
+
+        function renderAdminGroupCodeStatus() {
+            const el = document.getElementById('admin-groupcode-status');
+            if (!el) return;
+            const c1 = adminControlState.struttura1 && adminControlState.struttura1.groupCode;
+            const c2 = adminControlState.struttura2 && adminControlState.struttura2.groupCode;
+            if (!c1 && !c2) {
+                el.innerHTML = '<span class="badge bg-secondary">Mai ruotato: entrambe le strutture usano ancora il default del sorgente</span>';
+            } else if (c1 && c2 && c1 === c2) {
+                el.innerHTML = '<span class="badge bg-success">Allineato su entrambe le strutture</span>';
+            } else {
+                el.innerHTML = '<span class="badge bg-danger">Disallineato tra le due strutture: la sincronizzazione Network è probabilmente ferma, riapplica</span>';
+            }
+        }
+
         // Scarica il backup decifrato di una struttura come file .json, nello stesso formato di
         // "Esporta Backup" (buildBackupData): la struttura può poi recuperarlo da sola con
         // "Importa Backup", senza che l'amministratore debba intervenire sui suoi dati.
@@ -6066,12 +6193,15 @@
                         return;
                     }
 
-                    // Paziente entrato in sala d'attesa (messaggio cifrato, topic /waiting/tvId)
-                    if (currentTopicId && receivedTopic === MQTT_TOPIC_BASE + currentTopicId + '/waiting/' + receivedTopic.split('/waiting/')[1]) {
+                    // Paziente entrato in sala d'attesa (messaggio cifrato, topic /waiting/tvId).
+                    // Decifrato con derivePatientVisitSecret(tvId), MAI currentGroupCode: il paziente
+                    // non riceve più il segreto reale, solo quello dedicato a questa visita (F-01).
+                    if (currentTopicId && receivedTopic.startsWith(MQTT_TOPIC_BASE + currentTopicId + '/waiting/')) {
+                        const waitingTvId = receivedTopic.split('/waiting/')[1];
                         try {
                             const data = JSON.parse(message.toString());
                             if (data.iv && data.ciphertext) {
-                                decryptPayload(data, currentGroupCode).then(decrypted => {
+                                derivePatientVisitSecret(waitingTvId).then(secret => decryptPayload(data, secret)).then(decrypted => {
                                     if (!decrypted || decrypted.type !== 'patient_waiting') return;
                                     const tv = S.televisite.find(t => t.id === decrypted.tvId);
                                     const name = tv ? tv.patient : 'Paziente';
@@ -6079,6 +6209,26 @@
                                     pushBrowserNotif('🟢 Paziente pronto', `${name} è entrato nella videochiamata`, 'patient_waiting');
                                     addNotif('bi-person-check-fill', currentLang === 'fr' ? 'Patient en salle d\'attente' : 'Paziente in sala d\'attesa', name, 'incoming');
                                     flashBell();
+                                });
+                            }
+                        } catch (_) {}
+                        return;
+                    }
+
+                    // Consenso/OTP dal paziente (messaggio cifrato, topic /consent/tvId). Decifrato
+                    // con derivePatientVisitSecret(tvId), non currentGroupCode (F-01, vedi branch
+                    // /waiting/ sopra). handleIncomingSync gestisce già data.type === 'consent_event'
+                    // in modo generico (è lo stesso codice riusato anche da bc.onmessage per il caso
+                    // stessa scheda/browser), quindi nessuna funzione nuova da estrarre: basta
+                    // chiamarlo direttamente col payload decifrato.
+                    if (currentTopicId && receivedTopic.startsWith(MQTT_TOPIC_BASE + currentTopicId + '/consent/')) {
+                        const consentTvId = receivedTopic.split('/consent/')[1];
+                        try {
+                            const data = JSON.parse(message.toString());
+                            if (data.iv && data.ciphertext) {
+                                derivePatientVisitSecret(consentTvId).then(secret => decryptPayload(data, secret)).then(decrypted => {
+                                    if (!decrypted || decrypted.type !== 'consent_event') return;
+                                    handleIncomingSync(decrypted);
                                 });
                             }
                         } catch (_) {}
@@ -6924,7 +7074,11 @@ function pushBrowserNotif(title, body, tag) {
 
             mqttColdStart = !localStorage.getItem('tv_state');
             if (mqttColdStart) showSyncRestoreOverlay();
-            initMQTT(atob('T2xvdmlzaXRhX3BhbGVybW9fdHVuaXNpYQ=='));
+            // currentGroupCode: già allineato al boot a un'eventuale rotazione nota (vedi
+            // DOMContentLoaded) o al default hardcoded se non ce n'è mai stata una — passarlo
+            // esplicitamente invece del default fisso è ciò che permette al login di rispettare
+            // un Codice Stanza ruotato dall'amministratore (F-01) invece di sovrascriverlo sempre.
+            initMQTT(currentGroupCode);
         }
 
         // ---------------------------------------------------------------------------
@@ -7963,12 +8117,16 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
 
         // Costruisce il link pubblico che il paziente apre dalla sua e-mail reale per leggere il consenso
         // e sbloccare l'OTP da solo (senza login, senza backend: tutto lo stato necessario viaggia nell'URL).
-        function buildPatientConsentUrl(tv, patientName, patientEmail) {
+        // Non porta MAI currentGroupCode: solo topicId (già considerato non sensibile, vedi
+        // deriveTopicId) e vkey, un segreto derivato SOLO per questa visita (vedi
+        // derivePatientVisitSecret) — così un'email intercettata non espone il canale Network reale.
+        async function buildPatientConsentUrl(tv, patientName, patientEmail) {
             const base = PUBLIC_PATIENT_BASE_URL;
             const params = new URLSearchParams({
                 consent: '1',
                 tvId: tv.id,
-                room: currentGroupCode,
+                topicId: currentTopicId,
+                vkey: await derivePatientVisitSecret(tv.id),
                 name: patientName,
                 email: patientEmail,
                 lang: currentLang
@@ -8002,18 +8160,21 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
         // Punta a una pagina nostra (non direttamente a Jitsi): così, se il paziente clicca il
         // link DOPO che la televisita è già terminata, può accorgersene invece di entrare in
         // una stanza Jitsi vuota o ormai chiusa.
-        function buildPatientCallUrl(room, tvId) {
+        // "room" qui è lo slug Jitsi/stato-chiamata, indipendente da currentGroupCode (non cambia
+        // con questa modifica). Solo il segreto per la notifica "sala d'attesa" (topicId + vkey,
+        // vedi buildPatientConsentUrl) sostituisce il precedente "code: currentGroupCode".
+        async function buildPatientCallUrl(room, tvId) {
             const base = PUBLIC_PATIENT_BASE_URL;
             const params = new URLSearchParams({
                 call: '1',
                 room: room,
                 lang: currentLang,
-                ...(tvId ? { tvId, code: currentGroupCode } : {})
+                ...(tvId ? { tvId, topicId: currentTopicId, vkey: await derivePatientVisitSecret(tvId) } : {})
             });
             return `${base}?${params.toString()}`;
         }
 
-        function sendConsentEmail(id) {
+        async function sendConsentEmail(id) {
             const tv = S.televisite.find(t => t.id === id);
             if (!tv) return;
 
@@ -8027,7 +8188,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
 
             const patientName = tv.patient;
             const patientEmail = tv.email || 'paziente@email.com';
-            const consentUrl = buildPatientConsentUrl(tv, patientName, patientEmail);
+            const consentUrl = await buildPatientConsentUrl(tv, patientName, patientEmail);
 
             setTimeout(() => {
                 const subject = t('email_subject_consent');
@@ -8218,7 +8379,8 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
 
             patientConsentCtx = {
                 tvId: params.get('tvId'),
-                room: params.get('room') || currentGroupCode,
+                topicId: params.get('topicId'),
+                vkey: params.get('vkey'),
                 patientName: params.get('name') || '',
                 patientEmail: params.get('email') || ''
             };
@@ -8302,7 +8464,8 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
             if (lang && LANGS[lang]) currentLang = lang;
             const room = params.get('room');
             const tvId = params.get('tvId');
-            const code = params.get('code');
+            const topicId = params.get('topicId');
+            const vkey = params.get('vkey');
 
             document.getElementById('patient-call-checking-text').textContent = t('patient_call_checking');
             document.getElementById('patient-call-ended-title').textContent = t('patient_call_ended_title');
@@ -8316,10 +8479,10 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                     document.getElementById('patient-call-ended').classList.remove('d-none');
                 } else {
                     // Notifica il medico che il paziente è entrato in sala d'attesa
-                    if (code && tvId) {
+                    if (topicId && vkey && tvId) {
                         try {
-                            const encrypted = await encryptPayload({ type: 'patient_waiting', tvId }, code);
-                            await publishPatientMqttMessage(code, encrypted, { topicSuffix: '/waiting/' + tvId });
+                            const encrypted = await encryptPayload({ type: 'patient_waiting', tvId }, vkey);
+                            await publishPatientMqttMessage(topicId, encrypted, { topicSuffix: '/waiting/' + tvId });
                         } catch (_) {}
                     }
                     window.location.href = jitsiUrl;
@@ -8368,8 +8531,9 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
         // Connessione MQTT "usa e getta": pubblica un singolo messaggio e si disconnette.
         // Non riusa mqttClient/initMQTT perché quelli pilotano l'interfaccia del cruscotto medico,
         // qui invece serve solo una pubblicazione minima dalla pagina pubblica del paziente.
-        async function publishPatientMqttMessage(room, envelope, options = {}) {
-            const topicId = await deriveTopicId(room);
+        // Riceve il topicId già pronto (dato dal medico nel link, vedi buildPatientConsentUrl):
+        // non lo deriva più da un segreto, dato che il paziente non riceve più currentGroupCode.
+        async function publishPatientMqttMessage(topicId, envelope, options = {}) {
             return new Promise((resolve) => {
                 const topic = MQTT_TOPIC_BASE + topicId + (options.topicSuffix || '');
                 const broker = MQTT_BROKERS[0];
@@ -8428,10 +8592,10 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
             try { bc.postMessage({ type: 'consent_event', tvId: ctx.tvId, otp: otp }); } catch (_) { }
 
             try {
-                const encrypted = await encryptPayload({ type: 'consent_event', tvId: ctx.tvId, otp: otp }, ctx.room);
+                const encrypted = await encryptPayload({ type: 'consent_event', tvId: ctx.tvId, otp: otp }, ctx.vkey);
                 if (encrypted) {
                     await publishPatientMqttMessage(
-                        ctx.room,
+                        ctx.topicId,
                         { sender: 'patient', iv: encrypted.iv, ciphertext: encrypted.ciphertext },
                         { topicSuffix: consentConfirmTopicSuffix(ctx.tvId), retain: true }
                     );
@@ -8474,10 +8638,10 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
             // Stesso canale già usato per lo sblocco OTP: notifica il cruscotto del medico che il consenso è firmato.
             try { bc.postMessage({ type: 'consent_event', action: 'sign', tvId: ctx.tvId, otp: ctx.otp }); } catch (_) { }
             try {
-                const encrypted = await encryptPayload({ type: 'consent_event', action: 'sign', tvId: ctx.tvId, otp: ctx.otp }, ctx.room);
+                const encrypted = await encryptPayload({ type: 'consent_event', action: 'sign', tvId: ctx.tvId, otp: ctx.otp }, ctx.vkey);
                 if (encrypted) {
                     await publishPatientMqttMessage(
-                        ctx.room,
+                        ctx.topicId,
                         { sender: 'patient', iv: encrypted.iv, ciphertext: encrypted.ciphertext },
                         { topicSuffix: consentConfirmTopicSuffix(ctx.tvId), retain: true }
                     );
@@ -10990,7 +11154,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
             syncState(null);
         }
 
-        function startVisit(id) {
+        async function startVisit(id) {
             const tv = S.televisite.find(t => t.id === id);
             if (!tv) return;
             // Visite centro senza stanza video: seleziona il paziente e segna in-corso, senza Jitsi
@@ -11022,7 +11186,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
             // Invia email con il link alla videochiamata se non è già stata inviata
             if (!tv.inviteSent) {
                 tv.inviteSent = true;
-                const callUrl = buildPatientCallUrl(tv.room, tv.id);
+                const callUrl = await buildPatientCallUrl(tv.room, tv.id);
                 const patientName = tv.patient;
                 const patientEmail = tv.email || 'paziente@email.com';
 
@@ -11051,7 +11215,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
         // ---------------------------------------------------------------------------
         // RICHIESTA IMMEDIATA
         // ---------------------------------------------------------------------------
-        function requestImmediate(patientName, patientEmail, phone, dob, gender, pob, idType, cf) {
+        async function requestImmediate(patientName, patientEmail, phone, dob, gender, pob, idType, cf) {
             const finalPatient = patientName || 'Paziente Campione';
             const finalEmail = patientEmail || 'paziente@email.com';
             const finalPhone = phone || '';
@@ -11128,7 +11292,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
             showToast(t('toast_imm_sent'), 'info');
 
             // Invia la mail di invito al paziente (con link alla videochiamata e link al portale)
-            const callUrl = buildPatientCallUrl(room, newTv.id);
+            const callUrl = await buildPatientCallUrl(room, newTv.id);
             const mailBody = currentLang === 'fr'
                 ? `Cher patient, vous êtes invité à participer à une télévisite urgente en temps réel. Veuillez vous connecter au portail patient ou cliquer sur le lien suivant pour rejoindre l'appel vidéo : <a href="${callUrl}">${callUrl}</a>. Veuillez également signer le formulaire de consentement ci-joint.`
                 : `Gentile paziente, sei invitato a partecipare a una televisita urgente in tempo reale. Accedi al portale paziente o clicca sul seguente link per unirti alla videochiamata: <a href="${callUrl}">${callUrl}</a>. Ti invitiamo inoltre a prendere visione e firmare il consenso allegato.`;
@@ -11189,7 +11353,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
             requestImmediate(patientName, patientEmail, phone, dob, gender, pob, idType, cf);
         }
 
-        function submitCentroUrgentRequest(event) {
+        async function submitCentroUrgentRequest(event) {
             if (event) event.preventDefault();
 
             const patientName = document.getElementById('cu-patient').value.trim();
@@ -11251,7 +11415,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
             S.activeRoom = newTv.room;
 
             // Invia mail al paziente con link diretto alla videochiamata (no flusso consenso)
-            const callUrl = buildPatientCallUrl(newTv.room, newTv.id);
+            const callUrl = await buildPatientCallUrl(newTv.room, newTv.id);
             const mailBody = currentLang === 'fr'
                 ? `Cher patient, vous êtes convoqué pour une visite centre urgente. Cliquez sur le lien pour rejoindre la vidéoconférence : <a href="${callUrl}" style="display:inline-block;background:#1a56db;color:#ffffff;padding:10px 22px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:14px;">Rejoindre la Conférence</a>`
                 : `Gentile paziente, sei convocato per una visita centro urgente. Clicca sul link per unirti alla videoconferenza: <a href="${callUrl}" style="display:inline-block;background:#1a56db;color:#ffffff;padding:10px 22px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:14px;">Entra in Videoconferenza</a>`;
@@ -13364,6 +13528,15 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
             document.getElementById('f-date').min = todayStr();
             document.getElementById('f2-date').value = todayStr();
             document.getElementById('f2-date').min = todayStr();
+
+            // Applica un'eventuale rotazione del Codice Stanza già nota da un boot precedente
+            // (vedi handleFacilityControlMessage) PRIMA di loadSharedState: la cifratura a riposo
+            // deriva la sua chiave da currentGroupCode, quindi va allineata al valore con cui lo
+            // stato su disco è stato effettivamente scritto l'ultima volta, non al default.
+            try {
+                const cachedGroupCode = localStorage.getItem('tv_current_group_code');
+                if (cachedGroupCode) currentGroupCode = cachedGroupCode;
+            } catch (_) { }
 
             await loadSharedState();
             applyTranslations();
