@@ -5991,10 +5991,16 @@
             mqttClient.publish(topic, status, { qos: 1, retain: true });
         }
 
-        // Broker pubblici di fallback per massimizzare la compatibilità e stabilità
+        // Broker pubblici di fallback per massimizzare la compatibilità e stabilità.
+        // HiveMQ per primo: la connessione a EMQX può "riuscire" (handshake WebSocket OK, badge
+        // verde) senza però recapitare davvero i messaggi — un guasto silenzioso lato broker che
+        // il client non ha modo di rilevare da solo (non c'è un errore da cui far scattare
+        // tryNextBroker). Riscontrato in produzione l'11/08/2026: Struttura 1 restava "connessa"
+        // a EMQX ma il pannello admin non riceveva mai i suoi backup, mentre Struttura 2 e admin,
+        // finiti su HiveMQ dopo un normale fallback, funzionavano regolarmente.
         const MQTT_BROKERS = [
-            { url: 'wss://broker.emqx.io:8084/mqtt', name: 'EMQX Secure' },
             { url: 'wss://broker.hivemq.com:8884/mqtt', name: 'HiveMQ Secure' },
+            { url: 'wss://broker.emqx.io:8084/mqtt', name: 'EMQX Secure' },
             { url: 'wss://test.mosquitto.org:8081/mqtt', name: 'Mosquitto Secure' }
         ];
         let currentBrokerIndex = 0;
