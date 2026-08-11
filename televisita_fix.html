@@ -1511,6 +1511,11 @@
                                     <input type="number" id="admin-backup-interval-struttura1" class="form-control form-control-sm" style="font-size:.75rem; max-width:80px;" min="1">
                                     <button class="btn btn-outline-primary btn-sm text-nowrap" style="font-size:.7rem;" onclick="saveAdminBackupInterval('struttura1')">Salva</button>
                                 </div>
+                                <button class="btn btn-outline-danger btn-sm mt-2" style="font-size:.7rem;"
+                                    title="Chiede conferma sul dispositivo della struttura: non cancella nulla da sola"
+                                    onclick="requestClearTestData('struttura1')">
+                                    <i class="bi bi-trash3 me-1"></i>Richiedi svuotamento dati di test
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -1564,6 +1569,11 @@
                                     <input type="number" id="admin-backup-interval-struttura2" class="form-control form-control-sm" style="font-size:.75rem; max-width:80px;" min="1">
                                     <button class="btn btn-outline-primary btn-sm text-nowrap" style="font-size:.7rem;" onclick="saveAdminBackupInterval('struttura2')">Salva</button>
                                 </div>
+                                <button class="btn btn-outline-danger btn-sm mt-2" style="font-size:.7rem;"
+                                    title="Chiede conferma sul dispositivo della struttura: non cancella nulla da sola"
+                                    onclick="requestClearTestData('struttura2')">
+                                    <i class="bi bi-trash3 me-1"></i>Richiedi svuotamento dati di test
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -4241,6 +4251,25 @@
                     showToast('Il Codice Stanza è stato aggiornato dall\'amministratore: riconnessione in corso…', 'warning');
                     initMQTT(payload.groupCode, currentBrokerIndex); // non awaited: gestisce da sola riconnessione/cache
                 }
+                // Svuotamento dati di test richiesto dall'admin: mai eseguito da solo a distanza.
+                // L'admin può solo INNESCARE la richiesta; qui serve sempre una conferma umana su
+                // QUESTO dispositivo (resetAllData chiede la sua, con lo stesso testo che vedrebbe
+                // un medico che lo lancia lui stesso) prima che qualcosa venga davvero cancellato.
+                // Deduplica su localStorage (non solo in memoria): retain:true ripubblica lo stesso
+                // messaggio a ogni riconnessione, senza questo controllo il popup di conferma
+                // ricomparirebbe a ogni login anche per una richiesta già gestita in passato.
+                if (payload.clearTestDataRequestId) {
+                    const dedupKey = 'tv_last_cleartest_id_' + activeFacilityId;
+                    let lastHandled = null;
+                    try { lastHandled = localStorage.getItem(dedupKey); } catch (_) { }
+                    if (payload.clearTestDataRequestId !== lastHandled) {
+                        try { localStorage.setItem(dedupKey, payload.clearTestDataRequestId); } catch (_) { }
+                        const proceed = confirm(currentLang === 'fr'
+                            ? 'L\'administrateur a demandé la suppression de toutes les données de test (télévisites, documents, emails simulés) sur cet appareil. Confirmez-vous ?'
+                            : 'L\'amministratore ha richiesto lo svuotamento di tutti i dati di test (televisite, documenti, email simulate) su questo dispositivo. Confermi?');
+                        if (proceed) resetAllData(true);
+                    }
+                }
                 const myOverride = payload.users && S.currentDoctor && payload.users[S.currentDoctor.username];
                 if (myOverride && myOverride.active === false) {
                     showToast('Il tuo account è stato disattivato dall\'amministratore.', 'danger');
@@ -5735,6 +5764,16 @@
             }
             const ok = await publishAdminControl(role, { backupIntervalMs: minutes * 60000 });
             if (ok) showToast('Intervallo di backup aggiornato', 'success');
+        }
+
+        // Richiede lo svuotamento dei dati di test a una struttura: non cancella nulla da qui.
+        // Pubblica solo un ID di richiesta univoco sul canale di controllo firmato; se un medico
+        // è collegato su quella struttura, il suo dispositivo mostra una conferma locale (vedi
+        // handleFacilityControlMessage) — solo lui può far avvenire davvero la cancellazione.
+        async function requestClearTestData(role) {
+            if (!confirm('Richiedere lo svuotamento dei dati di test per questa struttura? Non cancella nulla da qui: se un medico è collegato, dovrà confermare lui stesso sul proprio dispositivo.')) return;
+            const ok = await publishAdminControl(role, { clearTestDataRequestId: 'clr_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8) });
+            if (ok) showToast('Richiesta inviata. Se nessun medico è collegato in questo momento, non succede nulla finché non effettua il login.', 'success');
         }
 
         // ---------------------------------------------------------------------------
@@ -12750,22 +12789,29 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
         // produzione va invocata solo dalla console del browser (uno per uno, su ogni
         // dispositivo/browser usato per i test), proprio per evitare che un medico reale la trovi
         // per errore in un pulsante del pannello impostazioni.
-        function resetAllData() {
+        function resetAllData(skipConfirm) {
             const msg = currentLang === 'fr'
-                ? 'Réinitialiser toutes les données de test ? Toutes les télévisites, documents et emails simulés seront supprimés.'
-                : 'Svuotare tutti i dati di test? Tutte le televisite, documenti ed email simulate verranno eliminati.';
-            if (!confirm(msg)) return;
+                ? 'Réinitialiser toutes les données de test ? Toutes les télévisites, documents, notes cliniques et emails simulés seront supprimés.'
+                : 'Svuotare tutti i dati di test? Tutte le televisite, documenti, note cliniche ed email simulate verranno eliminati.';
+            if (!skipConfirm && !confirm(msg)) return;
+
+            // removedIds calcolato PRIMA di svuotare: serve per dire esplicitamente all'altra
+            // struttura cosa rimuovere. Un semplice syncState(null) non basterebbe — la
+            // sincronizzazione fa solo unione per id (mergeById), non toglie mai nulla da sola.
+            const removedIds = S.televisite.map(tv => tv.id);
 
             S.televisite = [];
             S.docs = [];
             S.emails = [];
-            S.auditLog = [];
+            S.patientNotes = {};
             S.activeTvId = null;
             S.activeRoom = null;
             S.immReq = null;
             S.immRoom = null;
             S.immReqSender = null;
             S.jitsiApi = null;
+            // S.auditLog NON viene toccato: è lo storico degli accessi/login, non un dato paziente
+            // di test, e deve restare anche dopo uno svuotamento.
 
             try { localStorage.removeItem('tv_state'); } catch (_) { }
 
@@ -12775,7 +12821,11 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
             allowEmptyBackupOnce = true;
 
             renderAll();
-            syncState(null);
+            if (removedIds.length) {
+                syncState({ kind: 'demo_patients_removed', removedIds: removedIds });
+            } else {
+                syncState(null);
+            }
             showToast(currentLang === 'fr' ? 'Données réinitialisées.' : 'Dati di test azzerati.', 'success');
         }
 

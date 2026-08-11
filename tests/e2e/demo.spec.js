@@ -70,4 +70,23 @@ test.describe('Demo guidata', () => {
     expect(after.tv).toBe(false);
     expect(after.doc).toBe(false);
   });
+
+  test('resetAllData svuota i dati ma non lo storico accessi', async ({ page }) => {
+    await loginBypass(page, 'struttura1');
+
+    await page.evaluate(() => {
+      window._S.televisite.push({ id: 'rad-1', patient: 'Reset Test', status: 'programmata', visitMode: 'network' });
+      window._S.auditLog.push({ id: 'al-rad-1', username: 'test.medico', name: 'Test Medico', event: 'login_success', ts: Date.now() });
+    });
+
+    // skipConfirm=true: nel browser reale mostra un confirm() nativo, qui bypassato per il test
+    await page.evaluate(() => window.resetAllData(true));
+
+    const after = await page.evaluate(() => ({
+      televisiteCount: window._S.televisite.length,
+      auditLogHasEntry: window._S.auditLog.some(a => a.id === 'al-rad-1')
+    }));
+    expect(after.televisiteCount).toBe(0);
+    expect(after.auditLogHasEntry).toBe(true);
+  });
 });
