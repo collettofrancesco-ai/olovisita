@@ -526,11 +526,14 @@
         /* Pannello guida della demo megagalattica: spiega ogni passo a schermo */
         #demo-guide-panel {
             position: fixed;
-            bottom: 24px;
-            right: 24px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
             z-index: 100000;
             width: 480px;
             max-width: calc(100vw - 32px);
+            max-height: calc(100vh - 32px);
+            overflow-y: auto;
             background: linear-gradient(180deg, #0f2d63 0%, #0d47a1 100%);
             color: #fff;
             border-radius: 18px;
@@ -548,12 +551,12 @@
         @keyframes demoGuideIn {
             from {
                 opacity: 0;
-                transform: translateY(16px);
+                transform: translate(-50%, -50%) scale(0.94);
             }
 
             to {
                 opacity: 1;
-                transform: translateY(0);
+                transform: translate(-50%, -50%) scale(1);
             }
         }
 
@@ -12886,7 +12889,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                 highlightDemoEl('#role-badge');
             });
 
-            scheduleDemo(7000, () => {
+            scheduleDemo(9400, () => {
                 showDemoGuide(2, TOTAL,
                     'Programmazione di una televisita',
                     'Planification d\'une télévisite',
@@ -12895,7 +12898,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                 highlightDemoEl('#card-sched-section');
             });
 
-            scheduleDemo(15000, () => {
+            scheduleDemo(20200, () => {
                 document.getElementById('f-patient').value = DEMO_PATIENT;
                 document.getElementById('f-email').value = 'maria.esposito@example.com';
                 document.getElementById('f-phone').value = '+39 333 123 4567';
@@ -12915,7 +12918,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                     `La télévisite pour <strong>${DEMO_PATIENT}</strong> a été créée et envoyée à l\'Établissement 2 pour acceptation. Le consentement est déjà prêt, mais reste "Non envoyé" jusqu\'à ce que le médecin décide de l\'envoyer au patient.`);
             });
 
-            scheduleDemo(23500, () => {
+            scheduleDemo(31700, () => {
                 switchRole('struttura2');
                 showDemoGuide(4, TOTAL,
                     'Cambiamo prospettiva: Struttura 2',
@@ -12925,7 +12928,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                 highlightDemoEl('#role-badge');
             });
 
-            scheduleDemo(31500, () => {
+            scheduleDemo(42500, () => {
                 if (demoTvId) acceptSched(demoTvId);
                 showDemoGuide(5, TOTAL,
                     'Visita accettata',
@@ -12935,7 +12938,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                 highlightDemoEl('#card-sched-section');
             });
 
-            scheduleDemo(39000, () => {
+            scheduleDemo(52600, () => {
                 switchRole('struttura1');
                 showDemoGuide(6, TOTAL,
                     'Torniamo dal medico richiedente',
@@ -12945,7 +12948,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                 highlightDemoEl('#role-badge');
             });
 
-            scheduleDemo(46500, () => {
+            scheduleDemo(62800, () => {
                 if (demoTvId) sendConsentEmail(demoTvId);
                 showDemoGuide(7, TOTAL,
                     'Invio del consenso al paziente',
@@ -12955,7 +12958,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                 highlightDemoEl('#card-sched-section');
             });
 
-            scheduleDemo(55500, () => {
+            scheduleDemo(74900, () => {
                 if (demoTvId) viewConsentPDF(demoTvId);
                 showDemoGuide(8, TOTAL,
                     'Ecco cosa vede il paziente',
@@ -12964,7 +12967,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                     'Voici exactement l\'écran que le patient voit en cliquant sur le lien reçu par e-mail : il doit lire l\'intégralité du formulaire de consentement. Le bouton "J\'accepte" reste bloqué jusqu\'à ce qu\'on arrive au bas du texte, pour garantir un consentement vraiment éclairé.');
             });
 
-            scheduleDemo(65000, () => {
+            scheduleDemo(87800, () => {
                 const scrollBody = document.getElementById('pdf-modal-scroll-body');
                 if (scrollBody) scrollBody.scrollTop = scrollBody.scrollHeight;
                 setTimeout(() => document.getElementById('btn-unlock-otp')?.click(), 700);
@@ -12975,7 +12978,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                     'Une fois tout le document lu, le bouton s\'active et le patient peut accepter. Le système génère alors un code OTP unique et l\'envoie au patient : il sert à prouver que c\'est vraiment lui qui a accepté, et non une personne ayant simplement intercepté l\'e-mail.');
             });
 
-            scheduleDemo(75000, () => {
+            scheduleDemo(101200, () => {
                 const tv = S.televisite.find(t => t.id === demoTvId);
                 const otp = tv ? tv.consentOtp : null;
                 const modalEl = document.getElementById('pdfModal');
@@ -12998,7 +13001,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                 highlightDemoEl('#card-sched-section');
             });
 
-            scheduleDemo(84000, () => {
+            scheduleDemo(113400, () => {
                 if (demoTvId) startVisit(demoTvId);
                 showDemoGuide(11, TOTAL,
                     'Videochiamata avviata',
@@ -13007,7 +13010,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                     'Le consentement étant signé, le médecin peut démarrer la visioconférence : voici l\'intégration avec Jitsi Meet, avec le dossier clinique du patient toujours visible à côté.');
             });
 
-            scheduleDemo(94000, () => {
+            scheduleDemo(126900, () => {
                 const textarea = document.getElementById('emr-notes-textarea');
                 if (textarea) {
                     textarea.value = currentLang === 'fr' ? DEMO_NOTES_FR : DEMO_NOTES_IT;
@@ -13021,7 +13024,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                 highlightDemoEl('#emr-notes-textarea');
             });
 
-            scheduleDemo(102500, () => {
+            scheduleDemo(138400, () => {
                 openDoctorSignatureModal(S.activeTvId);
                 setTimeout(() => document.getElementById('sig-text-tab')?.click(), 500);
                 showDemoGuide(13, TOTAL,
@@ -13031,7 +13034,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                     'À la fin de la consultation, le médecin signe numériquement le rapport : il peut dessiner sa signature à la main ou, comme dans cette démo, utiliser la signature textuelle certifiée.');
             });
 
-            scheduleDemo(110500, () => {
+            scheduleDemo(149200, () => {
                 confirmDoctorSignature();
                 showDemoGuide(14, TOTAL,
                     'Referto firmato e consegnato',
@@ -13041,7 +13044,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                 highlightDemoEl('#card-docs-section');
             });
 
-            scheduleDemo(118500, () => {
+            scheduleDemo(160000, () => {
                 endCall();
                 showDemoGuide(15, TOTAL,
                     'Fine del consulto',
@@ -13050,7 +13053,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                     'Le médecin termine la visioconférence : la télévisite passe automatiquement au statut "Terminée" pour les deux établissements.');
             });
 
-            scheduleDemo(126500, () => {
+            scheduleDemo(170800, () => {
                 switchRole('struttura1');
                 showDemoGuide(16, TOTAL,
                     'Ora vediamo una televisita urgente',
@@ -13060,7 +13063,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                 highlightDemoEl('#card-urgente-section');
             });
 
-            scheduleDemo(134500, () => {
+            scheduleDemo(181600, () => {
                 requestImmediate('Luca Bianchi', 'luca.bianchi@example.com', '+39 333 987 6543', '1978-09-02', 'M', 'Catania', 'CF', '');
                 showDemoGuide(17, TOTAL,
                     'Richiesta urgente inviata',
@@ -13070,7 +13073,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                 highlightDemoEl('#card-docs-section');
             });
 
-            scheduleDemo(143000, () => {
+            scheduleDemo(193000, () => {
                 switchRole('struttura2');
                 showDemoGuide(18, TOTAL,
                     'Anche qui, sincronizzazione immediata',
@@ -13080,7 +13083,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                 highlightDemoEl('#card-urgente-section');
             });
 
-            scheduleDemo(150500, () => {
+            scheduleDemo(203200, () => {
                 acceptImmediate();
                 showDemoGuide(19, TOTAL,
                     'Richiesta urgente accettata',
@@ -13089,7 +13092,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                     'Le médecin accepte : tout étant déjà prêt (consentement compris), on peut rejoindre la visioconférence immédiatement.');
             });
 
-            scheduleDemo(159000, () => {
+            scheduleDemo(214600, () => {
                 S.immReq = 'in-corso';
                 S.activeRoom = S.immRoom;
                 renderAll();
@@ -13103,7 +13106,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
             });
 
             // NUOVO: sala d'attesa virtuale — il paziente entra nel link di chiamata e il medico viene notificato
-            scheduleDemo(168000, () => {
+            scheduleDemo(226800, () => {
                 const urgentTv = S.televisite.find(t => t.type === 'urgente' && (t.status === 'in-corso' || t.status === 'accettata'));
                 const waitingName = urgentTv ? urgentTv.patient : 'Luca Bianchi';
                 showToast(`<i class="bi bi-person-check-fill text-success me-2"></i>${escapeHtml(waitingName)} è entrato in sala d'attesa`, 'success');
@@ -13117,7 +13120,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                 highlightDemoEl('#notif-panel');
             });
 
-            scheduleDemo(177000, () => {
+            scheduleDemo(239000, () => {
                 endCall();
                 showDemoGuide(22, TOTAL,
                     'Fine del consulto urgente',
@@ -13127,7 +13130,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
             });
 
             // NUOVO: Centro Urgente — paziente fisicamente presente in struttura
-            scheduleDemo(185000, () => {
+            scheduleDemo(249800, () => {
                 switchRole('struttura1');
                 showDemoGuide(23, TOTAL,
                     'Quarta modalità: Accesso Centro Urgente',
@@ -13137,7 +13140,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                 highlightDemoEl('#card-urgente-section');
             });
 
-            scheduleDemo(193000, () => {
+            scheduleDemo(260600, () => {
                 document.getElementById('cu-patient').value = DEMO_CENTRO_URGENTE_PATIENT;
                 document.getElementById('cu-email').value = 'roberto.ferrari@example.com';
                 document.getElementById('cu-phone').value = '+39 333 888 9999';
@@ -13152,7 +13155,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                 highlightDemoEl('#card-urgente-section');
             });
 
-            scheduleDemo(202000, () => {
+            scheduleDemo(272700, () => {
                 endCall();
                 showDemoGuide(25, TOTAL,
                     'Visita Centro Urgente completata',
@@ -13166,7 +13169,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
             // visita da sola, senza coinvolgere l'altra struttura). Restiamo in struttura1
             // così non serve un altro cambio di profilo medico.
             // ---------------------------------------------------------------------------
-            scheduleDemo(211000, () => {
+            scheduleDemo(284800, () => {
                 showDemoGuide(26, TOTAL,
                     'Quinta modalità: Televisita Centro programmata',
                     'Cinquième mode : Télévisite Centre planifiée',
@@ -13175,7 +13178,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                 highlightDemoEl('#card-sched-section');
             });
 
-            scheduleDemo(219500, () => {
+            scheduleDemo(296300, () => {
                 document.getElementById('f-patient').value = DEMO_CENTRO_PATIENT;
                 document.getElementById('f-email').value = 'sara.greco@example.com';
                 document.getElementById('f-phone').value = '+39 333 555 1212';
@@ -13193,7 +13196,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                     `Le formulaire est identique à celui d'avant, seul le type a changé. Pas d'"attente de confirmation" : la télévisite pour <strong>${DEMO_CENTRO_PATIENT}</strong> est déjà "Acceptée", car l'autre établissement n'est même pas concerné. Il ne manque que le consentement du patient pour pouvoir démarrer.`);
             });
 
-            scheduleDemo(228500, () => {
+            scheduleDemo(308500, () => {
                 if (demoCentroTvId) sendConsentEmail(demoCentroTvId);
                 showDemoGuide(28, TOTAL,
                     'Il consenso funziona allo stesso modo',
@@ -13203,7 +13206,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                 highlightDemoEl('#card-sched-section');
             });
 
-            scheduleDemo(238500, () => {
+            scheduleDemo(322000, () => {
                 if (demoCentroTvId) viewConsentPDF(demoCentroTvId);
                 setTimeout(() => {
                     const scrollBody = document.getElementById('pdf-modal-scroll-body');
@@ -13217,7 +13220,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                     'Le patient ouvre le lien reçu, lit l\'intégralité du formulaire et accepte : le système lui envoie le code OTP à saisir pour signer, exactement comme dans le parcours normal.');
             });
 
-            scheduleDemo(248500, () => {
+            scheduleDemo(335500, () => {
                 const tv = S.televisite.find(t => t.id === demoCentroTvId);
                 const otp = tv ? tv.consentOtp : null;
                 const modalEl = document.getElementById('pdfModal');
@@ -13246,7 +13249,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                 highlightDemoEl('#card-sched-section');
             });
 
-            scheduleDemo(257500, () => {
+            scheduleDemo(347600, () => {
                 if (demoCentroTvId) startVisit(demoCentroTvId);
                 showDemoGuide(31, TOTAL,
                     'Videochiamata della Televisita Centro',
@@ -13255,7 +13258,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                     'Exactement la même visioconférence que jusqu\'ici, avec le dossier clinique du patient toujours à côté : la seule différence, invisible pour le patient, est que cette visite reste une affaire interne à cet établissement seul.');
             });
 
-            scheduleDemo(267000, () => {
+            scheduleDemo(360400, () => {
                 endCall();
                 showDemoGuide(32, TOTAL,
                     'Fine della Televisita Centro',
@@ -13265,7 +13268,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
             });
 
             // NUOVO: mostra filtri, storico pazienti — nuove funzioni UI
-            scheduleDemo(275000, () => {
+            scheduleDemo(371200, () => {
                 setVisitFilter('completate');
                 showDemoGuide(33, TOTAL,
                     'Filtri, storico e gestione visite',
@@ -13276,7 +13279,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                 setTimeout(() => setVisitFilter('all'), 7000);
             });
 
-            scheduleDemo(283000, () => {
+            scheduleDemo(382000, () => {
                 showDemoGuide(34, TOTAL,
                     'Demo completata!',
                     'Démo terminée !',
