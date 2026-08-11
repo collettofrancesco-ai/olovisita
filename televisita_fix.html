@@ -6999,7 +6999,12 @@ function pushBrowserNotif(title, body, tag) {
         }
 
         async function submitPasswordChangeRequest() {
-            const currentPw  = document.getElementById('cpw-current').value.trim();
+            // NIENTE .trim() sulla password attuale: il login vero (submitLogin, pwdEl.value) non
+            // la modifica prima di calcolarne l'hash, quindi neanche qui va alterata prima del
+            // confronto — se la password reale contenesse uno spazio iniziale/finale (anche per un
+            // copia-incolla accidentale), toglierlo qui la renderebbe diversa da quella che ha
+            // davvero funzionato al login, facendo fallire un confronto in realtà corretto.
+            const currentPw  = document.getElementById('cpw-current').value;
             const newPw      = document.getElementById('cpw-new').value;
             const confirmPw  = document.getElementById('cpw-confirm').value;
             const errEl      = document.getElementById('cpw-error');
