@@ -4345,6 +4345,7 @@
                 // activeFacilityId, non S.role: vedi commento in handleFacilityControlMessage.
                 const summaryData = {
                     role: activeFacilityId,
+                    brokerName: MQTT_BROKERS[currentBrokerIndex] ? MQTT_BROKERS[currentBrokerIndex].name : null,
                     shared: {
                         televisite: S.televisite,
                         emails: S.emails,
@@ -5381,12 +5382,20 @@
             const uptimeBadge = uptimePct !== null
                 ? `<span class="badge bg-light text-dark ms-1" style="font-size:0.65rem;border:1px solid #cfd8dc;" title="Percentuale di tempo online nelle ultime 24 ore, ricostruita dallo storico stati">Uptime 24h: ${uptimePct}%</span>`
                 : '';
+            // Broker su cui questa struttura è connessa (vedi MQTT_BROKERS, un solo broker fisso
+            // senza fallback): mostrato comunque per conferma visiva diretta, senza dover aprire
+            // la console di ogni dispositivo per scoprirlo.
+            const brokerName = entry.data && entry.data.brokerName;
+            const brokerBadge = brokerName
+                ? `<span class="badge bg-secondary ms-1" style="font-size:0.65rem;" title="Broker MQTT usato da questa struttura">📡 ${escapeHtml(brokerName)}</span>`
+                : '';
             statusEl.innerHTML = `<span style="font-size:0.78rem; color:#546e7a;">
                 ${label} <strong>${escapeHtml(entry.facility)}</strong>
                 — ultimo backup: <strong>${fmtAgo(ageMs)}</strong>
                 <span class="text-muted" style="font-size:0.7rem;">(${new Date(entry.ts).toLocaleTimeString('it-IT', {hour:'2-digit',minute:'2-digit'})})</span>
                 ${isDanger ? '<span class="badge bg-danger ms-1" style="font-size:0.65rem;">OFFLINE?</span>' : ''}
                 ${uptimeBadge}
+                ${brokerBadge}
             </span>`;
             statusEl.className = 'mb-3';
         }
@@ -6003,19 +6012,19 @@
             mqttClient.publish(topic, status, { qos: 1, retain: true });
         }
 
-        // Broker pubblici di fallback per massimizzare la compatibilità e stabilità.
-        // EMQX per primo (non HiveMQ): non c'è alcun ponte tra i tre broker, sono sistemi separati
-        // — se due client finiscono su broker diversi, per quanto entrambi "connessi", non si
-        // vedranno mai. Riscontrato in produzione l'11/08/2026: dalla rete di Struttura 1, HiveMQ
-        // dà sempre "connack timeout" (probabile blocco della porta 8884 lato rete/firewall di
-        // quella sede) mentre EMQX si connette regolarmente; Admin e Struttura 2, su reti diverse,
-        // raggiungono invece sia EMQX sia HiveMQ. Mettendo EMQX per primo per tutti si massimizza
-        // la probabilità che ogni parte converga sullo stesso broker, invece di lasciare che il
-        // fallback indipendente di ciascun client li smisti su sistemi incompatibili tra loro.
+        // UN SOLO broker, deliberatamente senza fallback automatico ad altri broker: non c'è
+        // alcun ponte tra broker MQTT pubblici diversi, sono sistemi completamente separati — se
+        // le due strutture finissero su broker diversi, per quanto entrambe "connesse" ciascuna
+        // al proprio, non si vedrebbero mai a vicenda (visite Network mai sincronizzate, backup
+        // admin mai ricevuti). Riscontrato per davvero in produzione l'11/08/2026: un vecchio
+        // fallback automatico EMQX→HiveMQ→Mosquitto aveva smistato Struttura 1 (bloccata su HiveMQ
+        // dalla rete di quella sede, "connack timeout") su un broker diverso da quello di admin e
+        // Struttura 2. Scelta esplicita dopo quell'incidente: meglio un'interruzione totale ma
+        // evidente ("MQTT: Disconnesso" per tutti, vedi retryConnection più sotto) che un
+        // disallineamento silenzioso. Se EMQX dovesse diventare inaffidabile in modo permanente,
+        // sostituire questa voce con un broker diverso — MAI aggiungerne un secondo con fallback.
         const MQTT_BROKERS = [
-            { url: 'wss://broker.emqx.io:8084/mqtt', name: 'EMQX Secure' },
-            { url: 'wss://broker.hivemq.com:8884/mqtt', name: 'HiveMQ Secure' },
-            { url: 'wss://test.mosquitto.org:8081/mqtt', name: 'Mosquitto Secure' }
+            { url: 'wss://broker.emqx.io:8084/mqtt', name: 'EMQX Secure' }
         ];
         let currentBrokerIndex = 0;
         let connectionTimeoutId = null;
@@ -6293,30 +6302,33 @@
                 mqttClient.on('error', (err) => {
                     console.error(`MQTT Error on ${broker.name}:`, err);
                     updateMqttStatus('Errore (' + broker.name + ')', 'danger');
-                    tryNextBroker();
+                    retryConnection();
                 });
 
                 connectionTimeoutId = setTimeout(() => {
                     if (!mqttClient || !mqttClient.connected) {
-                        console.warn(`Connection to ${broker.name} timed out. Trying next broker...`);
-                        tryNextBroker();
+                        console.warn(`Connection to ${broker.name} timed out. Retrying same broker...`);
+                        retryConnection();
                     }
                 }, 5000);
 
             } catch (err) {
                 console.error(`Failed to initialize MQTT connection to ${broker.name}:`, err);
                 updateMqttStatus('Errore', 'danger');
-                tryNextBroker();
+                retryConnection();
             }
 
-            function tryNextBroker() {
+            // Riprova SEMPRE lo stesso broker (mai un altro, vedi commento su MQTT_BROKERS): un
+            // breve ritardo evita di martellarlo con tentativi immediati durante un'interruzione
+            // prolungata. Nessun avanzamento di indice, quindi nessun rischio che le due strutture
+            // divergano su broker diversi durante una riconnessione.
+            function retryConnection() {
                 if (connectionTimeoutId) {
                     clearTimeout(connectionTimeoutId);
                     connectionTimeoutId = null;
                 }
-                const nextIndex = currentBrokerIndex + 1;
-                console.log(`Retrying connection with next broker index: ${nextIndex}`);
-                initMQTT(currentGroupCode, nextIndex);
+                updateMqttStatus('Riconnessione tra 5s...', 'warning');
+                setTimeout(() => initMQTT(currentGroupCode, brokerIndex), 5000);
             }
         }
 
@@ -7804,6 +7816,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
             const emailJsRaw = localStorage.getItem('tv_emailjs_config_' + role);
             return {
                 role: role,
+                brokerName: MQTT_BROKERS[currentBrokerIndex] ? MQTT_BROKERS[currentBrokerIndex].name : null,
                 shared: getSharedStateForStorage(),
                 emailjs: emailJsRaw ? JSON.parse(emailJsRaw) : null,
                 exportDate: new Date().toISOString()
