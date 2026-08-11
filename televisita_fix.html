@@ -5992,15 +5992,17 @@
         }
 
         // Broker pubblici di fallback per massimizzare la compatibilità e stabilità.
-        // HiveMQ per primo: la connessione a EMQX può "riuscire" (handshake WebSocket OK, badge
-        // verde) senza però recapitare davvero i messaggi — un guasto silenzioso lato broker che
-        // il client non ha modo di rilevare da solo (non c'è un errore da cui far scattare
-        // tryNextBroker). Riscontrato in produzione l'11/08/2026: Struttura 1 restava "connessa"
-        // a EMQX ma il pannello admin non riceveva mai i suoi backup, mentre Struttura 2 e admin,
-        // finiti su HiveMQ dopo un normale fallback, funzionavano regolarmente.
+        // EMQX per primo (non HiveMQ): non c'è alcun ponte tra i tre broker, sono sistemi separati
+        // — se due client finiscono su broker diversi, per quanto entrambi "connessi", non si
+        // vedranno mai. Riscontrato in produzione l'11/08/2026: dalla rete di Struttura 1, HiveMQ
+        // dà sempre "connack timeout" (probabile blocco della porta 8884 lato rete/firewall di
+        // quella sede) mentre EMQX si connette regolarmente; Admin e Struttura 2, su reti diverse,
+        // raggiungono invece sia EMQX sia HiveMQ. Mettendo EMQX per primo per tutti si massimizza
+        // la probabilità che ogni parte converga sullo stesso broker, invece di lasciare che il
+        // fallback indipendente di ciascun client li smisti su sistemi incompatibili tra loro.
         const MQTT_BROKERS = [
-            { url: 'wss://broker.hivemq.com:8884/mqtt', name: 'HiveMQ Secure' },
             { url: 'wss://broker.emqx.io:8084/mqtt', name: 'EMQX Secure' },
+            { url: 'wss://broker.hivemq.com:8884/mqtt', name: 'HiveMQ Secure' },
             { url: 'wss://test.mosquitto.org:8081/mqtt', name: 'Mosquitto Secure' }
         ];
         let currentBrokerIndex = 0;
