@@ -93,7 +93,14 @@ def add_new_user(text, facility, code_line):
 
 def reset_password(text, code_line):
     """Sostituisce la riga esistente con lo stesso username con code_line, in qualunque
-    struttura si trovi. Restituisce il nuovo testo."""
+    struttura si trovi. Restituisce il nuovo testo.
+
+    Il codice incollato può venire da una qualsiasi delle tre origini nel pannello admin
+    (tutte producono lo stesso formato di riga, con lo stesso passwordHash già calcolato):
+    reset manuale in "Gestione utenti" ("Genera codice"), "password dimenticata"
+    ("Genera codice" nella richiesta), oppure una richiesta di cambio password inviata dal
+    medico stesso dal proprio cruscotto (bottone "Copia codice" sulla richiesta) — in
+    quest'ultimo caso il medico ha già scelto e verificato la nuova password da solo."""
     username = extract_username(code_line)
     if not username:
         raise ValueError("Non trovo lo username nel codice incollato.")
@@ -196,7 +203,9 @@ def run(cmd, **kwargs):
 def main():
     print("=== Gestione utenti Olovisita ===")
     print("1) Aggiungi un nuovo utente")
-    print("2) Resetta la password di un utente esistente")
+    print("2) Applica una password nuova a un utente esistente")
+    print("   (copre reset dell'admin, 'password dimenticata' e richiesta di cambio")
+    print("   fatta dal medico stesso: tutte producono lo stesso codice da incollare qui)")
     print("3) Elimina un utente esistente")
     print("4) Elenco utenti esistenti")
     print("5) Modifica nome/specializzazione di un utente esistente")
@@ -212,9 +221,17 @@ def main():
             print(f"  [{FACILITY_LABELS[facility]}] {name} — username: {username}")
         return
 
-    if choice in ("1", "2"):
+    if choice == "1":
         print("\nIncolla qui sotto la riga di codice generata dal pannello admin (quella che inizia")
         print("con '{ username: ...'), poi premi invio:")
+        code_line = input("> ").strip()
+        if not code_line.startswith("{") or "username:" not in code_line:
+            sys.exit("Il codice incollato non sembra valido (deve iniziare con '{' e contenere 'username:').")
+    elif choice == "2":
+        print("\nIncolla qui sotto il codice con la nuova password (quella che inizia con")
+        print("'{ username: ...'): dalla scheda del medico in Gestione utenti ('Genera codice'),")
+        print("da una richiesta 'password dimenticata', oppure copiato da una richiesta di cambio")
+        print("password inviata dal medico stesso. Poi premi invio:")
         code_line = input("> ").strip()
         if not code_line.startswith("{") or "username:" not in code_line:
             sys.exit("Il codice incollato non sembra valido (deve iniziare con '{' e contenere 'username:').")
