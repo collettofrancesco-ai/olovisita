@@ -4487,20 +4487,32 @@
             return Math.round((onlineMs / coveredMs) * 100);
         }
 
-        function mergeAdminAuditLog(role, incomingEntries) {
-            if (!role || !Array.isArray(incomingEntries) || incomingEntries.length === 0) return;
-            const existing = adminAuditLogMerged[role] || (adminAuditLogMerged[role] = []);
-            const existingIds = new Set(existing.map(e => e.id));
+        // Ogni voce va instradata in base al PROPRIO campo "role" (impostato da recordAuditEvent
+        // sul dispositivo che ha generato l'evento), non al ruolo della struttura che ha spedito
+        // questo backup: un browser che nella stessa sessione locale ha ospitato login di
+        // entrambe le strutture (tipico durante i test) può avere nel proprio S.auditLog voci di
+        // entrambi i ruoli, e pubblicarle tutte insieme in un unico backup. Instradare per
+        // envelopeRole le avrebbe etichettate tutte come la struttura di chi le ha spedite, anche
+        // quelle nate sull'altra — riscontrato in produzione l'11/08/2026.
+        function mergeAdminAuditLog(envelopeRole, incomingEntries) {
+            if (!Array.isArray(incomingEntries) || incomingEntries.length === 0) return;
+            const touchedRoles = new Set();
             incomingEntries.forEach(e => {
-                if (e && e.id && !existingIds.has(e.id)) {
-                    existing.push(e);
-                    existingIds.add(e.id);
+                if (!e || !e.id) return;
+                const targetRole = e.role || envelopeRole;
+                if (!targetRole) return;
+                const existing = adminAuditLogMerged[targetRole] || (adminAuditLogMerged[targetRole] = []);
+                if (existing.some(x => x.id === e.id)) return;
+                existing.push(e);
+                touchedRoles.add(targetRole);
+            });
+            touchedRoles.forEach(r => {
+                const arr = adminAuditLogMerged[r];
+                if (arr.length > ADMIN_AUDIT_LOG_MAX_ENTRIES) {
+                    arr.sort((a, b) => a.ts - b.ts);
+                    adminAuditLogMerged[r] = arr.slice(-ADMIN_AUDIT_LOG_MAX_ENTRIES);
                 }
             });
-            if (existing.length > ADMIN_AUDIT_LOG_MAX_ENTRIES) {
-                existing.sort((a, b) => a.ts - b.ts);
-                adminAuditLogMerged[role] = existing.slice(-ADMIN_AUDIT_LOG_MAX_ENTRIES);
-            }
             try { localStorage.setItem(ADMIN_AUDIT_LOG_STORAGE_KEY, JSON.stringify(adminAuditLogMerged)); } catch (_) { }
         }
 
