@@ -12788,7 +12788,31 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
             demoTimeouts.push(setTimeout(fn, delay));
         }
 
+        // Cronologia dei passi già mostrati (mai le AZIONI, solo il testo): permette di tornare
+        // indietro per rileggere un passo con calma senza disturbare lo stato reale della demo
+        // (visite già create, ruolo già cambiato, ecc. restano quelli che sono davvero in quel
+        // momento). demoHistoryIndex punta al passo attualmente mostrato nel pannello; può essere
+        // più indietro dell'ultimo passo davvero accaduto se il medico sta rileggendo qualcosa.
+        let demoHistory = [];
+        let demoHistoryIndex = -1;
+
         function showDemoGuide(step, total, titleIt, titleFr, textIt, textFr) {
+            demoHistory.push({ step, total, titleIt, titleFr, textIt, textFr });
+            // Segue automaticamente il passo nuovo SOLO se il medico non si è già spostato
+            // indietro a rileggere qualcosa; altrimenti resta dov'è, senza interromperlo.
+            const wasFollowingLive = demoHistoryIndex === demoHistory.length - 2 || demoHistoryIndex === -1;
+            if (wasFollowingLive) {
+                demoHistoryIndex = demoHistory.length - 1;
+                renderDemoGuideEntry(demoHistoryIndex);
+            } else {
+                updateDemoNavButtons();
+            }
+        }
+
+        function renderDemoGuideEntry(idx) {
+            const entry = demoHistory[idx];
+            if (!entry) return;
+            const { step, total, titleIt, titleFr, textIt, textFr } = entry;
             const fr = currentLang === 'fr';
             let panel = document.getElementById('demo-guide-panel');
             if (!panel) {
@@ -12797,6 +12821,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                 document.body.appendChild(panel);
             }
             const pct = Math.round((step / total) * 100);
+            const isLive = idx === demoHistory.length - 1;
             panel.innerHTML = `
                 <div class="d-flex align-items-start justify-content-between mb-1">
                     <span class="demo-guide-drag-handle" title="${fr ? 'Faites glisser pour déplacer' : 'Trascina per spostare'}"><i class="bi bi-grip-horizontal"></i></span>
@@ -12806,13 +12831,42 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                 <div id="demo-guide-progress-track"><div id="demo-guide-progress-bar" style="width:${pct}%;"></div></div>
                 <div class="demo-guide-title">${fr ? titleFr : titleIt}</div>
                 <div class="demo-guide-text">${fr ? textFr : textIt}</div>
-                ${step === total ? `<button class="btn btn-sm btn-light fw-bold mt-3 w-100" onclick="stopDemo()"><i class="bi bi-check-circle-fill me-1"></i>${fr ? 'Terminer la démo' : 'Chiudi la demo'}</button>` : ''}
+                <div class="d-flex align-items-center justify-content-between mt-3">
+                    <button id="demo-nav-back" class="btn btn-sm btn-outline-light" onclick="demoGoBack()" title="${fr ? 'Étape précédente' : 'Passo precedente'}">
+                        <i class="bi bi-chevron-left"></i> ${fr ? 'Précédent' : 'Indietro'}
+                    </button>
+                    <span id="demo-nav-live-badge" class="small" style="color:#93c5fd;${isLive ? 'visibility:hidden;' : ''}">${fr ? 'Relecture' : 'Rilettura'}</span>
+                    <button id="demo-nav-forward" class="btn btn-sm btn-outline-light" onclick="demoGoForward()" title="${fr ? 'Étape suivante' : 'Passo successivo'}">
+                        ${fr ? 'Suivant' : 'Avanti'} <i class="bi bi-chevron-right"></i>
+                    </button>
+                </div>
+                ${step === total ? `<button class="btn btn-sm btn-light fw-bold mt-2 w-100" onclick="stopDemo()"><i class="bi bi-check-circle-fill me-1"></i>${fr ? 'Terminer la démo' : 'Chiudi la demo'}</button>` : ''}
             `;
             // Riattacca il trascinamento a ogni passo, perché innerHTML rimpiazza la maniglia. Non
             // reimposta mai la posizione già scelta dal medico: tocca solo bottom/right di default
             // (dallo stylesheet) finché non viene trascinato almeno una volta.
             const handle = panel.querySelector('.demo-guide-drag-handle');
             if (handle) makeDemoPanelDraggable(panel, handle);
+            updateDemoNavButtons();
+        }
+
+        function updateDemoNavButtons() {
+            const backBtn = document.getElementById('demo-nav-back');
+            const fwdBtn = document.getElementById('demo-nav-forward');
+            if (backBtn) backBtn.disabled = demoHistoryIndex <= 0;
+            if (fwdBtn) fwdBtn.disabled = demoHistoryIndex >= demoHistory.length - 1;
+        }
+
+        function demoGoBack() {
+            if (demoHistoryIndex <= 0) return;
+            demoHistoryIndex--;
+            renderDemoGuideEntry(demoHistoryIndex);
+        }
+
+        function demoGoForward() {
+            if (demoHistoryIndex >= demoHistory.length - 1) return;
+            demoHistoryIndex++;
+            renderDemoGuideEntry(demoHistoryIndex);
         }
 
         // Trascinamento libero del pannello guida: al primo mousedown/touchstart passa da
@@ -12889,6 +12943,8 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
         function stopDemo() {
             demoTimeouts.forEach(clearTimeout);
             demoTimeouts = [];
+            demoHistory = [];
+            demoHistoryIndex = -1;
             hideDemoGuide();
             document.querySelectorAll('.demo-pulse').forEach(el => el.classList.remove('demo-pulse'));
             S.demoMode = false;
