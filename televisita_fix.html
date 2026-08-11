@@ -526,9 +526,8 @@
         /* Pannello guida della demo megagalattica: spiega ogni passo a schermo */
         #demo-guide-panel {
             position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
+            bottom: 24px;
+            right: 24px;
             z-index: 100000;
             width: 480px;
             max-width: calc(100vw - 32px);
@@ -551,14 +550,25 @@
         @keyframes demoGuideIn {
             from {
                 opacity: 0;
-                transform: translate(-50%, -50%) scale(0.94);
+                transform: translateY(16px);
             }
 
             to {
                 opacity: 1;
-                transform: translate(-50%, -50%) scale(1);
+                transform: translateY(0);
             }
         }
+
+        #demo-guide-panel .demo-guide-drag-handle {
+            cursor: grab;
+            color: #93c5fd;
+            opacity: .7;
+            padding: 2px 4px;
+            margin: -2px -4px 0 0;
+            user-select: none;
+            touch-action: none;
+        }
+        #demo-guide-panel .demo-guide-drag-handle:active { cursor: grabbing; opacity: 1; }
 
         #demo-guide-progress-track {
             height: 6px;
@@ -12789,7 +12799,8 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
             const pct = Math.round((step / total) * 100);
             panel.innerHTML = `
                 <div class="d-flex align-items-start justify-content-between mb-1">
-                    <span class="demo-guide-step-label"><i class="bi bi-stars me-1"></i>${fr ? `Démo guidée — Étape ${step}/${total}` : `Demo guidata — Passo ${step}/${total}`}</span>
+                    <span class="demo-guide-drag-handle" title="${fr ? 'Faites glisser pour déplacer' : 'Trascina per spostare'}"><i class="bi bi-grip-horizontal"></i></span>
+                    <span class="demo-guide-step-label flex-grow-1 ms-1"><i class="bi bi-stars me-1"></i>${fr ? `Démo guidée — Étape ${step}/${total}` : `Demo guidata — Passo ${step}/${total}`}</span>
                     <button onclick="stopDemo()" style="background:none;border:none;color:#bfdbfe;opacity:.8;cursor:pointer;font-size:.95rem;line-height:1;padding:0;" title="${fr ? 'Quitter la démo' : 'Esci dalla demo'}">&#x2715;</button>
                 </div>
                 <div id="demo-guide-progress-track"><div id="demo-guide-progress-bar" style="width:${pct}%;"></div></div>
@@ -12797,6 +12808,54 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                 <div class="demo-guide-text">${fr ? textFr : textIt}</div>
                 ${step === total ? `<button class="btn btn-sm btn-light fw-bold mt-3 w-100" onclick="stopDemo()"><i class="bi bi-check-circle-fill me-1"></i>${fr ? 'Terminer la démo' : 'Chiudi la demo'}</button>` : ''}
             `;
+            // Riattacca il trascinamento a ogni passo, perché innerHTML rimpiazza la maniglia. Non
+            // reimposta mai la posizione già scelta dal medico: tocca solo bottom/right di default
+            // (dallo stylesheet) finché non viene trascinato almeno una volta.
+            const handle = panel.querySelector('.demo-guide-drag-handle');
+            if (handle) makeDemoPanelDraggable(panel, handle);
+        }
+
+        // Trascinamento libero del pannello guida: al primo mousedown/touchstart passa da
+        // bottom/right (posizione di default) a top/left espliciti calcolati dalla posizione
+        // attuale, poi segue il puntatore restando sempre dentro i bordi della finestra.
+        function makeDemoPanelDraggable(panel, handle) {
+            let dragging = false, startX = 0, startY = 0, startLeft = 0, startTop = 0;
+            const onMove = (e) => {
+                if (!dragging) return;
+                const point = e.touches ? e.touches[0] : e;
+                const dx = point.clientX - startX;
+                const dy = point.clientY - startY;
+                const maxLeft = window.innerWidth - panel.offsetWidth - 8;
+                const maxTop = window.innerHeight - panel.offsetHeight - 8;
+                panel.style.left = Math.max(8, Math.min(startLeft + dx, maxLeft)) + 'px';
+                panel.style.top = Math.max(8, Math.min(startTop + dy, maxTop)) + 'px';
+                if (e.cancelable) e.preventDefault();
+            };
+            const onUp = () => {
+                dragging = false;
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('touchmove', onMove);
+                document.removeEventListener('mouseup', onUp);
+                document.removeEventListener('touchend', onUp);
+            };
+            const onDown = (e) => {
+                const point = e.touches ? e.touches[0] : e;
+                const rect = panel.getBoundingClientRect();
+                panel.style.left = rect.left + 'px';
+                panel.style.top = rect.top + 'px';
+                panel.style.right = 'auto';
+                panel.style.bottom = 'auto';
+                startX = point.clientX; startY = point.clientY;
+                startLeft = rect.left; startTop = rect.top;
+                dragging = true;
+                document.addEventListener('mousemove', onMove);
+                document.addEventListener('touchmove', onMove, { passive: false });
+                document.addEventListener('mouseup', onUp);
+                document.addEventListener('touchend', onUp);
+                e.preventDefault();
+            };
+            handle.addEventListener('mousedown', onDown);
+            handle.addEventListener('touchstart', onDown, { passive: false });
         }
 
         function hideDemoGuide() {
