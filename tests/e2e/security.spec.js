@@ -128,6 +128,33 @@ test.describe('Rafforzamento hash password', () => {
   });
 });
 
+test.describe('Fusione dello storico accessi tra dispositivi', () => {
+  test('handleIncomingSync unisce lo storico accessi invece di sovrascriverlo', async ({ page }) => {
+    await loginBypass(page, 'struttura1');
+
+    await page.evaluate(() => {
+      window._S.auditLog = [{ id: 'al-local-1', username: 'medico.locale', event: 'login_success', ts: 1000 }];
+    });
+
+    // Simula l'arrivo di un self-backup da un ALTRO dispositivo della stessa struttura, con un
+    // suo storico in parte diverso: prima di questo fix, S.auditLog veniva sovrascritto del
+    // tutto (o mai toccato), perdendo la voce locale "al-local-1".
+    await page.evaluate(() => {
+      window.handleIncomingSync({
+        shared: {
+          auditLog: [
+            { id: 'al-local-1', username: 'medico.locale', event: 'login_success', ts: 1000 },
+            { id: 'al-remoto-1', username: 'medico.altro.pc', event: 'login_success', ts: 2000 }
+          ]
+        }
+      });
+    });
+
+    const ids = await page.evaluate(() => window._S.auditLog.map(a => a.id).sort());
+    expect(ids).toEqual(['al-local-1', 'al-remoto-1']);
+  });
+});
+
 test.describe('Segreto dedicato ai link paziente (F-01)', () => {
   test('il link inviato al paziente non permette di risalire al segreto di rete reale', async ({ page }) => {
     await loginBypass(page, 'struttura1');

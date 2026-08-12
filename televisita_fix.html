@@ -6722,6 +6722,20 @@
 
             if (shared.patientNotes) S.patientNotes = Object.assign({}, shared.patientNotes, S.patientNotes);
 
+            // Unione per id, stesso motivo delle televisite: senza questo, ogni dispositivo della
+            // stessa struttura accumula il proprio storico accessi in totale isolamento, mai unito
+            // a quello degli altri dispositivi con cui la struttura fa login. L'ammin (che riceve
+            // il backup di QUALUNQUE dispositivo risponda per ultimo) mostrerebbe conteggi diversi
+            // a seconda di quale dispositivo ha risposto, invece del totale reale — riscontrato in
+            // produzione il 12/08/2026 con due pannelli admin che vedevano numeri molto diversi.
+            if (shared.auditLog) {
+                S.auditLog = mergeById(S.auditLog, shared.auditLog);
+                if (S.auditLog.length > 500) {
+                    S.auditLog.sort((a, b) => a.ts - b.ts);
+                    S.auditLog = S.auditLog.slice(-500);
+                }
+            }
+
             // Sincronizza i documenti preservando i dati Base64 locali se l'incoming non li possiede (es. per bozze private o risparmio banda)
             if (shared.docs) {
                 const updatedIncomingDocs = shared.docs.map(incomingDoc => {
