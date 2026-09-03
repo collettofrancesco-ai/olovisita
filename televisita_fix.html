@@ -3405,7 +3405,9 @@
                 btn_sign_consent: "Signer",
                 email_simulated_title: "E-mail envoyée à {patient}",
                 email_otp_locked_body: "Cher patient, pour obtenir le code OTP nécessaire pour signer les consentements de votre télévisite, ouvrez le lien suivant pour lire et accepter le document de consentement :<br><br><a href='{url}' target='_blank' style='display:inline-block;background:#1a56db;color:#ffffff;padding:10px 22px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:14px;'>Visualiser et signer le consentement</a>",
+                email_otp_locked_body_bilingual: `<div lang="fr" dir="ltr"><p>Cher patient, pour obtenir le code OTP nécessaire pour signer les consentements de votre télévisite, ouvrez le lien suivant pour lire et accepter le document de consentement :</p><p><a href='{url}' target='_blank' style='display:inline-block;background:#1a56db;color:#ffffff;padding:10px 22px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:14px;'>Visualiser et signer le consentement</a></p></div><hr style="border:0;border-top:2px solid #cbd5e1;margin:1.6rem 0 1.4rem;"><div lang="ar" dir="rtl"><p>عزيزي المريض، للحصول على رمز التحقق (OTP) اللازم لتوقيع موافقات استشارتك الطبية عن بُعد، افتح الرابط التالي لقراءة وثيقة الموافقة وقبولها:</p><p><a href='{url}' target='_blank' style='display:inline-block;background:#1a56db;color:#ffffff;padding:10px 22px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:14px;'>عرض الموافقة وتوقيعها</a></p></div>`,
                 email_otp_unlocked_body: "Cher patient, suite à la lecture et à l'acceptation du document, votre code OTP pour signer les consentements est : <strong>{code}</strong>. En communiquant l'OTP, vous acceptez les conditions du consentement en pièce jointe.",
+                email_otp_unlocked_body_bilingual: `<div lang="fr" dir="ltr"><p>Cher patient, suite à la lecture et à l'acceptation du document, votre code OTP pour signer les consentements est : <strong>{code}</strong>. En communiquant l'OTP, vous acceptez les conditions du consentement en pièce jointe.</p></div><hr style="border:0;border-top:2px solid #cbd5e1;margin:1.6rem 0 1.4rem;"><div lang="ar" dir="rtl"><p>عزيزي المريض، بعد قراءة وقبول الوثيقة، رمز التحقق (OTP) الخاص بك لتوقيع الموافقات هو: <strong>{code}</strong>. بإرسالك رمز التحقق، فإنك توافق على شروط الموافقة المرفقة.</p></div>`,
                 btn_accept_and_unlock: "Accepter et débloquer l'OTP",
                 toast_otp_unlocked: "Document visualisé. Code OTP généré.",
                 otp_unlocked_title: "Code OTP généré",
@@ -3471,13 +3473,58 @@
                 cat_report: "Rapports Cliniques",
                 cat_diagnostic: "Diagnostic (Images/ECG)",
                 filter_all_patients: "Tous les patients"
+            },
+            // Arabo: NON è una lingua dell'interfaccia del medico (il selettore in alto resta
+            // italiano/francese). Contiene solo i testi che il paziente legge davvero — il
+            // documento di consenso e la pagina pubblica da cui lo firma — perché ogni consenso
+            // inviato al paziente deve essere leggibile sia in francese sia in arabo, affiancati
+            // nello stesso documento. Vedi consentBodyBilingualHtml() e PATIENT_CONSENT_LANGS.
+            ar: {
+                pdf_consent_doc_title: "الموافقة على الاستشارة الطبية عن بُعد وعلى معالجة البيانات الشخصية",
+                pdf_consent_body: `<p>قبل الدخول إلى الاستشارة الطبية عن بُعد، يجب على المريض قراءة الشروط التالية وقبولها.</p>
+<p>الاستشارة الطبية عن بُعد هي خدمة صحية تُقدَّم عن بُعد عبر اتصال صوتي ومرئي مع الطبيب و/أو المهنيين الصحيين المعنيين بمتابعة الحالة السريرية.</p>
+<p>خلال الاستشارة الطبية عن بُعد، قد تتم معالجة البيانات الشخصية والبيانات المتعلقة بالصحة، بما في ذلك بيانات الهوية وبيانات الاتصال الهاتفي والمعلومات السريرية والتقارير والصور التشخيصية وغيرها من الوثائق الطبية المفيدة للتقييم الطبي.</p>
+<p>تتم معالجة البيانات الشخصية والصحية مع الالتزام بـ<strong>اللائحة الأوروبية 2016/679 — النظام العام لحماية البيانات (RGPD)</strong>، و<strong>المرسوم التشريعي 196/2003 — قانون الخصوصية</strong>، بصيغته المعدَّلة بـ<strong>المرسوم التشريعي 101/2018</strong>، وكذلك الأحكام السارية المتعلقة بمعالجة البيانات الصحية وبالخدمات الصحية المقدَّمة أيضًا بالوسائل الرقمية. وقد أوضحت هيئة حماية الخصوصية أن معالجة البيانات الصحية في القطاع الصحي مسموح بها وفق الشروط المنصوص عليها في المادة 9 من النظام العام لحماية البيانات وفي التشريعات الوطنية السارية.</p>
+<p>يقر المريض بأنه أُبلِغ بأن البيانات ستُعالَج حصريًا لأغراض التشخيص والعلاج والرعاية الصحية وإدارة الخدمة والتوثيق السريري والامتثال للالتزامات التنظيمية وتتبُّع الموافقة الرقمية.</p>
+<p>يقر المريض بعلمه أن الاستشارة الطبية عن بُعد تنطوي على قيود مقارنةً بالزيارة الحضورية، إذ لا يمكن للطبيب إجراء فحص بدني كامل بشكل مباشر. وعند الاقتضاء، يجوز للطبيب طلب زيارة حضورية أو فحوصات إضافية أو التوجه إلى مؤسسة صحية.</p>
+<p>لا تحل الاستشارة الطبية عن بُعد محل خدمات الطوارئ. في حال ظهور أعراض خطيرة أو تدهور مفاجئ أو حالات طوارئ طبية، يجب على المريض الاتصال فورًا بخدمات الطوارئ المختصة.</p>
+<p>يأذن المريض، عند الضرورة لمتابعة الحالة السريرية، بالاطلاع على الوثائق السريرية وتبادلها بين المؤسسات الصحية المشاركة في الاستشارة الطبية عن بُعد، مع احترام مبادئ الخصوصية وتقليل البيانات وسلامتها وأمنها.</p>
+<p>يُحظر أي تسجيل صوتي أو مرئي أو فوتوغرافي للاستشارة الطبية عن بُعد دون إذن خاص من المؤسسة الصحية والمهنيين المعنيين.</p>
+<ul class="pe-3 mb-4">
+    <li>أُقر بأنني قرأت المعلومات الواردة أعلاه وفهمتها، وأوافق على إجراء الاستشارة الطبية عن بُعد.</li>
+    <li>أُقر بأنني اطّلعت على إشعار الخصوصية المقدَّم من المؤسسة الصحية، وأوافق على معالجة بياناتي الشخصية والصحية للأغراض المتعلقة بالاستشارة الطبية عن بُعد.</li>
+    <li>أوافق، عند الاقتضاء، على الاطلاع على الوثائق السريرية وتبادلها بين المؤسسات الصحية المشاركة في الاستشارة الطبية عن بُعد.</li>
+</ul>
+<p class="text-center fw-bold mt-4" style="font-size:0.85rem;">لتأكيد الموافقة، سيُعرض عليك بعد القبول رمز تحقق (OTP) لإدخاله من أجل إتمام التوقيع.</p>`,
+                patient_consent_greeting: "عزيزي/عزيزتي {name}، قبل المتابعة نرجو منك قراءة الموافقة المستنيرة أدناه وقبولها.",
+                btn_accept_and_unlock: "أوافق وأطلب رمز التحقق",
+                patient_consent_sending: "جارٍ الإرسال...",
+                patient_otp_instructions: "هذا هو رمز التحقق الخاص بك. أدخله أدناه لتوقيع الموافقة:",
+                patient_otp_confirm_btn: "توقيع الموافقة",
+                patient_otp_invalid: "رمز التحقق غير صحيح. حاول مرة أخرى.",
+                patient_consent_signed_success: "تم توقيع الموافقة بنجاح! يمكنك إغلاق هذه الصفحة.",
+                patient_consent_link_expired_text: "انتهت صلاحية رابط الموافقة هذا لأنه استُخدم بالفعل للتوقيع. إذا كنت بحاجة إلى مساعدة، يرجى الاتصال بالمؤسسة.",
+                email_subject_consent: "رمز التحقق للموافقة",
+                email_action_label_consent: "عرض الموافقة وتوقيعها",
+                email_otp_locked_body: "عزيزي المريض، للحصول على رمز التحقق (OTP) اللازم لتوقيع موافقات استشارتك الطبية عن بُعد، افتح الرابط التالي لقراءة وثيقة الموافقة وقبولها:<br><br><a href='{url}' target='_blank' style='display:inline-block;background:#1a56db;color:#ffffff;padding:10px 22px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:14px;'>عرض الموافقة وتوقيعها</a>"
             }
         };
+
+        // Direzione di scrittura per lingua: l'arabo si legge da destra a sinistra, e senza dir="rtl"
+        // la punteggiatura e i numeri finiscono nel posto sbagliato dentro la frase.
+        const LANG_DIR = { ar: 'rtl' };
 
         let currentLang = localStorage.getItem('tv_lang') || 'it';
 
         function t(key, data = {}) {
-            let str = LANGS[currentLang]?.[key] || LANGS['it']?.[key] || key;
+            return tIn(currentLang, key, data);
+        }
+
+        // Traduzione in una lingua ESPLICITA, indipendente da currentLang: serve ai documenti
+        // destinati al paziente, che devono uscire sempre nelle stesse lingue (vedi
+        // PATIENT_CONSENT_LANGS) qualunque sia la lingua dell'interfaccia del medico che li invia.
+        function tIn(lang, key, data = {}) {
+            let str = LANGS[lang]?.[key] || LANGS['it']?.[key] || key;
             Object.keys(data).forEach(k => {
                 // Il template (str) può legittimamente contenere markup proprio (es. <strong>), scritto
                 // dallo sviluppatore: non va escapato. Il VALORE sostituito (es. il nome di un paziente)
@@ -3487,6 +3534,57 @@
                 str = str.split(`{${k}}`).join(escapeHtml(data[k]));
             });
             return str;
+        }
+
+        // ---------------------------------------------------------------------------
+        // CONSENSI: solo italiano se UI in italiano, francese+arabo se UI in francese
+        // Il paziente firma nella lingua del cruscotto di chi glielo manda. Se è francese,
+        // legge anche l'arabo nello stesso documento; se è italiano, legge solo italiano.
+        // ---------------------------------------------------------------------------
+
+        // Lingue in cui presentare il consenso al paziente, in base a currentLang.
+        function getConsentLangs() {
+            if (currentLang === 'fr') return ['fr', 'ar'];
+            return ['it']; // Italiano o qualsiasi altro = solo quella lingua
+        }
+
+        // Blocco HTML di una chiave in tutte le lingue per il consenso corrente, uno sotto l'altro.
+        function consentBlocks(key, wrap, data = {}) {
+            const langs = getConsentLangs();
+            return langs.map(lang => {
+                const dir = LANG_DIR[lang] || 'ltr';
+                return `<div lang="${lang}" dir="${dir}"${dir === 'rtl' ? ' style="text-align:right;"' : ''}>${wrap(tIn(lang, key, data), lang)}</div>`;
+            }).join('');
+        }
+
+        // Corpo del consenso: le versioni separate da una riga se sono più di una.
+        function consentBodyHtml() {
+            const langs = getConsentLangs();
+            return langs.map((lang, i) => {
+                const dir = LANG_DIR[lang] || 'ltr';
+                const sep = i === 0 ? '' : '<hr style="border:0;border-top:2px solid #cbd5e1;margin:1.6rem 0 1.4rem;">';
+                return `${sep}<div lang="${lang}" dir="${dir}"${dir === 'rtl' ? ' style="text-align:right;"' : ''}>
+    <h6 class="fw-bold mb-2" style="color:#1565c0;font-size:0.9rem;">${escapeHtml(tIn(lang, 'pdf_consent_doc_title'))}</h6>
+    ${tIn(lang, 'pdf_consent_body')}
+</div>`;
+            }).join('');
+        }
+
+        // Titolo/etichette brevi: le lingue su una riga sola separate da "·" se sono più di una.
+        function consentInline(key, data = {}) {
+            const langs = getConsentLangs();
+            if (langs.length === 1) {
+                return escapeHtml(tIn(langs[0], key, data));
+            }
+            return langs
+                .map(lang => `<span lang="${lang}" dir="${LANG_DIR[lang] || 'ltr'}">${escapeHtml(tIn(lang, key, data))}</span>`)
+                .join('<span class="mx-2 text-muted">·</span>');
+        }
+
+        // Versione in solo testo (niente markup): per l'oggetto dell'e-mail e per il .txt scaricabile.
+        function consentPlain(key, separator, data = {}) {
+            const langs = getConsentLangs();
+            return langs.map(lang => tIn(lang, key, data)).join(separator);
         }
 
         function applyTranslations() {
@@ -8316,7 +8414,9 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
 
             setTimeout(() => {
                 const subject = t('email_subject_consent');
-                const body = t('email_otp_locked_body', { url: consentUrl });
+                // Se francese, invia email bilingue (francese + arabo); altrimenti solo nella lingua corrente
+                const bodyKey = currentLang === 'fr' ? 'email_otp_locked_body_bilingual' : 'email_otp_locked_body';
+                const body = t(bodyKey, { url: consentUrl });
                 const email = addSimulatedEmail({
                     type: 'consent_locked',
                     patientName: patientName,
@@ -8428,7 +8528,9 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
 
             setTimeout(() => {
                 const subject = t('email_subject_otp');
-                const body = t('email_otp_unlocked_body', { code: otp });
+                // Se francese, invia email bilingue (francese + arabo); altrimenti solo nella lingua corrente
+                const bodyKey = currentLang === 'fr' ? 'email_otp_unlocked_body_bilingual' : 'email_otp_unlocked_body';
+                const body = t(bodyKey, { code: otp });
                 const email = addSimulatedEmail({
                     type: 'consent_unlocked',
                     patientName: patientName,
@@ -8442,7 +8544,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                 });
 
                 // Aggiunge la seconda E-mail con l'OTP alla lista notifiche
-                addNotif('bi-envelope-fill', t('email_simulated_title', { patient: patientName }), t('email_otp_unlocked_body', { code: otp }), 'incoming', email.id);
+                addNotif('bi-envelope-fill', t('email_simulated_title', { patient: patientName }), t(bodyKey, { code: otp }), 'incoming', email.id);
                 flashBell();
             }, 800);
 
@@ -8509,23 +8611,29 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
 
             document.getElementById('patient-consent-overlay').style.display = 'block';
 
+            // Il consenso esce nella lingua del cruscotto del medico: se francese, include anche arabo;
+            // se italiano, solo italiano.
             if (isPatientConsentLinkUsed(patientConsentCtx.tvId)) {
-                document.getElementById('patient-consent-title').textContent = t('pdf_consent_doc_title');
+                document.getElementById('patient-consent-title').innerHTML = consentInline('pdf_consent_doc_title');
                 document.getElementById('patient-consent-greeting').textContent = '';
                 document.getElementById('patient-consent-body').innerHTML = '';
                 document.getElementById('patient-consent-form').classList.add('d-none');
-                document.getElementById('patient-consent-expired-text').textContent = t('patient_consent_link_expired_text');
+                document.getElementById('patient-consent-expired-text').innerHTML =
+                    consentBlocks('patient_consent_link_expired_text', txt => escapeHtml(txt));
                 document.getElementById('patient-consent-expired').classList.remove('d-none');
                 return;
             }
 
-            document.getElementById('patient-consent-title').textContent = t('pdf_consent_doc_title');
-            document.getElementById('patient-consent-greeting').textContent = t('patient_consent_greeting', { name: patientConsentCtx.patientName });
-            document.getElementById('patient-consent-body').innerHTML = t('pdf_consent_body');
-            document.getElementById('patient-consent-accept-btn-text').textContent = t('btn_accept_and_unlock');
+            document.getElementById('patient-consent-title').innerHTML = consentInline('pdf_consent_doc_title');
+            document.getElementById('patient-consent-greeting').innerHTML =
+                consentBlocks('patient_consent_greeting', txt => txt, { name: patientConsentCtx.patientName });
+            document.getElementById('patient-consent-body').innerHTML = consentBodyHtml();
+            document.getElementById('patient-consent-accept-btn-text').innerHTML = consentInline('btn_accept_and_unlock');
 
             const acceptBtn = document.getElementById('patient-consent-accept-btn');
-            acceptBtn.title = currentLang === 'fr' ? 'Faites défiler le document jusqu\'à la fin pour activer' : 'Scorri il documento fino alla fine per abilitare';
+            acceptBtn.title = currentLang === 'fr'
+                ? 'Faites défiler le document jusqu\'à la fin pour activer — مرّر الوثيقة حتى النهاية للتفعيل'
+                : 'Scorri il documento fino alla fine per abilitare';
             gateButtonUntilScrolledToEnd(document.getElementById('patient-consent-body'), acceptBtn);
         }
 
@@ -8705,7 +8813,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
             const errEl = document.getElementById('patient-consent-error');
             errEl.textContent = '';
             btn.disabled = true;
-            btnText.textContent = t('patient_consent_sending');
+            btnText.innerHTML = consentInline('patient_consent_sending');
 
             const otp = Math.floor(1000 + Math.random() * 9000).toString();
 
