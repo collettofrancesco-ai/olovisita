@@ -4407,11 +4407,49 @@
             return cachedAdminPublicKey;
         }
 
+        // ---------------------------------------------------------------------------
+        // AUTENTICAZIONE DEL CANALE VERSO L'ADMIN (backup, riepiloghi, richieste password)
+        //
+        // encryptForAdmin dà RISERVATEZZA (schema ECIES: solo chi ha la chiave privata admin
+        // decifra), ma da sola NON dà AUTENTICITÀ: la chiave pubblica admin è necessariamente
+        // embedded nel sorgente pubblico per poter cifrare, quindi chiunque legga il codice può
+        // costruire un payload cifrato che l'admin decifrerebbe e tratterebbe come legittimo (un
+        // finto backup con pazienti/audit inventati, o una finta richiesta di reset password per
+        // uno username reale). A differenza del canale admin→strutture, che firma con ECDSA (vedi
+        // publishAdminControl), qui non esisteva alcuna verifica di chi avesse inviato il messaggio.
+        //
+        // Mitigazione: un HMAC-SHA256 derivato dal Codice Stanza corrente (currentGroupCode),
+        // l'unico segreto che sia le due strutture SIA l'admin conoscono (l'admin lo genera e lo
+        // distribuisce, vedi applyAdminGroupCode) — a differenza della chiave pubblica ECIES, non
+        // è nel sorgente. Non è un'autenticazione forte quanto ECDSA con chiavi per-struttura (che
+        // richiederebbe una nuova infrastruttura di chiavi, fuori scopo per questa correzione): chi
+        // intercettasse anche il traffico MQTT del canale di controllo nel momento esatto di una
+        // rotazione vedrebbe comunque il codice in chiaro (quel canale è firmato ma non cifrato).
+        // Alza comunque la soglia da "chiunque legga il sorgente pubblico" a "chi osserva anche il
+        // traffico MQTT dal vivo", ed è verificabile senza toccare la chiave privata ECDH esistente.
+        async function computeAdminChannelHmac(payloadObj) {
+            const keyMaterial = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(currentGroupCode + '::adminchannel'));
+            const hmacKey = await crypto.subtle.importKey('raw', keyMaterial, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+            const sig = await crypto.subtle.sign('HMAC', hmacKey, new TextEncoder().encode(JSON.stringify(payloadObj)));
+            return arrayBufferToBase64(sig);
+        }
+
+        // Verifica lato admin: ricalcola l'HMAC sullo stesso payload (senza il campo adminChannelHmac,
+        // che ovviamente non può autenticare se stesso) e lo confronta con quello ricevuto.
+        async function verifyAdminChannelHmac(payloadObj) {
+            if (!payloadObj || typeof payloadObj !== 'object' || !payloadObj.adminChannelHmac) return false;
+            const { adminChannelHmac, ...rest } = payloadObj;
+            const expected = await computeAdminChannelHmac(rest);
+            return expected === adminChannelHmac;
+        }
+
         // Cifra un oggetto per il solo titolare della chiave privata admin (schema ECIES): genera
         // una coppia di chiavi ECDH "usa e getta" per questo singolo messaggio, deriva con essa e
         // la chiave pubblica admin una chiave AES-GCM condivisa, e allega la chiave pubblica
         // effimera al messaggio (la condivisione di una chiave pubblica non rivela nulla sulla
-        // chiave privata né su quella derivata).
+        // chiave privata né su quella derivata). Il payload viene autenticato con l'HMAC qui sopra
+        // PRIMA di essere cifrato, così l'admin verifica l'origine subito dopo aver decifrato,
+        // senza che l'HMAC stesso viaggi mai in chiaro sul broker pubblico.
         async function encryptForAdmin(payloadObj) {
             if (!isSubtleCryptoSupported) return null;
             try {
@@ -4430,10 +4468,12 @@
                 );
                 const ephemeralPublicJwk = await crypto.subtle.exportKey('jwk', ephemeralKeyPair.publicKey);
                 const iv = crypto.getRandomValues(new Uint8Array(12));
+                const adminChannelHmac = await computeAdminChannelHmac(payloadObj);
+                const signedPayload = { ...payloadObj, adminChannelHmac };
                 const ciphertext = await crypto.subtle.encrypt(
                     { name: 'AES-GCM', iv: iv },
                     sharedAesKey,
-                    new TextEncoder().encode(JSON.stringify(payloadObj))
+                    new TextEncoder().encode(JSON.stringify(signedPayload))
                 );
                 return {
                     ephemeralPublicJwk: ephemeralPublicJwk,
@@ -4879,6 +4919,14 @@
                 const payload = await verifyAndParseControlMessage(envelope);
                 if (!payload) return;
                 adminControlState[role] = payload;
+                // Allinea currentGroupCode anche se la rotazione è stata applicata da un'altra
+                // sessione/dispositivo admin (il messaggio è comunque verificato via ECDSA qui
+                // sopra, quindi fidato quanto una rotazione fatta da qui): senza questo,
+                // computeAdminChannelHmac verificherebbe i backup ricevuti con un codice vecchio.
+                if (payload.groupCode && payload.groupCode !== currentGroupCode) {
+                    currentGroupCode = payload.groupCode;
+                    try { localStorage.setItem('tv_admin_known_groupcode', payload.groupCode); } catch (_) { }
+                }
                 renderAdminUserManagement(role);
                 renderAdminOpsConfig(role);
                 renderAdminGroupCodeStatus();
@@ -5188,6 +5236,16 @@
                 const fullCiphertext = entry.chunks.join('');
                 const backupData = await decryptAdminBackup(entry.ephemeralPublicJwk, entry.iv, fullCiphertext);
 
+                // Un backup senza HMAC valido non è mai stato prodotto da un dispositivo che
+                // conosce il Codice Stanza corrente: potrebbe essere forgiato da chiunque abbia
+                // letto la chiave pubblica admin nel sorgente. Scartato prima di toccare
+                // adminReceivedBackups/mergeAdminAuditLog, che altrimenti lo fonderebbero in modo
+                // permanente (merge union-by-id, mai rimozione).
+                if (!(await verifyAdminChannelHmac(backupData))) {
+                    console.warn('Backup admin scartato: HMAC mancante o non valido (Codice Stanza disallineato o messaggio non autentico).', entry.role);
+                    return;
+                }
+
                 adminReceivedBackups[entry.role] = { data: backupData, ts: entry.ts, facility: entry.facility };
                 mergeAdminAuditLog(entry.role, backupData.shared && backupData.shared.auditLog);
                 renderAdminDashboard(entry.role);
@@ -5204,6 +5262,16 @@
                 if (!raw) return; // payload vuoto = cancellazione del retained
                 const envelope = JSON.parse(raw);
                 const payload = await decryptAdminBackup(envelope.ephemeralPublicJwk, envelope.iv, envelope.ciphertext);
+
+                // Senza questo controllo chiunque avesse letto la chiave pubblica admin nel
+                // sorgente (necessariamente pubblica, serve per cifrare) potrebbe forgiare una
+                // richiesta di reset password per uno username reale: l'HMAC richiede di conoscere
+                // anche il Codice Stanza corrente, non distribuito nel sorgente.
+                if (!(await verifyAdminChannelHmac(payload))) {
+                    console.warn('Richiesta cambio password scartata: HMAC mancante o non valido.');
+                    return;
+                }
+
                 // Il topic è retained: ogni riconnessione al broker (frequente sui broker pubblici
                 // gratuiti — MQTT.js si riconnette da solo e rifà le subscribe, vedi commenti su
                 // initMQTT) fa sì che il broker ri-consegni lo STESSO messaggio già ricevuto in
@@ -5926,6 +5994,13 @@
             const ok1 = await publishAdminControl('struttura1', { groupCode: code });
             const ok2 = await publishAdminControl('struttura2', { groupCode: code });
             if (ok1 && ok2) {
+                // L'admin deve conoscere il codice appena distribuito per poter verificare l'HMAC
+                // dei backup/richieste che arriveranno dalle due strutture (vedi
+                // computeAdminChannelHmac): senza aggiornarlo qui, ogni backup ricevuto dopo una
+                // rotazione verrebbe scartato per HMAC "non valido" finché l'admin non ricarica la
+                // pagina. Persistito per sopravvivere a un reload di questo stesso pannello.
+                currentGroupCode = code;
+                try { localStorage.setItem('tv_admin_known_groupcode', code); } catch (_) { }
                 showToast('Codice Stanza applicato a entrambe le strutture', 'success');
                 input.value = '';
                 input.readOnly = true;
@@ -6083,6 +6158,14 @@
         }
 
         function initAdminView() {
+            // Ripristina un'eventuale rotazione del Codice Stanza già distribuita in una sessione
+            // admin precedente (vedi applyAdminGroupCode): senza questo, ogni backup/richiesta
+            // ricevuta dopo un reload del pannello verrebbe scartata per HMAC non valido finché
+            // l'admin non riapplica lo stesso codice (vedi computeAdminChannelHmac).
+            try {
+                const cachedAdminGroupCode = localStorage.getItem('tv_admin_known_groupcode');
+                if (cachedAdminGroupCode) currentGroupCode = cachedAdminGroupCode;
+            } catch (_) { }
             populateResetPasswordSelect();
             const jwk = getStoredAdminPrivateKeyJwk();
             if (jwk) {
