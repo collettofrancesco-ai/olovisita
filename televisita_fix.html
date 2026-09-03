@@ -8712,9 +8712,17 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
         // dedicato con retain:true, così riceve subito l'ultimo valore noto anche se nessun
         // medico è online in quel momento.
         // ---------------------------------------------------------------------------
+        // La stanza è sempre generata da genRoom() ('televisita-' + due segmenti base36):
+        // solo lettere/cifre/trattini. Il parametro arriva però dall'URL di un link pubblico,
+        // quindi potenzialmente modificato a mano — usato senza controllo finirebbe sia nel
+        // fragment dell'URL Jitsi sia in un topic MQTT, dove un carattere come '+' o '#'
+        // (wildcard MQTT di primo/multi-livello) farebbe iscrivere alla pagina paziente allo
+        // stato di QUALSIASI altra televisita sul broker, non solo alla propria.
+        const SAFE_ROOM_NAME = /^[A-Za-z0-9-]{1,80}$/;
+
         function isPatientCallMode() {
             const params = new URLSearchParams(window.location.search);
-            return params.get('call') === '1' && !!params.get('room');
+            return params.get('call') === '1' && SAFE_ROOM_NAME.test(params.get('room') || '');
         }
 
         function initPatientCallView() {
@@ -8725,6 +8733,18 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
             const tvId = params.get('tvId');
             const topicId = params.get('topicId');
             const vkey = params.get('vkey');
+
+            // Difesa in profondità: isPatientCallMode() già filtra il routing iniziale, ma se
+            // questa funzione venisse mai richiamata da un altro punto con un room non valido,
+            // meglio mostrare "chiamata terminata" che usarlo comunque in un topic/URL Jitsi.
+            if (!SAFE_ROOM_NAME.test(room || '')) {
+                document.getElementById('patient-call-overlay').style.display = 'block';
+                document.getElementById('patient-call-checking').classList.add('d-none');
+                document.getElementById('patient-call-ended-title').textContent = t('patient_call_ended_title');
+                document.getElementById('patient-call-ended-text').textContent = t('patient_call_ended_text');
+                document.getElementById('patient-call-ended').classList.remove('d-none');
+                return;
+            }
 
             document.getElementById('patient-call-checking-text').textContent = t('patient_call_checking');
             document.getElementById('patient-call-ended-title').textContent = t('patient_call_ended_title');
