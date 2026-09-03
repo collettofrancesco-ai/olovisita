@@ -8842,9 +8842,9 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
             // un'informazione che il destinatario può già leggere). Il medico, dal suo lato, lo riceve
             // comunque sul proprio cruscotto tramite la notifica inviata qui sopra.
             ctx.otp = otp;
-            document.getElementById('patient-otp-instructions').textContent = t('patient_otp_instructions');
+            document.getElementById('patient-otp-instructions').innerHTML = consentInline('patient_otp_instructions');
             document.getElementById('patient-otp-code-display').textContent = otp;
-            document.getElementById('patient-otp-confirm-btn-text').textContent = t('patient_otp_confirm_btn');
+            document.getElementById('patient-otp-confirm-btn-text').innerHTML = consentInline('patient_otp_confirm_btn');
             document.getElementById('patient-otp-step').classList.remove('d-none');
         }
 
@@ -8857,7 +8857,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
             const val = inputEl.value.trim();
 
             if (val !== ctx.otp) {
-                errEl.textContent = t('patient_otp_invalid');
+                errEl.innerHTML = consentInline('patient_otp_invalid');
                 inputEl.value = '';
                 inputEl.focus();
                 return;
@@ -8882,7 +8882,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
 
             document.getElementById('patient-otp-step').classList.add('d-none');
             const successEl = document.getElementById('patient-consent-success');
-            document.getElementById('patient-consent-success-text').textContent = t('patient_consent_signed_success');
+            document.getElementById('patient-consent-success-text').innerHTML = consentInline('patient_consent_signed_success');
             successEl.classList.remove('d-none');
             markPatientConsentLinkUsed(ctx.tvId);
         }
