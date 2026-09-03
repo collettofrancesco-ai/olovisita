@@ -11515,8 +11515,8 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
             const finalIdType = idType || '';
             const finalCf = cf || '';
 
-            // Genera la stanza per la videochiamata
-            const room = 'televisita-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
+            // Genera la stanza per la videochiamata (crypto.getRandomValues, vedi genRoom)
+            const room = genRoom();
 
             // Crea la nuova televisita urgente in stato in-corso
             const now = new Date();
@@ -13647,8 +13647,15 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
         // ---------------------------------------------------------------------------
         // FUNZIONI UTILI
         // ---------------------------------------------------------------------------
-        function genRoom(seed) {
-            return 'televisita-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
+        // Il nome stanza è l'UNICA protezione di una videochiamata Jitsi pubblica senza password
+        // (prejoinPageEnabled:false): prima era timestamp + 4 caratteri Math.random() (~1,7 milioni
+        // di combinazioni, non crittografico, e il timestamp è facilmente stimabile dall'orario
+        // dell'invito email) — enumerabile in pochi secondi da chi conosce approssimativamente
+        // l'orario di una visita. crypto.getRandomValues su 16 byte dà 128 bit di entropia reale.
+        function genRoom() {
+            const bytes = crypto.getRandomValues(new Uint8Array(16));
+            const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+            return 'televisita-' + hex;
         }
 
         function fmtDate(s) {
