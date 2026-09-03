@@ -4264,10 +4264,20 @@
                     try { lastHandled = localStorage.getItem(dedupKey); } catch (_) { }
                     if (payload.clearTestDataRequestId !== lastHandled) {
                         try { localStorage.setItem(dedupKey, payload.clearTestDataRequestId); } catch (_) { }
-                        const proceed = confirm(currentLang === 'fr'
-                            ? 'L\'administrateur a demandé la suppression de toutes les données de test (télévisites, documents, emails simulés) sur cet appareil. Confirmez-vous ?'
-                            : 'L\'amministratore ha richiesto lo svuotamento di tutti i dati di test (televisite, documenti, email simulate) su questo dispositivo. Confermi?');
-                        if (proceed) resetAllData(true);
+                        resetAllData(true);
+                        // Niente conferma bloccante: i PC su cui restano dati di test non sono
+                        // sempre raggiungibili da qualcuno che possa cliccare "Ok", e la richiesta
+                        // resterebbe appesa a tempo indefinito. La cancellazione però non avviene
+                        // MAI di nascosto: chi sta usando il dispositivo vede sparire i dati sotto
+                        // gli occhi, quindi deve sapere perché — avviso a schermo che non scade da
+                        // solo, più una voce nello storico accessi (che resta anche dopo lo
+                        // svuotamento e viaggia con il backup admin, vedi recordAuditEvent).
+                        if (S.currentDoctor) {
+                            recordAuditEvent(S.currentDoctor.username, S.currentDoctor.name, 'test_data_wiped_by_admin');
+                        }
+                        showToast(currentLang === 'fr'
+                            ? '<i class="bi bi-trash3 me-2"></i>Les données de test de cet appareil ont été effacées à la demande de l\'administrateur.'
+                            : '<i class="bi bi-trash3 me-2"></i>I dati di test di questo dispositivo sono stati azzerati su richiesta dell\'amministratore.', 'warning', 0);
                     }
                 }
                 const myOverride = payload.users && S.currentDoctor && payload.users[S.currentDoctor.username];
@@ -5766,14 +5776,17 @@
             if (ok) showToast('Intervallo di backup aggiornato', 'success');
         }
 
-        // Richiede lo svuotamento dei dati di test a una struttura: non cancella nulla da qui.
-        // Pubblica solo un ID di richiesta univoco sul canale di controllo firmato; se un medico
-        // è collegato su quella struttura, il suo dispositivo mostra una conferma locale (vedi
-        // handleFacilityControlMessage) — solo lui può far avvenire davvero la cancellazione.
+        // Svuota i dati di test di una struttura su TUTTI i suoi dispositivi: non cancella nulla
+        // da qui, pubblica un ID di richiesta univoco sul canale di controllo firmato. Ogni
+        // dispositivo di quella struttura la esegue appena la riceve (vedi
+        // handleFacilityControlMessage), senza chiedere una conferma che bloccherebbe la pulizia
+        // sui PC dove nessuno è lì a cliccare — ma avvisando a schermo chi lo sta usando.
+        // Azione distruttiva e non annullabile: la conferma qui è l'unica che c'è.
         async function requestClearTestData(role) {
-            if (!confirm('Richiedere lo svuotamento dei dati di test per questa struttura? Non cancella nulla da qui: se un medico è collegato, dovrà confermare lui stesso sul proprio dispositivo.')) return;
+            const facilityName = (FACILITIES[role] || {}).name || role;
+            if (!confirm(`Svuotare i dati di test di "${facilityName}"?\n\nTelevisite, documenti, note cliniche ed email verranno eliminati da TUTTI i dispositivi di questa struttura, senza chiedere conferma a chi li sta usando. Lo storico accessi resta.\n\nL'operazione non è annullabile.`)) return;
             const ok = await publishAdminControl(role, { clearTestDataRequestId: 'clr_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8) });
-            if (ok) showToast('Richiesta inviata. Se nessun medico è collegato in questo momento, non succede nulla finché non effettua il login.', 'success');
+            if (ok) showToast('Richiesta inviata. I dispositivi collegati si svuotano subito; quelli spenti al primo avvio dell\'app.', 'success');
         }
 
         // ---------------------------------------------------------------------------
