@@ -6890,7 +6890,14 @@
             if (isEventProcessed) return;
 
             // Rileva se c'è una televisita urgente in attesa di risposta per noi (es. quando facciamo login dopo la richiesta del collega)
-            if (S.immReq === 'waiting' && S.immReqSender && S.immReqSender !== S.role) {
+            // activeFacilityId, non S.role: questo dispatcher elabora eventi realmente arrivati da
+            // MQTT/BroadcastChannel (mai simulati dalla demo, vedi i punti di chiamata), quindi deve
+            // sempre ragionare sulla vera struttura autenticata — non su S.role, che la demo guidata
+            // cambia restando sullo stesso dispositivo per narrare "l'altra struttura". Con S.role
+            // durante una demo attiva, un evento reale in arrivo verrebbe filtrato/etichettato come
+            // se appartenesse alla struttura sbagliata (stesso pattern già corretto altrove nel file,
+            // vedi commento in handleFacilityControlMessage).
+            if (S.immReq === 'waiting' && S.immReqSender && S.immReqSender !== activeFacilityId) {
                 const other = DOCTORS[S.immReqSender];
                 if (other) {
                     const banner = document.getElementById('notif-banner');
@@ -6903,42 +6910,42 @@
                 }
             }
 
-            if (!event || !S.role) return;
+            if (!event || !activeFacilityId) return;
 
-            const other = DOCTORS[S.role === 'struttura1' ? 'struttura2' : 'struttura1'];
+            const other = DOCTORS[activeFacilityId === 'struttura1' ? 'struttura2' : 'struttura1'];
             const ev = event.kind;
 
-            if (ev === 'imm_request' && S.role !== event.sender) {
+            if (ev === 'imm_request' && activeFacilityId !== event.sender) {
                 showBanner(`<i class="bi bi-camera-video-fill me-2"></i>${t('toast_imm_recv_banner', { name: other.name })}`, 'warning');
                 showToast(t('toast_imm_recv_title', { name: other.name }), 'warning');
                 addNotif('bi-camera-video-fill', t('notif_imm_req_title'), t('notif_imm_req_body', { name: other.name, facility: other.facility }), 'incoming');
                 pushBrowserNotif('🔴 Second Opinion Urgente', `${other.name} (${other.facility}) richiede una televisita urgente`, 'imm_request');
                 flashBell();
             }
-            if (ev === 'imm_cancel' && S.role !== event.sender) {
+            if (ev === 'imm_cancel' && activeFacilityId !== event.sender) {
                 showToast(t('toast_imm_cancel'), 'warning');
                 hideBanner();
             }
-            if (ev === 'imm_accepted' && S.role === event.sender) {
+            if (ev === 'imm_accepted' && activeFacilityId === event.sender) {
                 showToast(t('toast_imm_accepted', { name: other.name }), 'success');
                 addNotif('bi-check-circle-fill', t('notif_imm_acc_title'), t('notif_imm_acc_body', { name: other.name }), 'sent');
                 pushBrowserNotif('✅ Richiesta accettata', `${other.name} ha accettato la televisita urgente`, 'imm_accepted');
                 flashBell();
                 setTimeout(() => joinVideo(), 600);
             }
-            if (ev === 'imm_rejected' && S.role === event.sender) {
+            if (ev === 'imm_rejected' && activeFacilityId === event.sender) {
                 showToast(t('toast_imm_rejected', { name: other.name }), 'danger');
             }
 
             // Una televisita "Centro" arriva qui senza event.patient (vedi scheduleVisit): niente da
             // notificare, perché quella visita non deve mai farsi notare dall'altra struttura.
-            if (ev === 'visit_scheduled' && event.fromRole !== S.role && event.patient) {
+            if (ev === 'visit_scheduled' && event.fromRole !== activeFacilityId && event.patient) {
                 showVisitBookedPopup(event.patient, event.date, event.time, event.fromRole, event.doctorName);
                 addNotif('bi-calendar-plus-fill', t('notif_sched_created_title'), t('notif_sched_created_body', { patient: event.patient, date: event.date, time: event.time }), 'incoming');
                 pushBrowserNotif('📅 Nuova visita programmata', `${event.patient} — ${fmtDate(event.date)} ${event.time || ''}`, 'visit_scheduled');
                 flashBell();
             }
-            if (ev === 'visit_accepted' && event.scheduledBy === S.role && event.visitMode !== 'centro') {
+            if (ev === 'visit_accepted' && event.scheduledBy === activeFacilityId && event.visitMode !== 'centro') {
                 // event.doctorName: il medico che ha davvero accettato (vedi acceptSched). Il
                 // DOCTORS[ruolo] locale serve solo più come riserva per il caso di un evento
                 // arrivato da una versione precedente dell'app senza questo campo, e per il nome
@@ -6950,7 +6957,7 @@
                 pushBrowserNotif('✅ Visita accettata', `${event.patient} — ${fmtDate(event.date)} ${event.time || ''}`, 'visit_accepted');
                 flashBell();
             }
-            if (ev === 'visit_rejected' && event.scheduledBy === S.role && event.visitMode !== 'centro') {
+            if (ev === 'visit_rejected' && event.scheduledBy === activeFacilityId && event.visitMode !== 'centro') {
                 const otherRole = event.scheduledBy === 'struttura1' ? 'struttura2' : 'struttura1';
                 const fromD = { facility: (DOCTORS[otherRole] || {}).facility, name: event.doctorName || (DOCTORS[otherRole] || {}).name };
                 showVisitUpdatePopup('rejected', event.patient, event.date, event.time, fromD);
@@ -6958,14 +6965,14 @@
                 pushBrowserNotif('❌ Visita rifiutata', `${event.patient} — ${fmtDate(event.date)} ${event.time || ''}`, 'visit_rejected');
                 flashBell();
             }
-            if (ev === 'visit_cancelled' && event.cancelledBy !== S.role && event.visitMode !== 'centro') {
+            if (ev === 'visit_cancelled' && event.cancelledBy !== activeFacilityId && event.visitMode !== 'centro') {
                 const fromD = { facility: (DOCTORS[event.cancelledBy] || {}).facility, name: event.doctorName || (DOCTORS[event.cancelledBy] || {}).name };
                 showVisitUpdatePopup('cancelled', event.patient, event.date, event.time, fromD);
                 addNotif('bi-x-octagon-fill', t('notif_visit_cancelled_title'), t('notif_visit_cancelled_body', { patient: event.patient, facility: fromD.facility || event.cancelledBy }), 'incoming');
                 pushBrowserNotif('🚫 Visita annullata', `${event.patient} annullata da ${fromD.facility || event.cancelledBy}`, 'visit_cancelled');
                 flashBell();
             }
-            if (ev === 'doc_shared' && event.fromRole !== S.role) {
+            if (ev === 'doc_shared' && event.fromRole !== activeFacilityId) {
                 const fromD = { facility: (DOCTORS[event.fromRole] || {}).facility, name: event.doctorName || (DOCTORS[event.fromRole] || {}).name };
                 showToast(`<i class="bi bi-share-fill me-1"></i>${t('toast_doc_received', { name: fromD.name, names: event.docName })}`, 'info');
                 addNotif('bi-share-fill', t('notif_doc_shared_title', { facility: fromD.facility }), t('notif_doc_shared_body', { name: event.docName, sender: fromD.name }), 'incoming');
