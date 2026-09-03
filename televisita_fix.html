@@ -6139,6 +6139,14 @@
 
         // Funzione centralizzata per inviare messaggi MQTT cifrati
         function sendMQTTMessage(messageObj) {
+            // Durante la demo guidata (S.demoMode) i dati in S sono tutti fittizi (isDemo:true,
+            // vedi runDemo) e servono solo a raccontare il percorso su QUESTO dispositivo: a
+            // differenza delle email (bloccate solo più sotto in addSimulatedEmail), prima non
+            // c'era qui alcun controllo equivalente, e un medico che avviasse la demo restando
+            // connesso al broker reale avrebbe inviato notifiche/eventi fittizi all'altra struttura,
+            // mescolati ai dati veri. sendMQTTMessage è il punto centrale usato da syncState, dalla
+            // lavagna condivisa e dall'invio documenti a blocchi: bloccarlo qui li copre tutti.
+            if (S.demoMode) return;
             if (!mqttClient || !mqttClient.connected || !currentTopicId) return;
             const topic = MQTT_TOPIC_BASE + currentTopicId;
 
@@ -6170,6 +6178,7 @@
         // quel momento per rispondergli. Non cifrato: non contiene alcun dato del paziente, solo
         // "active"/"ended".
         function publishCallStatus(room, status) {
+            if (S.demoMode) return; // vedi commento in sendMQTTMessage
             if (!mqttClient || !mqttClient.connected || !room) return;
             const topic = MQTT_TOPIC_BASE + room + '/status';
             mqttClient.publish(topic, status, { qos: 1, retain: true });
@@ -6531,6 +6540,7 @@
         // vede. In caso di cache svuotata, il broker riconsegna questo retained al login e
         // la struttura recupera tutto il suo stato, incluse le visite Centro.
         function publishSelfBackup() {
+            if (S.demoMode) return; // vedi commento in sendMQTTMessage
             if (!mqttClient || !mqttClient.connected || !currentTopicId) return;
             const payload = {
                 type: 'self_backup',
@@ -6565,6 +6575,7 @@
         // selfbackup, privato per struttura. Chiamata quando il dispositivo si riconnette
         // così il collega sull'altro PC riceve i file automaticamente.
         async function pushDocsSelfBackup() {
+            if (S.demoMode) return; // vedi commento in sendMQTTMessage
             if (!mqttClient || !mqttClient.connected || !currentTopicId) return;
             const docsWithData = S.docs.filter(d => d.base64Data);
             if (!docsWithData.length) return;
@@ -6596,8 +6607,10 @@
             const storageState = getSharedStateForStorage();
             persistTvState(storageState);
 
-            // Notifica i tab locali dello stesso browser
-            bc.postMessage({ shared: storageState, event: event || null });
+            // Notifica i tab locali dello stesso browser — non durante la demo guidata: un'altra
+            // scheda reale della stessa struttura riceverebbe altrimenti i pazienti fittizi della
+            // demo mescolati ai propri dati veri (vedi commento in sendMQTTMessage).
+            if (!S.demoMode) bc.postMessage({ shared: storageState, event: event || null });
 
             // Invia lo stato leggero all'altra struttura via MQTT
             if (mqttClient && mqttClient.connected) {
