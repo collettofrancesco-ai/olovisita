@@ -2105,7 +2105,7 @@
                         </form>
                         <hr class="my-4">
                         <h6 class="fw-bold small text-uppercase text-muted mb-3"><i class="bi bi-list-ul me-2"
-                                style="color:#00796b;"></i><span data-i18n="all_visits">Tutte le televisite</span>
+                                style="color:#00796b;"></i><span id="visits-list-title-s2" data-i18n="all_visits">Tutte le televisite</span>
                         </h6>
                         <div id="visit-filterbar-s2" class="mb-2">
                             <div class="visit-search-wrap mb-2">
@@ -7827,8 +7827,11 @@ function pushBrowserNotif(title, body, tag) {
             document.getElementById('vlist-s1').innerHTML = html;
             document.getElementById('vlist-s2').innerHTML = html;
 
-            // Aggiorna dinamicamente il titolo "Televisite ricevute" per la Struttura 2
-            const s2TitleEl = document.querySelector('#p-s2 h6 span');
+            // Aggiorna dinamicamente il titolo "Televisite ricevute" per la Struttura 2 — SOLO il
+            // titolo della lista sottostante (id dedicato): il selettore generico usato prima
+            // ('#p-s2 h6 span') prendeva il primo h6>span del pannello, che è invece il titolo del
+            // modulo "Nuova Televisita" più in alto, rinominandolo per errore in "Televisite ricevute".
+            const s2TitleEl = document.getElementById('visits-list-title-s2');
             if (s2TitleEl) {
                 s2TitleEl.textContent = t('received_visits');
             }
