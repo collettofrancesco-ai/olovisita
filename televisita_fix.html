@@ -5244,6 +5244,11 @@
                 // permanente (merge union-by-id, mai rimozione).
                 if (!(await verifyAdminChannelHmac(backupData))) {
                     console.warn('Backup admin scartato: HMAC mancante o non valido (Codice Stanza disallineato o messaggio non autentico).', entry.role);
+                    // Prima solo in console: scartare in silenzio ha fatto sembrare "sparire" accessi
+                    // e backup per giorni prima che qualcuno se ne accorgesse (12-13/09/2026, Codice
+                    // Stanza disallineato tra admin e strutture). Ora un avviso resta a schermo finché
+                    // l'admin non lo chiude, invece di scomparire come un toast normale.
+                    showToast(`⚠️ Backup di <strong>${escapeHtml((DOCTORS[entry.role] || {}).facility || entry.role)}</strong> scartato: Codice Stanza disallineato. Genera e applica di nuovo il Codice Stanza qui sopra.`, 'danger', 0);
                     return;
                 }
 
@@ -5270,6 +5275,7 @@
                 // anche il Codice Stanza corrente, non distribuito nel sorgente.
                 if (!(await verifyAdminChannelHmac(payload))) {
                     console.warn('Richiesta cambio password scartata: HMAC mancante o non valido.');
+                    showToast('⚠️ Richiesta cambio password scartata: Codice Stanza disallineato. Genera e applica di nuovo il Codice Stanza qui sopra.', 'danger', 0);
                     return;
                 }
 
