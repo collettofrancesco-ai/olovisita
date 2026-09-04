@@ -7172,6 +7172,40 @@ function pushBrowserNotif(title, body, tag) {
             setTimeout(() => document.getElementById('pwd-input').focus(), 150);
         }
 
+        // Ripristina il login di questo dispositivo/browser da un ricaricamento della pagina
+        // (tv_session, scritto da submitLogin, ripulito da logout). Nessuna password coinvolta:
+        // il dispositivo ha già dimostrato una volta chi è il medico, non deve ridimostrarlo a ogni
+        // refresh. Ritorna true se il ripristino riesce, false se non c'è nulla da ripristinare
+        // (utente resta sulla normale schermata di login, comportamento invariato).
+        function tryRestoreSession() {
+            let saved = null;
+            try { saved = JSON.parse(localStorage.getItem('tv_session')); } catch (_) { }
+            if (!saved || !saved.role || !saved.username) return false;
+            const facility = FACILITIES[saved.role];
+            const user = facility && facility.users.find(u => u.username === saved.username);
+            if (!user) return false;
+
+            activeFacilityId = saved.role;
+            DOCTORS[activeFacilityId].name = user.name;
+            DOCTORS[activeFacilityId].spec = user.spec;
+            DOCTORS[activeFacilityId].avatar = user.avatar;
+            DOCTORS[activeFacilityId].color = user.color;
+            DOCTORS[activeFacilityId].bg = user.bg;
+
+            S.currentDoctor = { name: user.name, username: user.username };
+            isDoctorAuthenticated = true;
+
+            document.getElementById('login-overlay').style.display = 'none';
+            show('backup-modal-btn', true);
+            switchRole(activeFacilityId);
+            tryResumeAutoBackup();
+
+            mqttColdStart = !localStorage.getItem('tv_state');
+            if (mqttColdStart) showSyncRestoreOverlay();
+            initMQTT(currentGroupCode);
+            return true;
+        }
+
         function showFacilitySelection() {
             document.getElementById('facility-login-view').style.display = 'none';
             document.getElementById('facility-selection-view').style.display = 'block';
@@ -7376,6 +7410,13 @@ function pushBrowserNotif(title, body, tag) {
             _loginAttempts[attemptKey] = { count: 0, lockedUntil: 0 };
             persistLoginAttempts();
 
+            // Ricorda questo dispositivo/browser come già autenticato: senza questo, ricaricare la
+            // pagina (F5, o dopo un errore di rete) riportava sempre alla schermata di login, anche
+            // nel bel mezzo di una televisita. Nessuna password salvata, solo struttura+username:
+            // al prossimo avvio tryRestoreSession() li rilegge e salta il form, esattamente come se
+            // il medico avesse ridigitato le sue credenziali corrette.
+            try { localStorage.setItem('tv_session', JSON.stringify({ role: activeFacilityId, username: user.username })); } catch (_) { }
+
             // Sincronizza i dati medici correnti per compatibilità con il resto del cruscotto.
             // Nome/specializzazione: l'override dal pannello admin (se presente) vince su quelli
             // hardcoded nel sorgente — permette di correggerli senza ripubblicare l'app, vedi
@@ -7570,6 +7611,7 @@ function pushBrowserNotif(title, body, tag) {
             // dichiarazione di isDoctorAuthenticated per il quadro completo del problema.
             isDoctorAuthenticated = false;
             S.currentDoctor = null;
+            try { localStorage.removeItem('tv_session'); } catch (_) { }
             S.immReq = null; S.immRoom = null; S.activeRoom = null; S.immReqSender = null;
             toggleNotifPanel(false);
             show('backup-modal-btn', false);
@@ -14077,6 +14119,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
 
             await loadSharedState();
             applyTranslations();
+            tryRestoreSession();
             initDrop();
             // tryResumeAutoBackup() NON va richiamata qui: partirebbe (scrivendo su disco i dati
             // dell'ultima sessione, già in memoria da loadSharedState() qui sopra) PRIMA che
