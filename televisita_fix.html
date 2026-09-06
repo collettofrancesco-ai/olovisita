@@ -11953,7 +11953,6 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
             show('jitsi-placeholder', false);
             show('jitsi-wrapper', true);
             show('jitsi-container', true);
-            show('btn-quick-share', true);
 
             document.getElementById('room-label').textContent = t('room_lbl') + roomName;
             document.getElementById('btn-end').style.display = '';
@@ -11963,6 +11962,12 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                 const tv = S.televisite.find(t => t.room === roomName);
                 if (tv) S.activeTvId = tv.id;
             }
+            // Condividi documento durante la chiamata invia il file (e il nome del paziente,
+            // vedi quickShareFromCall) all'altra struttura: senso solo per una televisita Network,
+            // mai per una Centro — quella visita non è mai condivisa, l'altra struttura non
+            // avrebbe comunque modo di collegare il documento a un paziente che non vede.
+            const activeTvForCall = S.televisite.find(t => t.id === S.activeTvId);
+            show('btn-quick-share', !activeTvForCall || activeTvForCall.visitMode !== 'centro');
             renderSession();
             renderActiveEMR();
 
@@ -13033,6 +13038,22 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
             }
 
             const tv = S.televisite.find(t => t.id === S.activeTvId);
+
+            // Difesa in profondità: il pulsante è già nascosto per le televisite Centro
+            // (launchJitsi), ma se venisse comunque raggiunto con uno stato UI non aggiornato,
+            // meglio bloccare qui che condividere per sbaglio nome paziente e documento con
+            // l'altra struttura, che non ha alcuna visibilità su quella visita.
+            if (tv && tv.visitMode === 'centro') {
+                showToast(
+                    currentLang === 'fr'
+                        ? 'Impossible de partager un document pour une télévisite Centre : elle n\'est jamais partagée avec l\'autre établissement.'
+                        : 'Non è possibile condividere un documento per una televisita Centro: non è mai condivisa con l\'altra struttura.',
+                    'warning'
+                );
+                input.value = '';
+                return;
+            }
+
             const activePatient = tv ? tv.patient : 'Generico';
             const otherD = DOCTORS[S.role === 'struttura1' ? 'struttura2' : 'struttura1'];
             let done = 0;
