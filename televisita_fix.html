@@ -4537,6 +4537,14 @@
                 const summaryData = {
                     role: activeFacilityId,
                     brokerName: MQTT_BROKERS[currentBrokerIndex] ? MQTT_BROKERS[currentBrokerIndex].name : null,
+                    // Non sensibile (è un hash derivato, non il Codice Stanza): permette all'admin
+                    // di verificare che le due strutture siano DAVVERO sullo stesso canale Network,
+                    // invece di fidarsi solo di aver mandato loro lo stesso comando di rotazione —
+                    // un messaggio "retained" può non arrivare mai a una struttura che era offline
+                    // nel momento della rotazione (broker pubblico, retention non garantita), e
+                    // senza questo confronto il disallineamento restava invisibile finché una
+                    // visita non spariva nel nulla (05-06/09/2026).
+                    networkTopicId: currentTopicId,
                     shared: {
                         televisite: S.televisite,
                         emails: S.emails,
@@ -5256,6 +5264,7 @@
                 mergeAdminAuditLog(entry.role, backupData.shared && backupData.shared.auditLog);
                 renderAdminDashboard(entry.role);
                 renderAdminAuditLog(entry.role);
+                renderAdminGroupCodeStatus(); // riverifica col networkTopicId appena arrivato
                 writeAdminAutoBackup();
             } catch (err) {
                 console.error('Errore nella gestione di un backup admin:', err);
@@ -6025,10 +6034,29 @@
             if (!el) return;
             const c1 = adminControlState.struttura1 && adminControlState.struttura1.groupCode;
             const c2 = adminControlState.struttura2 && adminControlState.struttura2.groupCode;
+
+            // Prova MISURATA (non solo l'intenzione dell'admin): il canale su cui ciascuna
+            // struttura sta DAVVERO pubblicando, riportato nel suo ultimo backup/riepilogo
+            // (networkTopicId, non sensibile — è un hash derivato, non il Codice Stanza). A
+            // differenza di c1/c2 sopra ("cosa le ho dette di fare"), rileva anche il caso in cui
+            // una struttura non ha mai ricevuto la rotazione perché era offline nel momento esatto
+            // in cui il messaggio "retained" è stato pubblicato (broker pubblico, nessuna garanzia
+            // di ritenzione) — successo per davvero il 05-06/09/2026, invisibile finché una visita
+            // non è sparita nel nulla.
+            const t1 = adminReceivedBackups.struttura1 && adminReceivedBackups.struttura1.data && adminReceivedBackups.struttura1.data.networkTopicId;
+            const t2 = adminReceivedBackups.struttura2 && adminReceivedBackups.struttura2.data && adminReceivedBackups.struttura2.data.networkTopicId;
+
+            if (t1 && t2 && t1 !== t2) {
+                el.innerHTML = '<span class="badge bg-danger">⚠️ Le due strutture sono DAVVERO su canali diversi (confermato dai loro backup): la sincronizzazione Network è ferma. Riapplica il Codice Stanza qui sopra su entrambe.</span>';
+                return;
+            }
+
             if (!c1 && !c2) {
                 el.innerHTML = '<span class="badge bg-secondary">Mai ruotato: entrambe le strutture usano ancora il default del sorgente</span>';
             } else if (c1 && c2 && c1 === c2) {
-                el.innerHTML = '<span class="badge bg-success">Allineato su entrambe le strutture</span>';
+                el.innerHTML = (t1 && t2)
+                    ? '<span class="badge bg-success">Allineato e confermato: entrambe le strutture sono davvero sullo stesso canale</span>'
+                    : '<span class="badge bg-success">Allineato su entrambe le strutture</span>';
             } else {
                 el.innerHTML = '<span class="badge bg-danger">Disallineato tra le due strutture: la sincronizzazione Network è probabilmente ferma, riapplica</span>';
             }
@@ -8155,6 +8183,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
             return {
                 role: role,
                 brokerName: MQTT_BROKERS[currentBrokerIndex] ? MQTT_BROKERS[currentBrokerIndex].name : null,
+                networkTopicId: currentTopicId, // vedi commento in publishAdminSummary
                 shared: getSharedStateForStorage(),
                 emailjs: emailJsRaw ? JSON.parse(emailJsRaw) : null,
                 exportDate: new Date().toISOString()
