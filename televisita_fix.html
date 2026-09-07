@@ -175,6 +175,21 @@
             box-shadow: 0 2px 16px rgba(13, 71, 161, .35);
         }
 
+        /* Titolo header: "Olo" leggero, "Visita" in grassetto pieno - stile ispirato al vecchio logo oloHealth */
+        .app-header-title {
+            font-size: 1.3rem;
+            letter-spacing: 0.01em;
+        }
+        .app-header-title .part-olo {
+            font-weight: 400;
+            color: rgba(255, 255, 255, 0.68);
+        }
+        .app-header-title .part-visita {
+            font-weight: 800;
+            color: #fff;
+            -webkit-box-reflect: below 1px linear-gradient(transparent 60%, rgba(255,255,255,0.14) 100%);
+        }
+
         /* Barra dei ruoli */
         .role-bar {
             background: var(--card);
@@ -1725,7 +1740,7 @@
             <div class="d-flex align-items-center gap-3">
                 <img src="data:image/png;base64,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" alt="Olomedia" style="height:52px;width:auto;display:block;">
                 <div>
-                    <div class="fw-bold fs-5 text-white lh-1">OloVisita</div>
+                    <div class="app-header-title lh-1"><span class="part-olo">Olo</span><span class="part-visita">Visita</span></div>
                     <div style="font-size:.72rem;opacity:.75;color:#fff;" data-i18n="app_subtitle">Piattaforma
                         Televisite Mediche</div>
                 </div>
