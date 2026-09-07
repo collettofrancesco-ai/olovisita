@@ -7379,7 +7379,27 @@ function pushBrowserNotif(title, body, tag) {
             try { localStorage.setItem('tv_login_attempts', JSON.stringify(_loginAttempts)); } catch (_) { }
         }
 
+        // Vero finché una chiamata a submitLogin è a metà del suo ~1.5s di attesa
+        // (waitForLoginControlOverride) senza alcun riscontro visibile a schermo (bottone non
+        // disabilitato): un utente impaziente che preme di nuovo Invio o clicca "Accedi" in quella
+        // finestra avviava una SECONDA chiamata concorrente, che leggeva pwdEl.value ORMAI svuotato
+        // dalla prima (sia il ramo di successo che quello di fallimento lo azzerano) — registrando
+        // un login_fail fantasma subito dopo un login_success reale con le stesse credenziali
+        // corrette (osservato in produzione il 05-07/09/2026: coppie riuscito/fallito a 1-2s
+        // di distanza per lo stesso medico).
+        let loginInFlight = false;
+
         async function submitLogin() {
+            if (loginInFlight) return;
+            loginInFlight = true;
+            try {
+                await submitLoginInner();
+            } finally {
+                loginInFlight = false;
+            }
+        }
+
+        async function submitLoginInner() {
             const username = document.getElementById('user-select').value;
             const pwdEl = document.getElementById('pwd-input');
             const errEl = document.getElementById('login-error-msg');
