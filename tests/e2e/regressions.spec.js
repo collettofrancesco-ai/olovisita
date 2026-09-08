@@ -166,3 +166,81 @@ test.describe('Gestione documenti', () => {
     await expect(page.locator('#upload-zone-wrap')).toBeVisible();
   });
 });
+
+test.describe('Calendario, layout e colori di stato', () => {
+  test('su desktop calendario e lista delle visite sono affiancati', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await loginBypass(page, 'struttura1');
+    await page.evaluate(() => renderVisits());
+
+    const layout = await page.locator('#p-s1 .visit-planner').evaluate(el => {
+      const columns = getComputedStyle(el).gridTemplateColumns.split(' ').filter(Boolean);
+      const calendarWidth = el.querySelector('.tv-calendar').getBoundingClientRect().width;
+      return { columnCount: columns.length, calendarWidth };
+    });
+
+    expect(layout.columnCount).toBe(2);
+    expect(layout.calendarWidth).toBeGreaterThanOrEqual(320);
+  });
+
+  test('su mobile calendario e lista tornano su una sola colonna senza uscire dallo schermo', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await loginBypass(page, 'struttura1');
+    await page.evaluate(() => renderVisits());
+
+    const layout = await page.locator('#p-s1 .visit-planner').evaluate(el => {
+      const plannerRect = el.getBoundingClientRect();
+      const calendarRect = el.querySelector('.tv-calendar').getBoundingClientRect();
+      return {
+        columnCount: getComputedStyle(el).gridTemplateColumns.split(' ').filter(Boolean).length,
+        calendarFits: calendarRect.width <= plannerRect.width + 1
+      };
+    });
+
+    expect(layout).toEqual({ columnCount: 1, calendarFits: true });
+  });
+
+  test('selezionare un giorno mostra solo le visite di quella data e un solo comando Mostra tutte', async ({ page }) => {
+    await loginBypass(page, 'struttura1');
+    await page.evaluate(() => {
+      calendarViewYear = 2026;
+      calendarViewMonth = 8;
+      calendarSelectedDate = null;
+      window._S.televisite = [
+        { id: 'cal-8', patient: 'Maria Otto', visitMode: 'network', scheduledBy: 'struttura1', status: 'programmata', date: '2026-09-08', time: '10:00' },
+        { id: 'cal-9', patient: 'Luigi Nove', visitMode: 'network', scheduledBy: 'struttura1', status: 'programmata', date: '2026-09-09', time: '11:00' }
+      ];
+      renderVisits();
+    });
+
+    await page.locator('#cal-s1 .tv-cal-day').filter({ hasText: /^8$/ }).click();
+    await expect(page.locator('#vlist-s1')).toContainText('Maria Otto');
+    await expect(page.locator('#vlist-s1')).not.toContainText('Luigi Nove');
+    await expect(page.locator('#cal-s1 .tv-cal-footer button')).toHaveCount(1);
+
+    await page.locator('#cal-s1 .tv-cal-footer button').click();
+    await expect(page.locator('#vlist-s1')).toContainText('Luigi Nove');
+  });
+
+  test('gli stati positivi, di attenzione e di errore usano famiglie cromatiche distinte', async ({ page }) => {
+    await page.goto('/');
+    const palette = await page.evaluate(() => ({
+      accepted: statusInfo('accettata'),
+      completed: statusInfo('completata'),
+      warning: statusInfo('in-corso'),
+      waiting: statusInfo('waiting'),
+      rejected: statusInfo('rifiutata'),
+      absent: statusInfo('non_presentato'),
+      cancelled: statusInfo('annullata'),
+      planned: statusInfo('programmata')
+    }));
+
+    expect(palette.accepted.color).toBe(palette.completed.color);
+    expect(palette.warning.color).toBe(palette.waiting.color);
+    expect(palette.rejected.color).toBe(palette.absent.color);
+    expect(new Set([
+      palette.accepted.color, palette.warning.color, palette.rejected.color,
+      palette.cancelled.color, palette.planned.color
+    ]).size).toBe(5);
+  });
+});
