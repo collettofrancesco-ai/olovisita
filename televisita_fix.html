@@ -7691,6 +7691,11 @@ function pushBrowserNotif(title, body, tag) {
         let loginInFlight = false;
 
         async function submitLogin() {
+            // Un evento Enter può essere ripetuto dal browser anche subito DOPO che il primo
+            // login ha terminato: a quel punto loginInFlight è già tornato false, il campo
+            // password è stato svuotato e l'overlay è nascosto. Senza questa seconda guardia il
+            // medico entra correttamente, ma viene registrato subito dopo un login_fail fantasma.
+            if (isDoctorAuthenticated) return;
             if (loginInFlight) return;
             loginInFlight = true;
             try {
@@ -7701,6 +7706,7 @@ function pushBrowserNotif(title, body, tag) {
         }
 
         async function submitLoginInner() {
+            if (isDoctorAuthenticated) return;
             const username = document.getElementById('user-select').value;
             const pwdEl = document.getElementById('pwd-input');
             const errEl = document.getElementById('login-error-msg');

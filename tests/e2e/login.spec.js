@@ -48,4 +48,17 @@ test.describe('Schermata di login', () => {
     await expect(page.locator('#login-overlay')).toBeHidden();
     await expect(page.locator('#role-badge')).toBeVisible();
   });
+
+  test('un Invio tardivo dopo l’accesso non registra un fallimento fantasma', async ({ page }) => {
+    await page.goto('/');
+    const result = await page.evaluate(async () => {
+      activeFacilityId = 'struttura1';
+      isDoctorAuthenticated = true;
+      window._S.auditLog = [{ id:'ok-login', username:'test', name:'Test', event:'login_success', ts:Date.now() }];
+      document.getElementById('pwd-input').value = '';
+      await submitLogin();
+      return window._S.auditLog.map(item => item.event);
+    });
+    expect(result).toEqual(['login_success']);
+  });
 });

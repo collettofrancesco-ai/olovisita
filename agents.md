@@ -23,7 +23,7 @@ ogni sezione spiega quale.
 | `Avvia_Server.command` | Apre la versione pubblica GitHub Pages con un doppio clic (uso non tecnico) |
 | `Dockerfile` / `.dockerignore` | Immagine nginx minima che serve `docs/` — per il deploy interno Olomedia |
 | `.github/workflows/deploy.yml` | CI/CD: test E2E → deploy GitHub Pages, **bloccante** se un test fallisce |
-| `tests/e2e/` | Suite Playwright — 53 test in 7 file, vedi §14 |
+| `tests/e2e/` | Suite Playwright — 54 test in 7 file, vedi §14 |
 | `tests/integration/` | Test MQTT reale isolato su topic casuali, dati sintetici e senza retain |
 | `manuale/` | Documentazione PDF/HTML: privacy GDPR (`Valutazione_Sicurezza_GDPR_Olovisita`), manuali utente IT/FR |
 | `TeleVisita_Admin/` | Strumenti dell'amministratore piattaforma, **fuori dal repo git** (contiene chiavi private) — vedi §13 |
@@ -513,11 +513,11 @@ Playwright headless Chromium contro l'artefatto di produzione (`docs/`), servito
 `python3 -m http.server 4321` prima del run. **Il deploy è bloccato se anche un solo test
 fallisce.**
 
-### Suite E2E (53 test in 7 file)
+### Suite E2E (54 test in 7 file)
 
 | File | Test | Cosa verifica |
 |------|------|---------------|
-| `login.spec.js` | 5 | Login/logout, credenziali errate, accesso pannello admin |
+| `login.spec.js` | 6 | Login/logout, credenziali errate, accesso pannello admin, Invio tardivo senza fallimenti fantasma |
 | `schedule_visit.spec.js` | 4 | Prenotazione visita, data/ora, conflitti |
 | `urgent_visit.spec.js` | 6 | Flusso urgente struttura1→2, accettazione, consenso automatico, Centro privato |
 | `consent_flow.spec.js` | 5 | OTP, consenso firmato/negato/scaduto |
