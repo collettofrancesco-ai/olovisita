@@ -175,10 +175,12 @@
             box-shadow: 0 2px 16px rgba(13, 71, 161, .35);
         }
 
-        /* Titolo header: "olo" leggero, "Visita" in grassetto pieno - stile ispirato al vecchio logo oloHealth */
+        /* Marchio oloVisita: tratto sottile e continuo, come il logo storico oloHealth. */
         .app-header-title {
+            font-family: 'Segoe UI Light', 'Helvetica Neue', 'Outfit', sans-serif;
             font-size: 1.3rem;
-            letter-spacing: 0.01em;
+            font-weight: 300;
+            letter-spacing: -0.045em;
         }
         .app-header-title .part-olo {
             font-weight: 300;
@@ -188,7 +190,7 @@
             background-clip: text;
         }
         .app-header-title .part-visita {
-            font-weight: 800;
+            font-weight: 300;
             background: linear-gradient(180deg, #ffffff 0%, #ffffff 40%, #d6e8fb 60%, #ffffff 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -885,12 +887,12 @@
         }
 
         .app-title-main {
-            font-family: 'Outfit', 'Segoe UI', sans-serif;
-            font-size: 2.4rem;
-            font-weight: 800;
+            font-family: 'Segoe UI Light', 'Helvetica Neue', 'Outfit', sans-serif;
+            font-size: 2.65rem;
+            font-weight: 300;
             margin: 0;
-            line-height: 1.15;
-            letter-spacing: 0.01em;
+            line-height: 1.08;
+            letter-spacing: -0.055em;
             position: relative;
             display: inline-block;
             -webkit-box-reflect: below 2px linear-gradient(transparent 55%, rgba(255,255,255,0.18) 100%);
@@ -921,17 +923,19 @@
         .sparkle-1 { top: -4px;  left: 56px; }
         .sparkle-2 { top: 2px;   right: 12px; width: 16px; height: 16px; }
         .app-title-main .olo-part {
+            font-weight: 300;
             background: linear-gradient(180deg,
-                #c2ddf0 0%, #6aadd8 18%, #3a80b8 38%,
-                #2468a2 58%, #1a508c 78%, #2060a0 92%, #1a4a7a 100%);
+                #d9edf8 0%, #78b9df 18%, #3f91c4 42%,
+                #236fa9 62%, #4c9bca 82%, #1d659e 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
         .app-title-main .visita-part {
+            font-weight: 300;
             background: linear-gradient(180deg,
-                #a8ccdf 0%, #4e90c0 18%, #2668a8 38%,
-                #1a5494 58%, #123e78 78%, #1a5090 92%, #0f3868 100%);
+                #d9edf8 0%, #78b9df 18%, #3f91c4 42%,
+                #236fa9 62%, #4c9bca 82%, #1d659e 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
