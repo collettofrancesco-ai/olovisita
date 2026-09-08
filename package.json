@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "test": "playwright test",
+    "test:mqtt": "playwright test --config=playwright.mqtt.config.js",
     "test:headed": "playwright test --headed",
     "test:report": "playwright show-report"
   },
