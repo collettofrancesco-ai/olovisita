@@ -23,7 +23,7 @@ ogni sezione spiega quale.
 | `Avvia_Server.command` | Apre la versione pubblica GitHub Pages con un doppio clic (uso non tecnico) |
 | `Dockerfile` / `.dockerignore` | Immagine nginx minima che serve `docs/` — per il deploy interno Olomedia |
 | `.github/workflows/deploy.yml` | CI/CD: test E2E → deploy GitHub Pages, **bloccante** se un test fallisce |
-| `tests/e2e/` | Suite Playwright — 34 test in 6 file, vedi §14 |
+| `tests/e2e/` | Suite Playwright — 43 test in 7 file, vedi §14 |
 | `manuale/` | Documentazione PDF/HTML: privacy GDPR (`Valutazione_Sicurezza_GDPR_Olovisita`), manuali utente IT/FR |
 | `TeleVisita_Admin/` | Strumenti dell'amministratore piattaforma, **fuori dal repo git** (contiene chiavi private) — vedi §13 |
 
@@ -512,7 +512,7 @@ Playwright headless Chromium contro l'artefatto di produzione (`docs/`), servito
 `python3 -m http.server 4321` prima del run. **Il deploy è bloccato se anche un solo test
 fallisce.**
 
-### Suite (34 test in 6 file)
+### Suite (43 test in 7 file)
 
 | File | Test | Cosa verifica |
 |------|------|---------------|
@@ -522,6 +522,7 @@ fallisce.**
 | `consent_flow.spec.js` | 5 | OTP, consenso firmato/negato/scaduto |
 | `demo.spec.js` | 6 | Demo guidata, demoMode blocca email, `resetAllData` non tocca l'audit log |
 | `security.spec.js` | 8 | Rate limiting login, cifratura a riposo, hash rafforzato, merge audit log, segreto F-01 dedicato ai link paziente |
+| `regressions.spec.js` | 9 | Confini privacy Centro, import non fidati, HMAC admin, lingue consenso, link paziente e sessione non valida |
 
 ### Accesso allo stato nei test
 
