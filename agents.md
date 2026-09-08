@@ -23,7 +23,8 @@ ogni sezione spiega quale.
 | `Avvia_Server.command` | Apre la versione pubblica GitHub Pages con un doppio clic (uso non tecnico) |
 | `Dockerfile` / `.dockerignore` | Immagine nginx minima che serve `docs/` — per il deploy interno Olomedia |
 | `.github/workflows/deploy.yml` | CI/CD: test E2E → deploy GitHub Pages, **bloccante** se un test fallisce |
-| `tests/e2e/` | Suite Playwright — 43 test in 7 file, vedi §14 |
+| `tests/e2e/` | Suite Playwright — 53 test in 7 file, vedi §14 |
+| `tests/integration/` | Test MQTT reale isolato su topic casuali, dati sintetici e senza retain |
 | `manuale/` | Documentazione PDF/HTML: privacy GDPR (`Valutazione_Sicurezza_GDPR_Olovisita`), manuali utente IT/FR |
 | `TeleVisita_Admin/` | Strumenti dell'amministratore piattaforma, **fuori dal repo git** (contiene chiavi private) — vedi §13 |
 
@@ -512,7 +513,7 @@ Playwright headless Chromium contro l'artefatto di produzione (`docs/`), servito
 `python3 -m http.server 4321` prima del run. **Il deploy è bloccato se anche un solo test
 fallisce.**
 
-### Suite (43 test in 7 file)
+### Suite E2E (53 test in 7 file)
 
 | File | Test | Cosa verifica |
 |------|------|---------------|
@@ -522,7 +523,15 @@ fallisce.**
 | `consent_flow.spec.js` | 5 | OTP, consenso firmato/negato/scaduto |
 | `demo.spec.js` | 6 | Demo guidata, demoMode blocca email, `resetAllData` non tocca l'audit log |
 | `security.spec.js` | 8 | Rate limiting login, cifratura a riposo, hash rafforzato, merge audit log, segreto F-01 dedicato ai link paziente |
-| `regressions.spec.js` | 9 | Confini privacy Centro, import non fidati, HMAC admin, lingue consenso, link paziente e sessione non valida |
+| `regressions.spec.js` | 19 | Confini privacy Centro, import non fidati, HMAC admin, lingue consenso, link paziente, UI documenti, contesto paziente e diagnostica |
+
+### Suite MQTT reale (2 test separati)
+
+`npm run test:mqtt` collega due browser al broker EMQX tramite un topic casuale per ogni
+esecuzione. Usa soltanto pazienti sintetici e `retain:false`; verifica il viaggio completo
+Struttura 1 → Struttura 2 → Struttura 1, l'esclusione delle visite Centro, l'unione di
+stati concorrenti e lo scarto di payload cifrati con una chiave errata. È separata dalla
+pipeline bloccante perché un disservizio esterno del broker non deve impedire il deploy.
 
 ### Accesso allo stato nei test
 

@@ -244,3 +244,47 @@ test.describe('Calendario, layout e colori di stato', () => {
     ]).size).toBe(5);
   });
 });
+
+test.describe('Contesto paziente, documenti e diagnostica', () => {
+  test('la barra del paziente attivo resta visibile e si chiude senza cancellare la visita', async ({ page }) => {
+    await loginBypass(page, 'struttura1');
+    await page.evaluate(() => {
+      window._S.televisite = [{ id:'ctx-1', patient:'Paziente Contesto', visitMode:'network', scheduledBy:'struttura1', status:'accettata', date:'2026-09-08', time:'12:00' }];
+      window._S.activeTvId = 'ctx-1';
+      renderAll();
+    });
+    await expect(page.locator('#active-patient-bar')).toBeVisible();
+    await expect(page.locator('#active-patient-name')).toHaveText('Paziente Contesto');
+    await page.getByRole('button', { name:'Chiudi paziente attivo' }).click();
+    await expect(page.locator('#active-patient-bar')).toBeHidden();
+    expect(await page.evaluate(() => window._S.televisite.length)).toBe(1);
+  });
+
+  test('i documenti possono essere ordinati per nome', async ({ page }) => {
+    await loginBypass(page, 'struttura1');
+    await page.evaluate(() => {
+      activeDocTab = 'private';
+      window._S.docs = [
+        { id:'d-z', name:'Zeta.pdf', ext:'pdf', patient:'Test', by:'struttura1', shared:false, size:'1 KB', at:'08/09 10:00' },
+        { id:'d-a', name:'Alfa.pdf', ext:'pdf', patient:'Test', by:'struttura1', shared:false, size:'1 KB', at:'08/09 10:01' }
+      ];
+      renderDocs();
+    });
+    await page.locator('#doc-sort').selectOption('name');
+    await expect(page.locator('#doc-list .doc-item .fw-semibold').first()).toHaveText('Alfa.pdf');
+  });
+
+  test('la cronologia tecnica compare soltanto nel pannello admin', async ({ page }) => {
+    await loginBypass(page, 'struttura1');
+    await expect(page.locator('#admin-sync-log')).toBeHidden();
+    await page.goto('/?admin=1');
+    await expect(page.locator('#admin-sync-log')).toHaveCount(1);
+  });
+
+  test('la verifica collegamento distingue il broker dalla risposta dell’altra struttura', async ({ page }) => {
+    await loginBypass(page, 'struttura1');
+    await expect(page.locator('#sync-peer-status')).toHaveText('non verificata');
+    await page.evaluate(() => requestSyncHealthCheck());
+    await expect(page.locator('#sync-peer-status')).toHaveText('broker disconnesso');
+  });
+});

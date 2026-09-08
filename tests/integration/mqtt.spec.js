@@ -113,3 +113,34 @@ test('una visita Network passa da Struttura 1 a 2 e l’accettazione torna alla 
     if (s2) await chiudiStruttura(s2.page, s2.context);
   }
 });
+
+test('stati concorrenti si uniscono per id e un payload con chiave errata viene ignorato', async ({ browser }) => {
+  const runId = `${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+  const code = `mqtt-merge-${runId}-${Math.random().toString(36).slice(2)}`;
+  let s1;
+  let s2;
+  try {
+    s1 = await preparaStruttura(browser, 'struttura1', code, runId);
+    s2 = await preparaStruttura(browser, 'struttura2', code, runId);
+
+    const statoA = { shared:{ televisite:[{ id:'net-a', patient:'TEST A', visitMode:'network', scheduledBy:'struttura1', status:'programmata' }], docs:[], immReq:null, immRoom:null, immReqSender:null }, event:null };
+    const statoB = { shared:{ televisite:[{ id:'net-b', patient:'TEST B', visitMode:'network', scheduledBy:'struttura2', status:'programmata' }], docs:[], immReq:null, immRoom:null, immReqSender:null }, event:null };
+    await s1.page.evaluate(payload => { S.televisite = payload.shared.televisite.slice(); }, statoA);
+    await s2.page.evaluate(payload => { S.televisite = payload.shared.televisite.slice(); }, statoB);
+    await pubblica(s1.page, statoA);
+    await pubblica(s2.page, statoB);
+    await expect.poll(() => s1.page.evaluate(() => S.televisite.map(v => v.id).sort()), { timeout:10000 }).toEqual(['net-a', 'net-b']);
+    await expect.poll(() => s2.page.evaluate(() => S.televisite.map(v => v.id).sort()), { timeout:10000 }).toEqual(['net-a', 'net-b']);
+
+    await s1.page.evaluate(async () => {
+      const wrong = await encryptPayload({ shared:{ televisite:[{ id:'intruso', patient:'TEST', visitMode:'network' }], docs:[] } }, 'chiave-errata-isolata');
+      const envelope = { sender:'struttura1', iv:wrong.iv, ciphertext:wrong.ciphertext };
+      await new Promise((resolve, reject) => window.__mqttIntegrationClient.publish(MQTT_TOPIC_BASE + currentTopicId, JSON.stringify(envelope), { qos:1, retain:false }, err => err ? reject(err) : resolve()));
+    });
+    await s2.page.waitForTimeout(1200);
+    expect(await s2.page.evaluate(() => S.televisite.some(v => v.id === 'intruso'))).toBe(false);
+  } finally {
+    if (s1) await chiudiStruttura(s1.page, s1.context);
+    if (s2) await chiudiStruttura(s2.page, s2.context);
+  }
+});
