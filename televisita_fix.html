@@ -39,6 +39,16 @@
             --muted: #6b7a99;
             --selected-visit: #eef3ff;
             --hover-visit: #f1f5f9;
+            --status-info: #1565c0;
+            --status-info-bg: #e3f2fd;
+            --status-success: #237a3b;
+            --status-success-bg: #e7f6eb;
+            --status-warning: #b45309;
+            --status-warning-bg: #fff4df;
+            --status-danger: #c62828;
+            --status-danger-bg: #ffebee;
+            --status-neutral: #546e7a;
+            --status-neutral-bg: #eceff1;
         }
 
         [data-theme="dark"] {
@@ -163,7 +173,17 @@
             font-family: 'Outfit', 'Segoe UI', system-ui, sans-serif;
             overflow-x: hidden;
             max-width: 100%;
+            font-size: 16px;
+            line-height: 1.5;
         }
+
+        /* Leggibilità coerente di campi e testi operativi. */
+        .section-card label { font-size: .86rem; }
+        .section-card .form-control:not(.form-control-sm),
+        .section-card .form-select:not(.form-select-sm) { min-height: 44px; font-size: .96rem; }
+        .section-card .form-control-sm,
+        .section-card .form-select-sm { min-height: 36px; font-size: .82rem; }
+        .section-card .btn-sm { min-height: 34px; }
 
         /* Intestazione */
         .app-header {
@@ -269,41 +289,41 @@
 
         /* Badge di stato */
         .bs-programmata {
-            background: #e3f2fd;
-            color: #1565c0;
+            background: var(--status-info-bg);
+            color: var(--status-info);
         }
 
         .bs-accettata {
-            background: #e8f5e9;
-            color: #2e7d32;
+            background: var(--status-success-bg);
+            color: var(--status-success);
         }
 
         .bs-rifiutata {
-            background: #ffebee;
-            color: #c62828;
+            background: var(--status-danger-bg);
+            color: var(--status-danger);
         }
 
         .bs-in-corso {
-            background: #fff3e0;
-            color: #e65100;
+            background: var(--status-warning-bg);
+            color: var(--status-warning);
         }
 
         .bs-completata {
-            background: #f5f5f5;
-            color: #616161;
+            background: var(--status-success-bg);
+            color: var(--status-success);
         }
 
         .bs-in-attesa {
-            background: #fffde7;
-            color: #f57f17;
+            background: var(--status-warning-bg);
+            color: var(--status-warning);
         }
         .bs-annullata {
-            background: #eceff1;
-            color: #455a64;
+            background: var(--status-neutral-bg);
+            color: var(--status-neutral);
         }
         .bs-non_presentato {
-            background: #fff3e0;
-            color: #e65100;
+            background: var(--status-danger-bg);
+            color: var(--status-danger);
         }
 
         /* Lista delle visite */
@@ -345,8 +365,16 @@
         }
 
         .visits-scroll {
-            max-height: 380px;
+            max-height: 430px;
             overflow-y: auto;
+            min-width: 0;
+        }
+
+        .visit-planner {
+            display: grid;
+            grid-template-columns: minmax(320px, 380px) minmax(0, 1fr);
+            gap: 1rem;
+            align-items: start;
         }
 
         /* Mini calendario */
@@ -357,18 +385,19 @@
             padding: 0;
             margin-bottom: 12px;
             user-select: none;
-            max-width: 300px;
+            width: 100%;
+            max-width: 380px;
             overflow: hidden;
         }
         .tv-cal-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 10px 10px 8px;
+            padding: 12px 14px 10px;
             background: linear-gradient(135deg, #1565c0 0%, #1976d2 100%);
         }
         .tv-cal-month-label {
-            font-size: 0.82rem;
+            font-size: 0.92rem;
             font-weight: 700;
             color: #fff;
             letter-spacing: 0.03em;
@@ -376,12 +405,12 @@
         .tv-cal-nav {
             background: rgba(255,255,255,0.15);
             border: none;
-            padding: 3px 8px;
+            padding: 5px 9px;
             cursor: pointer;
             color: #fff;
             border-radius: 6px;
             line-height: 1;
-            font-size: 0.75rem;
+            font-size: 0.82rem;
             transition: background .15s;
         }
         .tv-cal-nav:hover { background: rgba(255,255,255,0.3); }
@@ -389,27 +418,27 @@
             display: grid;
             grid-template-columns: repeat(7, 1fr);
             gap: 0;
-            padding: 6px 6px 4px;
+            padding: 10px 9px 7px;
         }
         .tv-cal-dayname {
             text-align: center;
-            font-size: 0.6rem;
+            font-size: 0.68rem;
             font-weight: 700;
             color: #90a4ae;
-            padding: 0 0 5px;
+            padding: 0 0 8px;
             letter-spacing: 0.04em;
         }
         .tv-cal-day {
             position: relative;
             text-align: center;
-            font-size: 0.72rem;
+            font-size: 0.8rem;
             color: #546e7a;
             padding: 0;
             border-radius: 50%;
             cursor: pointer;
-            width: 34px;
-            height: 34px;
-            line-height: 34px;
+            width: 38px;
+            height: 38px;
+            line-height: 38px;
             margin: 1px auto;
             display: block;
             transition: background .15s, color .15s;
@@ -485,9 +514,10 @@
             display: flex;
             align-items: center;
             margin: 0;
-            padding: 5px 8px;
+            padding: 8px 10px;
             border-top: 1px solid var(--border);
             background: var(--card);
+            flex-wrap: wrap;
         }
         /* Header raggruppamento per data nella lista visite */
         .tv-date-group-header {
@@ -804,6 +834,8 @@
             .section-card .card-header {
                 padding: 1rem;
             }
+            .visit-planner { grid-template-columns: 1fr; }
+            .tv-calendar { max-width: none; }
         }
 
         /* Schermata di login */
@@ -2017,8 +2049,10 @@
                                 <button class="filter-pill" onclick="setVisitFilter('completate')"><span data-i18n="filter_completate">Completate</span></button>
                             </div>
                         </div>
-                        <div id="cal-s1"></div>
-                        <div id="vlist-s1" class="visits-scroll"></div>
+                        <div class="visit-planner">
+                            <div id="cal-s1"></div>
+                            <div id="vlist-s1" class="visits-scroll"></div>
+                        </div>
                     </div>
 
                     <div id="p-s2" class="p-4" style="display:none;">
@@ -2154,8 +2188,10 @@
                                 <button class="filter-pill" onclick="setVisitFilter('completate')"><span data-i18n="filter_completate">Completate</span></button>
                             </div>
                         </div>
-                        <div id="cal-s2"></div>
-                        <div id="vlist-s2" class="visits-scroll"></div>
+                        <div class="visit-planner">
+                            <div id="cal-s2"></div>
+                            <div id="vlist-s2" class="visits-scroll"></div>
+                        </div>
                     </div>
                 </div>
 
@@ -7871,8 +7907,8 @@ function pushBrowserNotif(title, body, tag) {
     ${cells}
   </div>
   ${calendarSelectedDate ? `<div class="tv-cal-footer">
-    <span class="text-muted" style="font-size:0.72rem;"><i class="bi bi-calendar2-check me-1"></i>${footerLabel}</span>
-    <button class="btn btn-link btn-sm p-0 ms-2" style="font-size:0.72rem;" onclick="selectCalendarDate(null)">${showAllLabel}</button>
+    <span class="text-muted" style="font-size:0.78rem;"><i class="bi bi-calendar2-check me-1"></i>${footerLabel}</span>
+    <button class="btn btn-link btn-sm p-0 ms-auto" style="font-size:0.78rem;min-height:auto;" onclick="selectCalendarDate(null)">${showAllLabel}</button>
   </div>` : ''}
 </div>`;
         }
@@ -13989,14 +14025,14 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
         function statusInfo(s) {
             const statuses = {
                 programmata: { label: t('status_programmata'), color: '#1565c0', cls: 'bs-programmata' },
-                accettata: { label: t('status_accettata'), color: '#2e7d32', cls: 'bs-accettata' },
+                accettata: { label: t('status_accettata'), color: '#237a3b', cls: 'bs-accettata' },
                 rifiutata: { label: t('status_rifiutata'), color: '#c62828', cls: 'bs-rifiutata' },
-                annullata: { label: t('status_annullata'), color: '#455a64', cls: 'bs-annullata' },
-                'in-corso': { label: t('status_in_corso'), color: '#e65100', cls: 'bs-in-corso' },
-                completata: { label: t('status_completata'), color: '#757575', cls: 'bs-completata' },
-                non_presentato: { label: t('status_non_presentato'), color: '#e65100', cls: 'bs-non_presentato' },
-                waiting: { label: t('status_waiting'), color: '#f57f17', cls: 'bs-in-attesa' },
-                accepted: { label: t('status_accepted'), color: '#2e7d32', cls: 'bs-accettata' },
+                annullata: { label: t('status_annullata'), color: '#546e7a', cls: 'bs-annullata' },
+                'in-corso': { label: t('status_in_corso'), color: '#b45309', cls: 'bs-in-corso' },
+                completata: { label: t('status_completata'), color: '#237a3b', cls: 'bs-completata' },
+                non_presentato: { label: t('status_non_presentato'), color: '#c62828', cls: 'bs-non_presentato' },
+                waiting: { label: t('status_waiting'), color: '#b45309', cls: 'bs-in-attesa' },
+                accepted: { label: t('status_accepted'), color: '#237a3b', cls: 'bs-accettata' },
                 rejected: { label: t('status_rejected'), color: '#c62828', cls: 'bs-rifiutata' }
             };
             return statuses[s] || { label: s, color: '#9e9e9e', cls: '' };
