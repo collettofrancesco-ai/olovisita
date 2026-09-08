@@ -2354,23 +2354,33 @@
                             style="font-size: 0.72rem; background: #f1f3f9; padding: 3px; border-radius: 8px; border: none;">
                             <li class="nav-item">
                                 <button class="nav-link active py-1" id="tab-doc-current" onclick="setDocTab('current')"
-                                    style="border-radius: 6px; font-weight: 500;" data-i18n="doc_tab_current">Paziente
-                                    Corrente</button>
+                                    style="border-radius: 6px; font-weight: 500;"><span data-i18n="doc_tab_current">Della visita</span><span id="doc-count-current" class="badge rounded-pill ms-1 bg-white text-primary">0</span></button>
                             </li>
                             <li class="nav-item">
                                 <button class="nav-link py-1" id="tab-doc-shared" onclick="setDocTab('shared')"
                                     style="border-radius: 6px; font-weight: 500;"
-                                    data-i18n="doc_tab_shared">Condivisi</button>
+                                    ><span data-i18n="doc_tab_shared">Condivisi</span><span id="doc-count-shared" class="badge rounded-pill ms-1 bg-white text-primary">0</span></button>
                             </li>
                             <li class="nav-item">
                                 <button class="nav-link py-1" id="tab-doc-private" onclick="setDocTab('private')"
-                                    style="border-radius: 6px; font-weight: 500;" data-i18n="doc_tab_private">Bozze
-                                    Locali</button>
+                                    style="border-radius: 6px; font-weight: 500;"><span data-i18n="doc_tab_private">Bozze</span><span id="doc-count-private" class="badge rounded-pill ms-1 bg-white text-primary">0</span></button>
                             </li>
                         </ul>
 
+                        <!-- Contesto della visita selezionata: evita di caricare un documento sul paziente sbagliato -->
+                        <div id="doc-patient-context" class="d-none align-items-center gap-2 mb-3 p-2 rounded-3"
+                            style="background:#eef6ff;border:1px solid #cfe3fb;">
+                            <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                                style="width:34px;height:34px;background:#1565c0;color:#fff;"><i class="bi bi-person-fill"></i></div>
+                            <div class="flex-grow-1" style="min-width:0;">
+                                <div id="doc-context-patient" class="fw-bold text-truncate" style="font-size:.8rem;"></div>
+                                <div id="doc-context-meta" class="text-muted text-truncate" style="font-size:.68rem;"></div>
+                            </div>
+                            <span id="doc-context-mode" class="badge flex-shrink-0"></span>
+                        </div>
+
                         <!-- Filtri di Ricerca e Categoria -->
-                        <div class="d-flex flex-column gap-2 mb-3">
+                        <div id="doc-filters" class="d-flex flex-column gap-2 mb-3">
                             <div class="input-group input-group-sm">
                                 <span class="input-group-text bg-white border-end-0 text-muted"><i
                                         class="bi bi-search"></i></span>
@@ -2394,14 +2404,17 @@
                             </div>
                         </div>
 
-                        <!-- Banner suggerimento paziente -->
-                        <div id="patient-hint-banner" class="d-none mb-3 p-2 rounded-3 d-flex align-items-start gap-2"
-                            style="background:#fff8e1; border:1px solid #ffe082;">
-                            <i class="bi bi-person-circle mt-1 flex-shrink-0"
-                                style="color:#f57f17; font-size:1rem;"></i>
-                            <p class="mb-0 small lh-sm" style="color:#6d4c41; font-size:0.73rem;"
-                                data-i18n="doc_select_patient_hint">Seleziona un paziente dalla lista a sinistra per
-                                filtrare i documenti e associare i nuovi caricamenti.</p>
+                        <!-- Stato iniziale unico: sostituisce banner, upload disabilitato e messaggio duplicato -->
+                        <div id="patient-hint-banner" class="d-none text-center px-3 py-4 rounded-3"
+                            style="background:#f8fbff;border:1px dashed #bfd7ef;">
+                            <div class="rounded-circle d-inline-flex align-items-center justify-content-center mb-2"
+                                style="width:46px;height:46px;background:#e3f2fd;color:#1565c0;"><i class="bi bi-person-check fs-4"></i></div>
+                            <div class="fw-bold mb-1" data-i18n="doc_select_patient_title">Seleziona una televisita</div>
+                            <p class="mb-3 text-muted mx-auto" style="font-size:.73rem;max-width:270px;"
+                                data-i18n="doc_select_patient_hint">Scegli il paziente dalla lista delle televisite per visualizzare e caricare i suoi documenti.</p>
+                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="focusTelevisiteFromDocs()">
+                                <i class="bi bi-list-check me-1"></i><span data-i18n="doc_go_to_visits">Vai alle televisite</span>
+                            </button>
                         </div>
 
                         <!-- Area di rilascio file -->
@@ -3058,7 +3071,6 @@
                 doc_private_badge: "Privato",
                 doc_shared_with: "Condiviso con {facility}",
                 doc_received: "Ricevuto",
-                doc_select_patient_hint: "Seleziona un paziente dalla lista a sinistra per filtrare i documenti e associare i nuovi caricamenti.",
                 doc_offline_title: "Documenti non disponibili su questo dispositivo",
                 filter_all: "Tutte",
                 filter_today: "Oggi",
@@ -3213,9 +3225,12 @@
     <li>Acconsento, ove necessario, alla consultazione e alla condivisione dei documenti clinici tra le strutture sanitarie coinvolte nella TeleVisita.</li>
 </ul>
 <p class="text-center fw-bold mt-4" style="font-size:0.85rem;">Per confermare il consenso, dopo l'accettazione ti verrà mostrato un codice OTP da inserire per completare la firma.</p>`,
-                doc_tab_current: "Paziente Corrente",
+                doc_tab_current: "Della visita",
                 doc_tab_shared: "Condivisi",
-                doc_tab_private: "Bozze Locali",
+                doc_tab_private: "Bozze",
+                doc_select_patient_title: "Seleziona una televisita",
+                doc_select_patient_hint: "Scegli il paziente dalla lista delle televisite per visualizzare e caricare i suoi documenti.",
+                doc_go_to_visits: "Vai alle televisite",
                 placeholder_search_docs: "Cerca documento...",
                 cat_all: "Tutte le categorie",
                 cat_consent: "Consensi e Moduli",
@@ -3346,7 +3361,6 @@
                 doc_private_badge: "Privé",
                 doc_shared_with: "Partagé avec {facility}",
                 doc_received: "Reçu",
-                doc_select_patient_hint: "Sélectionnez un patient dans la liste de gauche pour filtrer les documents et associer les nouveaux téléchargements.",
                 doc_offline_title: "Documents non disponibles sur cet appareil",
                 filter_all: "Toutes",
                 filter_today: "Aujourd'hui",
@@ -3503,9 +3517,12 @@
     <li>Je consens, le cas échéant, à la consultation et au partage de documents cliniques entre les établissements de santé impliqués dans la Télévisite.</li>
 </ul>
 <p class="text-center fw-bold mt-4" style="font-size:0.85rem;">Pour confirmer le consentement, après l'acceptation un code OTP à saisir vous sera montré pour finaliser la signature.</p>`,
-                doc_tab_current: "Patient Courant",
+                doc_tab_current: "De la télévisite",
                 doc_tab_shared: "Partagés",
-                doc_tab_private: "Brouillons Locaux",
+                doc_tab_private: "Brouillons",
+                doc_select_patient_title: "Sélectionnez une télévisite",
+                doc_select_patient_hint: "Choisissez le patient dans la liste des télévisites pour consulter et charger ses documents.",
+                doc_go_to_visits: "Voir les télévisites",
                 placeholder_search_docs: "Rechercher un document...",
                 cat_all: "Toutes les catégories",
                 cat_consent: "Consentements et Formulaires",
@@ -9254,6 +9271,11 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
             renderDocs();
         }
 
+        function focusTelevisiteFromDocs() {
+            const list = document.getElementById(S.role === 'struttura2' ? 'vlist-s2' : 'vlist-s1');
+            list?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
         function getDocCategory(d) {
             if (d.category) return d.category;
             const name = d.name.toLowerCase();
@@ -9290,12 +9312,30 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
             const el = document.getElementById('doc-list');
             if (!el) return;
 
+            let activeTv = null;
+            if (S.activeTvId) activeTv = S.televisite.find(t => t.id === S.activeTvId) || null;
+            const activePatient = activeTv?.patient || null;
+            const noPatientInCurrentTab = activeDocTab === 'current' && !activeTv;
+
+            const context = document.getElementById('doc-patient-context');
+            if (context) {
+                context.classList.toggle('d-none', activeDocTab !== 'current' || !activeTv);
+                context.classList.toggle('d-flex', activeDocTab === 'current' && !!activeTv);
+                if (activeTv) {
+                    document.getElementById('doc-context-patient').textContent = activeTv.patient || '';
+                    document.getElementById('doc-context-meta').textContent = `${activeTv.date ? fmtDate(activeTv.date) : ''}${activeTv.time ? ` · ${activeTv.time}` : ''}`;
+                    const mode = document.getElementById('doc-context-mode');
+                    mode.textContent = activeTv.visitMode === 'centro' ? t('badge_visit_centro') : t('badge_visit_network');
+                    mode.className = `badge flex-shrink-0 ${activeTv.visitMode === 'centro' ? 'bg-info-subtle text-info-emphasis' : 'bg-primary-subtle text-primary-emphasis'}`;
+                }
+            }
+
             // Banner "documenti non disponibili": visibile se esiste almeno un doc senza base64Data
             // (cold-start su nuovo PC) e scompare automaticamente quando tutti i file arrivano.
             const offlineBanner = document.getElementById('doc-offline-banner');
             if (offlineBanner) {
                 const missingDocs = S.docs.filter(d => !d.base64Data && (d.by === S.role || d.shared !== false));
-                offlineBanner.classList.toggle('d-none', missingDocs.length === 0);
+                offlineBanner.classList.toggle('d-none', missingDocs.length === 0 || noPatientInCurrentTab);
                 if (missingDocs.length > 0) {
                     const titleEl = offlineBanner.querySelector('[data-i18n="doc_offline_title"]');
                     const bodyEl  = offlineBanner.querySelector('[data-i18n="doc_offline_body"]');
@@ -9311,29 +9351,19 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                 patientFilterEl.style.display = activeDocTab === 'current' ? 'none' : 'block';
             }
 
-            // Mostra il banner di aiuto quando siamo sulla scheda corrente e non c'è nessun paziente selezionato
+            // Nello stato iniziale mostra una sola indicazione, senza filtri e caricamento inutilizzabili.
             const hintBanner = document.getElementById('patient-hint-banner');
-            const noPatientInCurrentTab = activeDocTab === 'current' && !S.activeTvId;
             if (hintBanner) {
                 hintBanner.classList.toggle('d-none', !noPatientInCurrentTab);
-                hintBanner.classList.toggle('d-flex', noPatientInCurrentTab);
             }
+
+            const filters = document.getElementById('doc-filters');
+            if (filters) filters.classList.toggle('d-none', noPatientInCurrentTab);
 
             // Abilita o disabilita l'area di caricamento in base alla scheda e al paziente selezionato
             const uploadWrap = document.getElementById('upload-zone-wrap');
             if (uploadWrap) {
-                const disableUpload = noPatientInCurrentTab;
-                uploadWrap.style.opacity = disableUpload ? '0.45' : '1';
-                uploadWrap.style.pointerEvents = disableUpload ? 'none' : '';
-                uploadWrap.title = disableUpload
-                    ? (currentLang === 'fr' ? 'Sélectionnez un patient avant de charger un document.' : 'Seleziona prima un paziente per caricare un documento.')
-                    : '';
-            }
-
-            let activePatient = null;
-            if (S.activeTvId) {
-                const tv = S.televisite.find(t => t.id === S.activeTvId);
-                if (tv) activePatient = tv.patient;
+                uploadWrap.classList.toggle('d-none', noPatientInCurrentTab);
             }
 
             let docs = S.docs.filter(d => d.by === S.role || d.shared !== false);
@@ -9352,11 +9382,23 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                 if (!d.category) d.category = getDocCategory(d);
             });
 
+            const counts = {
+                current: activePatient ? docs.filter(d => d.patient === activePatient).length : 0,
+                shared: docs.filter(d => d.shared === true).length,
+                private: docs.filter(d => d.shared === false && d.by === S.role).length
+            };
+            Object.entries(counts).forEach(([key, value]) => {
+                const countEl = document.getElementById(`doc-count-${key}`);
+                if (countEl) countEl.textContent = value;
+            });
+
+            el.classList.toggle('d-none', noPatientInCurrentTab);
+
             if (activeDocTab === 'current') {
                 if (activePatient) {
                     docs = docs.filter(d => d.patient === activePatient);
                 } else {
-                    el.innerHTML = `<div class="empty small text-center p-4"><i class="bi bi-person-x fs-2 text-muted"></i><p class="mt-2 mb-0 text-muted" style="font-size:0.75rem;">${t('doc_select_patient_hint')}</p></div>`;
+                    el.innerHTML = '';
                     return;
                 }
             } else if (activeDocTab === 'shared') {

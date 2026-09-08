@@ -133,3 +133,36 @@ test.describe('Persistenza della sessione', () => {
     await expect(page.locator('#login-overlay')).toBeVisible();
   });
 });
+
+test.describe('Gestione documenti', () => {
+  test('senza una visita selezionata mostra un solo invito e nasconde i controlli inutilizzabili', async ({ page }) => {
+    await loginBypass(page, 'struttura1');
+    await page.evaluate(() => {
+      window._S.activeTvId = null;
+      renderDocs();
+    });
+
+    await expect(page.locator('#patient-hint-banner')).toBeVisible();
+    await expect(page.locator('#doc-filters')).toBeHidden();
+    await expect(page.locator('#upload-zone-wrap')).toBeHidden();
+    await expect(page.locator('#doc-list')).toBeHidden();
+  });
+
+  test('con una visita selezionata rende evidente il paziente associato al caricamento', async ({ page }) => {
+    await loginBypass(page, 'struttura1');
+    await page.evaluate(() => {
+      window._S.televisite = [{
+        id: 'tv-documenti', patient: 'Maria Test', visitMode: 'centro', scheduledBy: 'struttura1',
+        date: '2026-09-08', time: '10:30'
+      }];
+      window._S.activeTvId = 'tv-documenti';
+      renderDocs();
+    });
+
+    await expect(page.locator('#doc-patient-context')).toBeVisible();
+    await expect(page.locator('#doc-context-patient')).toHaveText('Maria Test');
+    await expect(page.locator('#doc-context-meta')).toContainText('08/09/2026 · 10:30');
+    await expect(page.locator('#doc-filters')).toBeVisible();
+    await expect(page.locator('#upload-zone-wrap')).toBeVisible();
+  });
+});
