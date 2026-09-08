@@ -274,17 +274,20 @@ test.describe('Contesto paziente, documenti e diagnostica', () => {
     await expect(page.locator('#doc-list .doc-item .fw-semibold').first()).toHaveText('Alfa.pdf');
   });
 
-  test('la cronologia tecnica compare soltanto nel pannello admin', async ({ page }) => {
+  test('diagnostica e verifica strutture compaiono soltanto nel pannello admin', async ({ page }) => {
     await loginBypass(page, 'struttura1');
     await expect(page.locator('#admin-sync-log')).toBeHidden();
+    await expect(page.locator('#sync-health-panel')).toHaveCount(0);
+    await expect(page.locator('#admin-health-check-btn')).toBeHidden();
     await page.goto('/?admin=1');
     await expect(page.locator('#admin-sync-log')).toHaveCount(1);
+    await expect(page.locator('#admin-health-check-btn')).toHaveCount(1);
   });
 
-  test('la verifica collegamento distingue il broker dalla risposta dell’altra struttura', async ({ page }) => {
-    await loginBypass(page, 'struttura1');
-    await expect(page.locator('#sync-peer-status')).toHaveText('non verificata');
-    await page.evaluate(() => requestSyncHealthCheck());
-    await expect(page.locator('#sync-peer-status')).toHaveText('broker disconnesso');
+  test('la verifica admin segnala separatamente le due strutture quando il broker è disconnesso', async ({ page }) => {
+    await page.goto('/?admin=1');
+    await page.evaluate(() => requestAdminFacilityHealthCheck());
+    await expect(page.locator('#admin-health-struttura1')).toHaveText('broker disconnesso');
+    await expect(page.locator('#admin-health-struttura2')).toHaveText('broker disconnesso');
   });
 });

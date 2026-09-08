@@ -1533,6 +1533,19 @@
                 </div>
 
                 <div class="login-card mb-4" style="cursor:default;max-width:none;">
+                    <div class="sync-health-strip mb-3" aria-live="polite">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                            <div class="text-start">
+                                <div class="fw-bold"><i class="bi bi-router me-1 text-primary"></i>Verifica strutture in tempo reale</div>
+                                <div class="text-muted" style="font-size:.72rem;">Richiede un nuovo backup cifrato a entrambi i presidi: non si limita a controllare il broker.</div>
+                            </div>
+                            <button id="admin-health-check-btn" class="btn btn-outline-primary btn-sm" onclick="requestAdminFacilityHealthCheck()"><i class="bi bi-arrow-repeat me-1"></i>Verifica ora</button>
+                        </div>
+                        <div class="d-flex gap-3 flex-wrap mt-2">
+                            <span>Centro Tunisia: <strong id="admin-health-struttura1">non verificato</strong></span>
+                            <span>Ospedale Cervello: <strong id="admin-health-struttura2">non verificato</strong></span>
+                        </div>
+                    </div>
                     <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
                         <div class="text-start">
                             <h6 class="fw-bold mb-0"><i class="bi bi-activity me-1 text-primary"></i>Cronologia tecnica sincronizzazione</h6>
@@ -1916,15 +1929,7 @@
     </div>
 
     <div class="container-xl px-3 pt-2">
-        <div id="sync-health-panel" class="sync-health-strip d-flex align-items-center justify-content-between flex-wrap gap-2" aria-live="polite">
-            <div class="d-flex align-items-center flex-wrap gap-3">
-                <span><i class="bi bi-arrow-up-circle me-1 text-muted"></i><span data-i18n="sync_last_sent">Ultimo invio:</span> <strong id="sync-last-sent">mai</strong></span>
-                <span><i class="bi bi-arrow-down-circle me-1 text-muted"></i><span data-i18n="sync_last_received">Ultima ricezione:</span> <strong id="sync-last-received">mai</strong></span>
-                <span><i class="bi bi-buildings me-1 text-muted"></i><span data-i18n="sync_other_facility">Altra struttura:</span> <strong id="sync-peer-status">non verificata</strong></span>
-            </div>
-            <button id="sync-check-btn" class="btn btn-outline-primary btn-sm" onclick="requestSyncHealthCheck()"><i class="bi bi-arrow-repeat me-1"></i><span data-i18n="sync_check">Verifica collegamento</span></button>
-        </div>
-        <div id="active-patient-bar" class="active-patient-strip mt-2 px-3 py-2 d-none align-items-center justify-content-between gap-2" aria-live="polite">
+        <div id="active-patient-bar" class="active-patient-strip px-3 py-2 d-none align-items-center justify-content-between gap-2" aria-live="polite">
             <div class="d-flex align-items-center gap-2" style="min-width:0;"><i class="bi bi-person-check-fill text-primary fs-5"></i><div style="min-width:0;"><div id="active-patient-name" class="fw-bold text-truncate"></div><div id="active-patient-meta" class="text-muted" style="font-size:.72rem;"></div></div></div>
             <div class="d-flex gap-2 flex-shrink-0"><button class="btn btn-primary btn-sm" onclick="document.getElementById('card-docs-section')?.scrollIntoView({behavior:'smooth'})"><i class="bi bi-folder2-open me-1"></i>Documenti</button><button class="btn btn-outline-secondary btn-sm" onclick="deselectPatient()" aria-label="Chiudi paziente attivo"><i class="bi bi-x-lg"></i></button></div>
         </div>
@@ -4829,6 +4834,46 @@
         let adminMqttClient = null;
         let adminPwRequests = [];
         let adminPrivateCryptoKey = null;
+        let adminHealthCheck = null;
+
+        function setAdminFacilityHealth(role, text, type = 'muted') {
+            const el = document.getElementById('admin-health-' + role);
+            if (!el) return;
+            el.textContent = text;
+            el.className = type === 'success' ? 'text-success' : type === 'danger' ? 'text-danger' : 'text-muted';
+        }
+
+        function requestAdminFacilityHealthCheck() {
+            if (!adminMqttClient || !adminMqttClient.connected) {
+                setAdminFacilityHealth('struttura1', 'broker disconnesso', 'danger');
+                setAdminFacilityHealth('struttura2', 'broker disconnesso', 'danger');
+                return;
+            }
+            const startedAt = Date.now();
+            adminHealthCheck = { startedAt, received: new Set() };
+            setAdminFacilityHealth('struttura1', 'in attesa…');
+            setAdminFacilityHealth('struttura2', 'in attesa…');
+            adminMqttClient.publish(ADMIN_BACKUP_REQUEST_TOPIC, 'request', { qos:1 });
+            recordTechnicalSyncEvent('Verifica in tempo reale avviata dal pannello admin');
+            setTimeout(() => {
+                if (!adminHealthCheck || adminHealthCheck.startedAt !== startedAt) return;
+                ['struttura1', 'struttura2'].forEach(role => {
+                    if (!adminHealthCheck.received.has(role)) setAdminFacilityHealth(role, 'nessuna risposta', 'danger');
+                });
+                recordTechnicalSyncEvent(`Verifica conclusa: ${adminHealthCheck.received.size}/2 strutture hanno risposto`, adminHealthCheck.received.size === 2 ? 'info' : 'danger');
+                adminHealthCheck = null;
+            }, 10000);
+        }
+
+        function registerAdminFacilityHealthResponse(role, messageTs) {
+            if (!adminHealthCheck || messageTs < adminHealthCheck.startedAt - 1000 || !['struttura1','struttura2'].includes(role)) return;
+            adminHealthCheck.received.add(role);
+            setAdminFacilityHealth(role, 'online - risposta ora', 'success');
+            if (adminHealthCheck.received.size === 2) {
+                recordTechnicalSyncEvent('Verifica conclusa: entrambe le strutture online');
+                adminHealthCheck = null;
+            }
+        }
 
         // Log di audit accessi ACCUMULATO lato admin (a differenza di adminReceivedBackups, che
         // tiene solo l'ultimo snapshot ricevuto per struttura e viene sovrascritto a ogni
@@ -5480,6 +5525,7 @@
                 }
 
                 adminReceivedBackups[entry.role] = { data: backupData, ts: entry.ts, facility: entry.facility };
+                registerAdminFacilityHealthResponse(entry.role, entry.ts);
                 mergeAdminAuditLog(entry.role, backupData.shared && backupData.shared.auditLog);
                 renderAdminDashboard(entry.role);
                 renderAdminAuditLog(entry.role);
