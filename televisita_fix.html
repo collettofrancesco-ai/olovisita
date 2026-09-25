@@ -1040,6 +1040,8 @@
         #admin-dashboard-section .admin-audit-filters input[type="text"] { flex:1 1 180px; }
         #admin-dashboard-section .admin-audit-filters select { flex:0 1 150px; }
         #admin-dashboard-section .admin-audit-filters input[type="date"] { flex:0 1 145px; }
+        #admin-dashboard-section .admin-user-row > .d-flex { flex-wrap:wrap; align-items:flex-start !important; }
+        #admin-dashboard-section .admin-user-row > .d-flex > * { min-width:0; }
         @media (max-width: 767px) {
             #admin-dashboard-section .login-card { padding:1rem !important; }
             #admin-dashboard-section .admin-audit-filters > * { min-width:0; }
@@ -1508,6 +1510,7 @@
                     <a class="btn btn-sm btn-outline-secondary" href="#admin-section-facilities"><i class="bi bi-hospital me-1"></i>Strutture</a>
                     <a class="btn btn-sm btn-outline-secondary" href="#admin-section-requests"><i class="bi bi-inbox me-1"></i>Richieste</a>
                     <a class="btn btn-sm btn-outline-secondary" href="#admin-section-tools"><i class="bi bi-tools me-1"></i>Strumenti admin</a>
+                    <a class="btn btn-sm btn-outline-secondary" href="#admin-section-operations"><i class="bi bi-journal-text me-1"></i>Log operazioni</a>
                 </nav>
 
                 <div class="row g-4 mb-1">
@@ -1593,6 +1596,23 @@
                         <button class="btn btn-outline-secondary btn-sm" onclick="clearAdminSyncLog()" aria-label="Svuota cronologia tecnica">Svuota</button>
                     </div>
                     <div id="admin-sync-log" class="admin-sync-log small" aria-live="polite"></div>
+                </div>
+
+                <div class="login-card mb-3" style="cursor:default;max-width:none;">
+                    <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
+                        <h6 class="fw-bold mb-0"><i class="bi bi-people me-1"></i>Ricerca account</h6>
+                        <span id="admin-user-filter-count" class="badge bg-secondary">6 account</span>
+                    </div>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <input id="admin-user-search" type="search" class="form-control form-control-sm" style="flex:1 1 240px;" placeholder="Cerca per medico, username o specializzazione" oninput="filterAdminUsers()">
+                        <select id="admin-user-facility-filter" class="form-select form-select-sm" style="flex:0 1 220px;" onchange="filterAdminUsers()" aria-label="Filtra account per struttura">
+                            <option value="all">Tutte le strutture</option><option value="struttura1">Centro Tunisia</option><option value="struttura2">Ospedale Cervello</option>
+                        </select>
+                        <select id="admin-user-state-filter" class="form-select form-select-sm" style="flex:0 1 200px;" onchange="filterAdminUsers()" aria-label="Filtra account per stato">
+                            <option value="all">Tutti gli account</option><option value="active">Attivi</option><option value="inactive">Disattivati</option><option value="override">Con modifiche admin</option>
+                        </select>
+                    </div>
+                    <div class="text-muted small mt-1">Cerca qui e poi usa le azioni nell’account corrispondente sotto la sua struttura.</div>
                 </div>
 
                 <div id="admin-section-facilities" class="row g-4">
@@ -1773,6 +1793,19 @@
                                 onclick="toggleAdminAutoBackup()" style="font-size:0.75rem;">
                                 <i class="bi bi-play-fill me-1"></i> Attiva Backup Automatico
                             </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="admin-section-operations" class="row g-4 mt-1">
+                    <div class="col-12">
+                        <div class="login-card" style="cursor:default;max-width:none;">
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                                <div><h6 class="fw-bold mb-0"><i class="bi bi-journal-text me-1"></i>Registro operazioni admin</h6>
+                                    <div class="small text-muted">Storico locale a questo browser. “Accettato dal broker” non prova che una struttura abbia applicato il comando.</div></div>
+                                <button class="btn btn-outline-secondary btn-sm" onclick="exportAdminOperationsCsv()"><i class="bi bi-download me-1"></i>Esporta CSV</button>
+                            </div>
+                            <div id="admin-operations-log" class="small" aria-live="polite"></div>
                         </div>
                     </div>
                 </div>
@@ -4890,6 +4923,53 @@
         let adminPwRequests = [];
         let adminPrivateCryptoKey = null;
         let adminHealthCheck = null;
+        const ADMIN_OPERATIONS_KEY = 'tv_admin_operations_log_v1';
+        let adminOperationsLog = [];
+        try { adminOperationsLog = JSON.parse(localStorage.getItem(ADMIN_OPERATIONS_KEY) || '[]').slice(0, 500); } catch (_) { adminOperationsLog = []; }
+
+        function recordAdminOperation(role, action, subject, status, id = null) {
+            const existing = id && adminOperationsLog.find(item => item.id === id);
+            if (existing) existing.status = status;
+            else adminOperationsLog.unshift({ id: id || ('ao_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8)), ts: Date.now(), role: role || '', action, subject: subject || '', status });
+            adminOperationsLog = adminOperationsLog.slice(0, 500);
+            try { localStorage.setItem(ADMIN_OPERATIONS_KEY, JSON.stringify(adminOperationsLog)); } catch (_) { }
+            renderAdminOperationsLog();
+        }
+
+        function describeAdminOperation(role, fields) {
+            const keys = Object.keys(fields || {});
+            const users = fields && fields.users;
+            if (users && typeof users === 'object') {
+                const previous = (adminControlState[role] || {}).users || {};
+                const changedUsers = Object.keys(users).filter(username => JSON.stringify(users[username]) !== JSON.stringify(previous[username] || {}));
+                const username = changedUsers[changedUsers.length - 1] || '';
+                const changed = Object.keys(users[username] || {});
+                let action = changed.includes('active') ? (users[username].active ? 'Riattivazione account' : 'Disattivazione account')
+                    : changed.includes('passwordHash') ? (users[username].passwordHash === null ? 'Rimozione override password' : 'Reset password account')
+                    : changed.some(k => k === 'name' || k === 'spec') ? 'Modifica profilo account' : 'Modifica account';
+                return { role, action, subject: username };
+            }
+            if (keys.includes('groupCode')) return { role: 'entrambe', action: 'Rotazione Codice Stanza', subject: '' };
+            if (keys.includes('clearTestDataRequestId')) return { role, action: 'Richiesta svuotamento dati di test', subject: '' };
+            if (keys.includes('emailjs')) return { role, action: 'Aggiornamento configurazione EmailJS', subject: '' };
+            if (keys.includes('backupIntervalMs')) return { role, action: 'Modifica intervallo backup', subject: '' };
+            return { role, action: 'Aggiornamento configurazione', subject: '' };
+        }
+
+        function renderAdminOperationsLog() {
+            const el = document.getElementById('admin-operations-log');
+            if (!el) return;
+            if (!adminOperationsLog.length) { el.innerHTML = '<span class="text-muted">Nessuna operazione registrata in questo browser.</span>'; return; }
+            el.innerHTML = '<div class="table-responsive" style="max-height:320px;overflow:auto"><table class="table table-sm table-striped mb-0"><thead><tr><th>Data e ora</th><th>Struttura</th><th>Operazione</th><th>Account</th><th>Esito</th></tr></thead><tbody>' +
+                adminOperationsLog.slice(0, 200).map(item => '<tr><td class="text-nowrap">' + escapeHtml(new Date(item.ts).toLocaleString('it-IT')) + '</td><td>' + escapeHtml(item.role || '—') + '</td><td>' + escapeHtml(item.action) + '</td><td>' + escapeHtml(item.subject || '—') + '</td><td>' + escapeHtml(item.status) + '</td></tr>').join('') +
+                '</tbody></table></div>';
+        }
+
+        function exportAdminOperationsCsv() {
+            const rows = [['Data/ora locale', 'Struttura', 'Operazione', 'Account', 'Esito']];
+            adminOperationsLog.forEach(item => rows.push([new Date(item.ts).toLocaleString('it-IT'), item.role || '', item.action, item.subject, item.status]));
+            downloadAdminCsv('operazioni_admin_' + new Date().toISOString().split('T')[0] + '.csv', rows);
+        }
 
         function setAdminFacilityHealth(role, text, type = 'muted') {
             const el = document.getElementById('admin-health-' + role);
@@ -5090,6 +5170,7 @@
             renderAdminOpsConfig('struttura1');
             renderAdminOpsConfig('struttura2');
             renderAdminSyncLog();
+            renderAdminOperationsLog();
             connectAdminMqtt(0);
             // Aggiorna indicatori ogni 30s (mostra "N min fa" sempre aggiornato)
             // e lancia auto-richiesta se i dati sono stale.
@@ -5212,8 +5293,11 @@
                 showToast('Non connesso al canale MQTT: riprova tra qualche secondo.', 'danger');
                 return false;
             }
+            const operation = describeAdminOperation(role, payloadFields);
+            const operationId = 'adm_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+            recordAdminOperation(operation.role, operation.action, operation.subject, 'Firma in corso', operationId);
             const base = adminControlState[role] || { users: {} };
-            const payload = { ...base, ...payloadFields, updatedAt: Date.now() };
+            const payload = { ...base, ...payloadFields, updatedAt: Date.now(), adminChangeId: operationId };
             const dataStr = JSON.stringify(payload);
             try {
                 const signature = await crypto.subtle.sign(
@@ -5222,11 +5306,13 @@
                     new TextEncoder().encode(dataStr)
                 );
                 const envelope = { data: dataStr, signature: arrayBufferToBase64(signature) };
-                adminMqttClient.publish(ADMIN_CONTROL_TOPIC + role, JSON.stringify(envelope), { qos: 1, retain: true });
+                await new Promise((resolve, reject) => adminMqttClient.publish(ADMIN_CONTROL_TOPIC + role, JSON.stringify(envelope), { qos: 1, retain: true }, err => err ? reject(err) : resolve()));
                 adminControlState[role] = payload;
+                recordAdminOperation(operation.role, operation.action, operation.subject, 'Accettato dal broker; applicazione sulla struttura non verificata', operationId);
                 return true;
             } catch (err) {
                 console.error('Errore durante la firma/pubblicazione del canale di controllo:', err);
+                recordAdminOperation(operation.role, operation.action, operation.subject, 'Invio non confermato: ' + String(err.message || 'errore MQTT'), operationId);
                 showToast('Errore durante il salvataggio.', 'danger');
                 return false;
             }
@@ -5311,7 +5397,11 @@
                 }
                 return;
             }
-            adminMqttClient.publish(ADMIN_BACKUP_REQUEST_TOPIC, 'request', { qos: 1 });
+            const requestId = 'backup_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+            recordAdminOperation('entrambe', 'Richiesta backup immediato', '', 'In attesa della conferma MQTT', requestId);
+            adminMqttClient.publish(ADMIN_BACKUP_REQUEST_TOPIC, 'request', { qos: 1 }, err => {
+                recordAdminOperation('entrambe', 'Richiesta backup immediato', '', err ? 'Invio non confermato: ' + String(err.message || 'errore MQTT') : 'Accettata dal broker; riepiloghi delle strutture ancora in attesa', requestId);
+            });
             if (feedback) {
                 feedback.textContent = 'Richiesta inviata: i nuovi backup arriveranno entro pochi secondi.';
                 feedback.className = 'text-success small ms-2';
@@ -5607,7 +5697,6 @@
                     showToast('⚠️ Richiesta cambio password scartata: Codice Stanza disallineato. Genera e applica di nuovo il Codice Stanza qui sopra.', 'danger', 0);
                     return;
                 }
-
                 // Il topic è retained: ogni riconnessione al broker (frequente sui broker pubblici
                 // gratuiti — MQTT.js si riconnette da solo e rifà le subscribe, vedi commenti su
                 // initMQTT) fa sì che il broker ri-consegni lo STESSO messaggio già ricevuto in
@@ -5620,6 +5709,7 @@
                     adminPwRequests[existingIndex] = { ...payload, receivedAt: adminPwRequests[existingIndex].receivedAt };
                 } else {
                     adminPwRequests.unshift({ ...payload, receivedAt: Date.now() });
+                    recordAdminOperation(payload.role || '', payload.type === 'forgotten' ? 'Richiesta recupero password ricevuta' : 'Richiesta cambio password ricevuta', payload.username || '', 'In attesa di gestione', payload.reqId || null);
                 }
                 renderAdminPwRequests();
             } catch (err) {
@@ -5635,7 +5725,7 @@
             card.style.display = '';
             list.innerHTML = adminPwRequests.map((req, i) => {
                 const isForgotten = req.type === 'forgotten';
-                const dismiss = `adminPwRequests.splice(${i},1);renderAdminPwRequests();if(adminMqttClient&&adminMqttClient.connected)adminMqttClient.publish(ADMIN_PW_REQUEST_TOPIC,'',{qos:1,retain:true});showToast('Richiesta rimossa','success')`;
+                const dismiss = `dismissAdminPwRequest(${i})`;
                 const badge = isForgotten
                     ? `<span class="badge bg-warning text-dark ms-1" style="font-size:.65em;">Password dimenticata</span>`
                     : `<span class="badge bg-secondary ms-1" style="font-size:.65em;">Cambio password</span>`;
@@ -5678,6 +5768,16 @@
                     </button>
                 </div>`;
             }).join('');
+        }
+
+        function dismissAdminPwRequest(index) {
+            const req = adminPwRequests[index];
+            if (!req) return;
+            recordAdminOperation(req.role || '', 'Richiesta password chiusa come gestita', req.username || '', 'Chiusura registrata nel pannello');
+            adminPwRequests.splice(index, 1);
+            renderAdminPwRequests();
+            if (adminMqttClient && adminMqttClient.connected) adminMqttClient.publish(ADMIN_PW_REQUEST_TOPIC, '', { qos: 1, retain: true });
+            showToast('Richiesta rimossa', 'success');
         }
 
         function copyAdminPwCode(index) {
@@ -6217,7 +6317,7 @@
                 // hardcoded nel sorgente — stessa precedenza già usata per passwordHash al login.
                 const effectiveName = ov.name || u.name;
                 const effectiveSpec = ov.spec || u.spec;
-                return `<div class="border rounded p-2 mb-2">
+                return `<div class="border rounded p-2 mb-2 admin-user-row" data-role="${role}" data-active="${active ? 'active' : 'inactive'}" data-modified="${hasPwOverride || !!ov.name || !!ov.spec ? 'yes' : 'no'}" data-search="${escapeAttr((effectiveName + ' ' + u.username + ' ' + effectiveSpec).toLowerCase())}">
                     <div class="d-flex justify-content-between align-items-center">
                         <div class="small">
                             <strong>${escapeHtml(effectiveName)}</strong> <span class="text-muted">(${escapeHtml(u.username)}) — ${escapeHtml(effectiveSpec)}</span>
@@ -6261,6 +6361,24 @@
                     </div>
                 </div>`;
             }).join('');
+            filterAdminUsers();
+        }
+
+        function filterAdminUsers() {
+            const query = ((document.getElementById('admin-user-search') || {}).value || '').trim().toLowerCase();
+            const state = (document.getElementById('admin-user-state-filter') || {}).value || 'all';
+            const facility = (document.getElementById('admin-user-facility-filter') || {}).value || 'all';
+            const rows = Array.from(document.querySelectorAll('.admin-user-row'));
+            let shown = 0;
+            rows.forEach(row => {
+                const matches = (!query || (row.dataset.search || '').includes(query))
+                    && (facility === 'all' || row.dataset.role === facility)
+                    && (state === 'all' || row.dataset.active === state || (state === 'override' && row.dataset.modified === 'yes'));
+                row.hidden = !matches;
+                if (matches) shown++;
+            });
+            const count = document.getElementById('admin-user-filter-count');
+            if (count) count.textContent = shown + ' di ' + rows.length + ' account';
         }
 
         // Attiva/disattiva davvero un account: pubblica l'override sul canale di controllo firmato.
