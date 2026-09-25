@@ -6099,11 +6099,18 @@
                     + '<th class="small text-muted">Data e ora</th><th class="small text-muted">Medico / username</th><th class="small text-muted">Evento</th><th class="small text-muted">Esito</th>'
                     + '</tr></thead><tbody>';
                 auditLog.slice(0, 500).forEach(a => {
-                    const success = a.event === 'login_success' || a.event === 'logout';
-                    const badge = success
-                        ? '<span class="badge bg-success-subtle text-success-emphasis">Registrato</span>'
-                        : '<span class="badge bg-danger">Non riuscito</span>';
-                    const eventLabel = a.event === 'login_success' ? 'Login' : a.event === 'login_fail' ? 'Tentativo login' : a.event === 'logout' ? 'Logout' : 'Altro';
+                    const eventLabels = {
+                        login_success: 'Accesso riuscito',
+                        login_fail: 'Tentativo di accesso',
+                        logout: 'Disconnessione',
+                        test_data_wiped_by_admin: 'Svuotamento dati di test confermato'
+                    };
+                    const eventLabel = eventLabels[a.event] || ('Evento: ' + String(a.event || 'tipo non specificato').replace(/_/g, ' '));
+                    const badge = a.event === 'login_fail'
+                        ? '<span class="badge bg-danger">Accesso non riuscito</span>'
+                        : a.event === 'login_success'
+                            ? '<span class="badge bg-success-subtle text-success-emphasis">Riuscito</span>'
+                            : '<span class="badge bg-secondary">Registrato</span>';
                     html += '<tr><td class="small text-nowrap">' + escapeHtml(new Date(a.ts).toLocaleString('it-IT')) + '</td>'
                         + '<td class="small">' + escapeHtml(a.name || a.username || 'Utente non identificato') + (a.username && a.name !== a.username ? '<div class="text-muted">' + escapeHtml(a.username) + '</div>' : '') + '</td>'
                         + '<td class="small">' + eventLabel + '</td><td>' + badge + '</td></tr>';
@@ -6148,8 +6155,8 @@
             const rows = [['Data/ora (locale)', 'Struttura', 'Medico', 'Username', 'Evento', 'Esito']];
             auditLog.forEach(a => rows.push([
                 new Date(a.ts).toLocaleString('it-IT'), a.facility || role, a.name || '', a.username || '',
-                a.event === 'login_success' ? 'Login' : a.event === 'login_fail' ? 'Tentativo login' : a.event === 'logout' ? 'Logout' : a.event || 'Altro',
-                a.event === 'login_success' || a.event === 'logout' ? 'registrato' : 'non riuscito'
+                a.event === 'login_success' ? 'Accesso riuscito' : a.event === 'login_fail' ? 'Tentativo di accesso' : a.event === 'logout' ? 'Disconnessione' : a.event === 'test_data_wiped_by_admin' ? 'Svuotamento dati di test confermato' : 'Evento: ' + String(a.event || 'tipo non specificato').replace(/_/g, ' '),
+                a.event === 'login_fail' ? 'non riuscito' : 'registrato'
             ]));
             downloadAdminCsv(`accessi_${role}_${new Date().toISOString().split('T')[0]}.csv`, rows);
         }
