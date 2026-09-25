@@ -1487,6 +1487,20 @@
 
                 <div class="row g-4 mb-1">
                     <div class="col-12">
+                        <div class="login-card mb-3" style="cursor:default;max-width:none;">
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                                <div>
+                                    <h6 class="fw-bold mb-0"><i class="bi bi-hospital me-1 text-primary"></i>Stato strutture</h6>
+                                    <div class="text-muted small">Riepilogo aggiornamento, attività e avvisi di sincronizzazione.</div>
+                                </div>
+                                <span id="admin-facility-alert-count" class="badge bg-secondary">In attesa dei riepiloghi</span>
+                            </div>
+                            <div class="row g-2">
+                                <div class="col-md-6"><div id="admin-facility-overview-struttura1" class="border rounded p-2 small" aria-live="polite">Centro Tunisia: in attesa di dati</div></div>
+                                <div class="col-md-6"><div id="admin-facility-overview-struttura2" class="border rounded p-2 small" aria-live="polite">Ospedale Cervello: in attesa di dati</div></div>
+                            </div>
+                            <div id="admin-facility-alerts" class="small mt-2" aria-live="polite"></div>
+                        </div>
                         <div id="admin-control-key-section" class="login-card" style="cursor:default; max-width:none; border-left:4px solid #7b1fa2;">
                             <h6 class="fw-bold mb-1"><i class="bi bi-pencil-square me-1 text-purple" style="color:#7b1fa2;"></i>Chiave di controllo (gestione utenti / configurazione)</h6>
                             <p class="text-muted small mb-2">
@@ -4763,8 +4777,10 @@
                     // senza questo confronto il disallineamento restava invisibile finché una
                     // visita non spariva nel nulla (05-06/09/2026).
                     networkTopicId: currentTopicId,
+                    appVersion: (document.querySelector('meta[name="app-version"]') || {}).content || null,
                     shared: {
                         televisite: S.televisite,
+                        docs: S.docs,
                         emails: S.emails,
                         immReq: S.immReq,
                         immRoom: S.immRoom,
@@ -5897,11 +5913,63 @@
                 ${brokerBadge}
             </span>`;
             statusEl.className = 'mb-3';
+            renderAdminFacilityOverview();
+        }
+
+        function renderAdminFacilityOverview() {
+            const roles = ['struttura1', 'struttura2'];
+            const labels = { struttura1: 'Centro Tunisia', struttura2: 'Ospedale Cervello' };
+            const alerts = [];
+            const ages = {};
+            roles.forEach(role => {
+                const el = document.getElementById('admin-facility-overview-' + role);
+                if (!el) return;
+                const entry = adminReceivedBackups[role];
+                if (!entry) {
+                    el.innerHTML = '<strong>' + labels[role] + '</strong><div class="text-muted mt-1">In attesa del primo riepilogo cifrato.</div>';
+                    alerts.push(labels[role] + ': nessun riepilogo ricevuto.');
+                    return;
+                }
+                const ageMs = Math.max(0, Date.now() - entry.ts);
+                ages[role] = ageMs;
+                const stale = ageMs > ADMIN_STALE_THRESHOLD_MS;
+                const danger = ageMs > ADMIN_DANGER_THRESHOLD_MS;
+                const shared = entry.data.shared || {};
+                const visits = Array.isArray(shared.televisite) ? shared.televisite.length : 0;
+                const docs = Array.isArray(shared.docs) ? shared.docs.length : 0;
+                const version = entry.data.appVersion ? ' · App ' + escapeHtml(entry.data.appVersion) : '';
+                const state = danger ? '<span class="badge bg-danger">Aggiornamento molto vecchio</span>'
+                    : stale ? '<span class="badge bg-warning text-dark">Aggiornamento in ritardo</span>'
+                    : '<span class="badge bg-success">Aggiornato</span>';
+                el.innerHTML = '<div class="d-flex justify-content-between align-items-start gap-2"><strong>' + labels[role] + '</strong>' + state + '</div>' +
+                    '<div class="text-muted mt-1">Ultimo riepilogo ' + escapeHtml(fmtAgo(ageMs)) + ' · ' + visits + ' visite · ' + docs + ' documenti' + version + '</div>';
+                if (danger) alerts.push(labels[role] + ': riepilogo oltre la soglia critica; verificare che il dispositivo sia online.');
+                else if (stale) alerts.push(labels[role] + ': riepilogo in ritardo; è stata richiesta una verifica se il pannello è connesso.');
+            });
+
+            const data1 = adminReceivedBackups.struttura1 && adminReceivedBackups.struttura1.data;
+            const data2 = adminReceivedBackups.struttura2 && adminReceivedBackups.struttura2.data;
+            const topic1 = data1 && data1.networkTopicId;
+            const topic2 = data2 && data2.networkTopicId;
+            if (topic1 && topic2 && topic1 !== topic2) alerts.push('Canali Network diversi: la sincronizzazione tra le strutture è probabilmente ferma.');
+            if (ages.struttura1 !== undefined && ages.struttura2 !== undefined && Math.abs(ages.struttura1 - ages.struttura2) > ADMIN_STALE_THRESHOLD_MS) {
+                alerts.push('Ultimi aggiornamenti molto distanti tra loro: controllare la struttura meno aggiornata.');
+            }
+            const countEl = document.getElementById('admin-facility-alert-count');
+            const alertsEl = document.getElementById('admin-facility-alerts');
+            if (countEl) {
+                countEl.className = 'badge ' + (alerts.length ? 'bg-warning text-dark' : 'bg-success');
+                countEl.textContent = alerts.length ? alerts.length + (alerts.length === 1 ? ' avviso' : ' avvisi') : 'Nessun avviso';
+            }
+            if (alertsEl) alertsEl.innerHTML = alerts.length
+                ? '<ul class="mb-0 ps-3">' + alerts.map(a => '<li>' + escapeHtml(a) + '</li>').join('') + '</ul>'
+                : '<span class="text-success"><i class="bi bi-check-circle me-1"></i>Nessun problema rilevato nei riepiloghi ricevuti.</span>';
         }
 
         function refreshAllAdminStaleness() {
             updateAdminStaleness('struttura1');
             updateAdminStaleness('struttura2');
+            renderAdminFacilityOverview();
             // Auto-richiesta se almeno una struttura è stale e non abbiamo già chiesto di recente
             const anyStale = ['struttura1','struttura2'].some(r => {
                 const e = adminReceivedBackups[r];
