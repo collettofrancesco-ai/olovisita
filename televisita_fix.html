@@ -1028,6 +1028,23 @@
             padding: 1.5rem 1.75rem;
             overflow: visible;
         }
+        #admin-dashboard-section .admin-quick-nav {
+            position: sticky; top: .5rem; z-index: 20;
+            display:flex; gap:.4rem; overflow-x:auto; white-space:nowrap;
+            padding:.55rem; margin:0 0 1rem; border:1px solid var(--border);
+            border-radius:12px; background:var(--card); box-shadow:0 4px 14px rgba(0,0,0,.1);
+        }
+        #admin-dashboard-section .admin-quick-nav a { flex:0 0 auto; }
+        #admin-dashboard-section [id^="admin-section-"] { scroll-margin-top:5rem; }
+        #admin-dashboard-section .admin-audit-filters { display:flex; gap:.4rem; align-items:center; flex-wrap:wrap; }
+        #admin-dashboard-section .admin-audit-filters input[type="text"] { flex:1 1 180px; }
+        #admin-dashboard-section .admin-audit-filters select { flex:0 1 150px; }
+        #admin-dashboard-section .admin-audit-filters input[type="date"] { flex:0 1 145px; }
+        @media (max-width: 767px) {
+            #admin-dashboard-section .login-card { padding:1rem !important; }
+            #admin-dashboard-section .admin-audit-filters > * { min-width:0; }
+            #admin-dashboard-section .admin-audit-filters input[type="date"] { flex:1 1 42%; }
+        }
 
         .login-card.s1:hover { border-color: var(--s1); }
         .login-card.s2:hover { border-color: var(--s2); }
@@ -1485,9 +1502,17 @@
                     </button>
                 </div>
 
+                <nav class="admin-quick-nav" aria-label="Navigazione pannello amministratore">
+                    <a class="btn btn-sm btn-primary" href="#admin-section-status"><i class="bi bi-speedometer2 me-1"></i>Panoramica</a>
+                    <a class="btn btn-sm btn-outline-secondary" href="#admin-section-diagnostics"><i class="bi bi-router me-1"></i>Diagnostica</a>
+                    <a class="btn btn-sm btn-outline-secondary" href="#admin-section-facilities"><i class="bi bi-hospital me-1"></i>Strutture</a>
+                    <a class="btn btn-sm btn-outline-secondary" href="#admin-section-requests"><i class="bi bi-inbox me-1"></i>Richieste</a>
+                    <a class="btn btn-sm btn-outline-secondary" href="#admin-section-tools"><i class="bi bi-tools me-1"></i>Strumenti admin</a>
+                </nav>
+
                 <div class="row g-4 mb-1">
                     <div class="col-12">
-                        <div class="login-card mb-3" style="cursor:default;max-width:none;">
+                        <div id="admin-section-status" class="login-card mb-3" style="cursor:default;max-width:none;">
                             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
                                 <div>
                                     <h6 class="fw-bold mb-0"><i class="bi bi-hospital me-1 text-primary"></i>Stato strutture</h6>
@@ -1546,7 +1571,7 @@
                     </div>
                 </div>
 
-                <div class="login-card mb-4" style="cursor:default;max-width:none;">
+                <div id="admin-section-diagnostics" class="login-card mb-4" style="cursor:default;max-width:none;">
                     <div class="sync-health-strip mb-3" aria-live="polite">
                         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                             <div class="text-start">
@@ -1570,7 +1595,7 @@
                     <div id="admin-sync-log" class="admin-sync-log small" aria-live="polite"></div>
                 </div>
 
-                <div class="row g-4">
+                <div id="admin-section-facilities" class="row g-4">
                     <div class="col-md-6">
                         <div class="login-card" style="cursor:default;">
                             <div class="d-flex justify-content-between align-items-start">
@@ -1591,12 +1616,12 @@
                                 </button>
                             </div>
                             <div id="admin-content-struttura1"></div>
-                            <div class="d-flex gap-2 align-items-center mt-2 mb-1">
+                            <div class="admin-audit-filters mt-2 mb-1">
                                 <input type="text" id="admin-audit-filter-struttura1" class="form-control form-control-sm"
                                     style="font-size:.75rem;" placeholder="Filtra accessi per medico..."
                                     oninput="renderAdminAuditLog('struttura1')">
                                 <select id="admin-audit-event-struttura1" class="form-select form-select-sm" style="font-size:.75rem;max-width:150px;" onchange="renderAdminAuditLog('struttura1')" aria-label="Filtra per evento">
-                                    <option value="">Tutti gli eventi</option><option value="login_success">Login riusciti</option><option value="login_fail">Login falliti</option><option value="logout">Logout</option>
+                                    <option value="">Tutti gli eventi</option><option value="login_success">Login riusciti</option><option value="login_fail">Login falliti</option><option value="logout">Logout</option><option value="test_data_wiped_by_admin">Svuotamento test</option>
                                 </select>
                                 <input type="date" id="admin-audit-from-struttura1" class="form-control form-control-sm" style="max-width:145px;" onchange="renderAdminAuditLog('struttura1')" aria-label="Da data">
                                 <input type="date" id="admin-audit-to-struttura1" class="form-control form-control-sm" style="max-width:145px;" onchange="renderAdminAuditLog('struttura1')" aria-label="A data">
@@ -1654,12 +1679,12 @@
                                 </button>
                             </div>
                             <div id="admin-content-struttura2"></div>
-                            <div class="d-flex gap-2 align-items-center mt-2 mb-1">
+                            <div class="admin-audit-filters mt-2 mb-1">
                                 <input type="text" id="admin-audit-filter-struttura2" class="form-control form-control-sm"
                                     style="font-size:.75rem;" placeholder="Filtra accessi per medico..."
                                     oninput="renderAdminAuditLog('struttura2')">
                                 <select id="admin-audit-event-struttura2" class="form-select form-select-sm" style="font-size:.75rem;max-width:150px;" onchange="renderAdminAuditLog('struttura2')" aria-label="Filtra per evento">
-                                    <option value="">Tutti gli eventi</option><option value="login_success">Login riusciti</option><option value="login_fail">Login falliti</option><option value="logout">Logout</option>
+                                    <option value="">Tutti gli eventi</option><option value="login_success">Login riusciti</option><option value="login_fail">Login falliti</option><option value="logout">Logout</option><option value="test_data_wiped_by_admin">Svuotamento test</option>
                                 </select>
                                 <input type="date" id="admin-audit-from-struttura2" class="form-control form-control-sm" style="max-width:145px;" onchange="renderAdminAuditLog('struttura2')" aria-label="Da data">
                                 <input type="date" id="admin-audit-to-struttura2" class="form-control form-control-sm" style="max-width:145px;" onchange="renderAdminAuditLog('struttura2')" aria-label="A data">
@@ -1699,7 +1724,7 @@
                     </div>
                 </div>
 
-                <div class="row g-4 mt-1">
+                <div id="admin-section-requests" class="row g-4 mt-1">
                     <div class="col-12">
                         <div id="admin-pw-requests-card" class="login-card" style="cursor:default; max-width:none; display:none; border-left:4px solid #f9a825;">
                             <h6 class="fw-bold mb-2">
@@ -1710,10 +1735,13 @@
                     </div>
                 </div>
 
-                <div class="row g-4 mt-1">
+                <div id="admin-section-tools" class="row g-4 mt-1">
                     <div class="col-12">
                         <div class="login-card" style="cursor:default; max-width:none;">
-                            <h6 class="fw-bold mb-1"><i class="bi bi-sliders me-1"></i>Soglie di allarme (solo su questo browser)</h6>
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                                <span class="badge bg-primary">Solo questo browser</span>
+                                <h6 class="fw-bold mb-0"><i class="bi bi-sliders me-1"></i>Preferenze e strumenti locali</h6>
+                            </div>
                             <p class="text-muted small mb-2">
                                 Non toccano le strutture, solo quando questo pannello colora di giallo/rosso lo stato di una struttura.
                             </p>
@@ -1752,9 +1780,11 @@
                 <div class="row g-4 mt-1">
                     <div class="col-12">
                         <div class="login-card" style="cursor:default; max-width:none;">
-                            <h6 class="fw-bold mb-1">
-                                <i class="bi bi-person-plus-fill me-1"></i>Crea Nuovo Utente Medico
-                            </h6>
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                                <span class="badge" style="background:#7b1fa2;">Richiede chiave di controllo</span>
+                                <h6 class="fw-bold mb-0"><i class="bi bi-person-plus-fill me-1"></i>Gestione account</h6>
+                            </div>
+                            <div class="small text-muted mb-2">Genera il codice utente da inserire nel sorgente, secondo la procedura di gestione account.</div>
                             <div class="row g-2">
                                 <div class="col-md-3">
                                     <label class="form-label small fw-semibold text-muted">Struttura</label>
@@ -1801,9 +1831,8 @@
                 <div class="row g-4 mt-1">
                     <div class="col-12">
                         <div class="login-card" style="cursor:default; max-width:none;">
-                            <h6 class="fw-bold mb-1">
-                                <i class="bi bi-key-fill me-1"></i>Resetta Password di un Utente Esistente
-                            </h6>
+                            <h6 class="fw-bold mb-1"><i class="bi bi-key-fill me-1"></i>Reset password locale</h6>
+                            <div class="small text-muted mb-2">Genera il nuovo hash per la modifica del sorgente; per il reset remoto usa la richiesta in arrivo o il canale di controllo.</div>
                             <div class="row g-2">
                                 <div class="col-md-4">
                                     <label class="form-label small fw-semibold text-muted">Utente</label>
@@ -6064,20 +6093,7 @@
             if (!el) return;
             const fullLog = (adminAuditLogMerged[role] || []).slice().sort((a, b) => b.ts - a.ts);
 
-            const auditFilterEl = document.getElementById('admin-audit-filter-' + role);
-            const auditFilter = (auditFilterEl ? auditFilterEl.value : '').trim().toLowerCase();
-            const eventFilter = (document.getElementById('admin-audit-event-' + role) || {}).value || '';
-            const fromValue = (document.getElementById('admin-audit-from-' + role) || {}).value || '';
-            const toValue = (document.getElementById('admin-audit-to-' + role) || {}).value || '';
-            const fromTs = fromValue ? new Date(fromValue + 'T00:00:00').getTime() : null;
-            const toTs = toValue ? new Date(toValue + 'T23:59:59.999').getTime() : null;
-            const auditLog = fullLog.filter(a => {
-                const identity = ((a.name || '') + ' ' + (a.username || '')).toLowerCase();
-                return (!auditFilter || identity.includes(auditFilter))
-                    && (!eventFilter || a.event === eventFilter)
-                    && (fromTs === null || a.ts >= fromTs)
-                    && (toTs === null || a.ts <= toTs);
-            });
+            const auditLog = getFilteredAdminAuditEntries(role, fullLog);
 
             // Tentativi falliti nelle ultime 24h calcolati sul log completo (non su quello
             // filtrato): serve a far notare un possibile attacco anche se l'admin sta filtrando
@@ -6120,6 +6136,22 @@
             el.innerHTML = html;
         }
 
+        function getFilteredAdminAuditEntries(role, source) {
+            const auditFilter = ((document.getElementById('admin-audit-filter-' + role) || {}).value || '').trim().toLowerCase();
+            const eventFilter = (document.getElementById('admin-audit-event-' + role) || {}).value || '';
+            const fromValue = (document.getElementById('admin-audit-from-' + role) || {}).value || '';
+            const toValue = (document.getElementById('admin-audit-to-' + role) || {}).value || '';
+            const fromTs = fromValue ? new Date(fromValue + 'T00:00:00').getTime() : null;
+            const toTs = toValue ? new Date(toValue + 'T23:59:59.999').getTime() : null;
+            return source.filter(a => {
+                const identity = ((a.name || '') + ' ' + (a.username || '')).toLowerCase();
+                return (!auditFilter || identity.includes(auditFilter))
+                    && (!eventFilter || a.event === eventFilter)
+                    && (fromTs === null || a.ts >= fromTs)
+                    && (toTs === null || a.ts <= toTs);
+            });
+        }
+
         // Serializza in CSV (con BOM per l'apertura corretta degli accenti in Excel) e avvia il
         // download, stesso pattern del download JSON già esistente (downloadAdminBackup).
         function csvEscape(val) {
@@ -6151,7 +6183,7 @@
         }
 
         function exportAdminAccessiCsv(role) {
-            const auditLog = (adminAuditLogMerged[role] || []).slice().sort((a, b) => b.ts - a.ts);
+            const auditLog = getFilteredAdminAuditEntries(role, (adminAuditLogMerged[role] || []).slice()).sort((a, b) => b.ts - a.ts);
             const rows = [['Data/ora (locale)', 'Struttura', 'Medico', 'Username', 'Evento', 'Esito']];
             auditLog.forEach(a => rows.push([
                 new Date(a.ts).toLocaleString('it-IT'), a.facility || role, a.name || '', a.username || '',
