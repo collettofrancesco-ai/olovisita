@@ -1027,6 +1027,74 @@
         #admin-dashboard-section .login-card {
             padding: 1.5rem 1.75rem;
             overflow: visible;
+            cursor: default;
+            text-align: left;
+            border: 1px solid rgba(148,163,184,.24);
+            border-radius: 16px;
+            background: var(--card);
+            box-shadow: 0 8px 24px rgba(15,23,42,.07);
+            transition: box-shadow .2s ease, border-color .2s ease;
+        }
+        #admin-dashboard-section .login-card:hover {
+            transform: none;
+            box-shadow: 0 10px 28px rgba(15,23,42,.1);
+        }
+        #admin-view-overlay {
+            overflow-y: auto;
+            background: radial-gradient(ellipse at 12% 0%, rgba(21,101,192,.16), transparent 36%),
+                        linear-gradient(145deg, #101c32 0%, #172b48 52%, #123b45 100%);
+        }
+        #admin-view-overlay > div {
+            max-width: 1240px !important;
+            padding-top: 2rem !important;
+        }
+        #admin-view-overlay > div > .text-center {
+            text-align: left !important;
+            padding: .5rem .25rem 1rem;
+        }
+        #admin-view-overlay > div > .text-center .fs-4 {
+            font-size: 1.65rem !important;
+            letter-spacing: -.025em;
+        }
+        #admin-dashboard-section > .d-flex {
+            position: sticky;
+            top: 0;
+            z-index: 21;
+            padding: .75rem 1rem;
+            margin: 0 0 1rem !important;
+            border: 1px solid rgba(255,255,255,.15);
+            border-radius: 14px;
+            background: rgba(16,28,50,.94);
+            backdrop-filter: blur(12px);
+            box-shadow: 0 8px 22px rgba(0,0,0,.18);
+        }
+        #admin-dashboard-section .admin-quick-nav {
+            top: 5rem;
+            border-color: rgba(148,163,184,.25);
+            border-radius: 14px;
+            padding: .5rem;
+            background: rgba(255,255,255,.97);
+            box-shadow: 0 6px 18px rgba(0,0,0,.12);
+        }
+        #admin-dashboard-section .admin-quick-nav .btn {
+            border-radius: 999px;
+            padding-inline: .85rem;
+        }
+        #admin-dashboard-section h6 { letter-spacing: -.01em; }
+        #admin-dashboard-section .admin-audit-filters,
+        #admin-dashboard-section .admin-user-row,
+        #admin-dashboard-section #admin-sync-log {
+            border-color: rgba(148,163,184,.28) !important;
+        }
+        #admin-dashboard-section #admin-facility-overview-struttura1,
+        #admin-dashboard-section #admin-facility-overview-struttura2 {
+            min-height: 76px;
+            background: color-mix(in srgb, var(--card) 88%, #64748b 12%);
+        }
+        #admin-dashboard-section .admin-control-gated,
+        #admin-dashboard-section #admin-control-key-section,
+        #admin-dashboard-section #admin-control-unlocked-badge {
+            box-shadow: inset 4px 0 currentColor, 0 8px 24px rgba(15,23,42,.07);
         }
         #admin-dashboard-section .admin-quick-nav {
             position: sticky; top: .5rem; z-index: 20;
@@ -1044,6 +1112,10 @@
         #admin-dashboard-section .admin-user-row > .d-flex > * { min-width:0; }
         @media (max-width: 767px) {
             #admin-dashboard-section .login-card { padding:1rem !important; }
+            #admin-view-overlay > div { padding: 1rem .85rem !important; }
+            #admin-dashboard-section > .d-flex { position: static; }
+            #admin-dashboard-section .admin-quick-nav { top: .5rem; }
+            #admin-dashboard-section .admin-quick-nav .btn { padding-inline: .7rem; }
             #admin-dashboard-section .admin-audit-filters > * { min-width:0; }
             #admin-dashboard-section .admin-audit-filters input[type="date"] { flex:1 1 42%; }
         }
