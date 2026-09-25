@@ -1355,6 +1355,153 @@
         @media (prefers-reduced-motion: reduce) {
             #admin-dashboard-section *, #admin-key-section { scroll-behavior: auto !important; transition-duration: .01ms !important; }
         }
+        /* Finitura sci-fi: interfaccia da sala di controllo, senza sacrificare contrasto e lettura. */
+        #admin-view-overlay {
+            --adm-ink: #e5f2ff;
+            --adm-muted: #9db2c9;
+            --adm-line: rgba(117,169,211,.2);
+            --adm-surface: rgba(13,29,49,.91);
+            --adm-blue: #38bdf8;
+            --adm-teal: #2dd4bf;
+            color: var(--adm-ink);
+            background-color: #071321;
+            background-image:
+                radial-gradient(ellipse at 14% 8%, rgba(21,111,160,.2), transparent 34rem),
+                radial-gradient(ellipse at 92% 36%, rgba(17,119,115,.12), transparent 32rem),
+                linear-gradient(rgba(69,132,174,.045) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(69,132,174,.045) 1px, transparent 1px);
+            background-size: auto, auto, 34px 34px, 34px 34px;
+        }
+        #admin-view-overlay > div > .text-center::before {
+            color: #69d7e8;
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            letter-spacing: .22em;
+        }
+        #admin-view-overlay > div > .text-center::after {
+            width: 74px;
+            height: 2px;
+            background: linear-gradient(90deg, #38bdf8, #2dd4bf, transparent);
+            box-shadow: 0 0 13px rgba(56,189,248,.75);
+        }
+        #admin-view-overlay > div > .text-center .text-white-50 { color: #8da9c3 !important; }
+        #admin-key-section.login-card {
+            color: #e5f2ff;
+            border: 1px solid rgba(94,191,225,.28);
+            background: linear-gradient(145deg, rgba(18,42,66,.98), rgba(10,25,43,.98));
+            box-shadow: 0 28px 80px rgba(0,0,0,.42), inset 0 1px rgba(255,255,255,.045);
+        }
+        #admin-key-section h5 { color: #e5f2ff !important; }
+        #admin-key-section p { color: #a5bad0 !important; }
+        #admin-key-section code { color: #72d8e9; }
+        #admin-dashboard-section > .d-flex {
+            border: 1px solid rgba(74,166,207,.28);
+            border-radius: 13px;
+            background: rgba(9,25,43,.91);
+            box-shadow: 0 10px 30px rgba(0,0,0,.3), inset 0 1px rgba(255,255,255,.035);
+        }
+        #admin-dashboard-section #admin-request-backup-btn {
+            color: #bdefff;
+            border-color: rgba(80,190,224,.48);
+            background: rgba(29,109,143,.2);
+        }
+        #admin-dashboard-section > .d-flex > button:last-child { color: #9ab0c8 !important; }
+        #admin-dashboard-section .admin-quick-nav {
+            border-color: rgba(77,170,207,.22);
+            background: rgba(10,27,46,.92);
+            box-shadow: 0 8px 28px rgba(0,0,0,.24), inset 0 1px rgba(255,255,255,.035);
+        }
+        #admin-dashboard-section .admin-quick-nav .btn { color: #9fb4c9; }
+        #admin-dashboard-section .admin-quick-nav .btn:hover,
+        #admin-dashboard-section .admin-quick-nav .btn:focus-visible {
+            color: #6fe0f2;
+            background: rgba(45,164,194,.13);
+        }
+        #admin-dashboard-section .admin-quick-nav .btn.btn-primary {
+            color: #061522;
+            background: linear-gradient(110deg, #55d8ee, #4dd7bd);
+            box-shadow: 0 0 18px rgba(45,212,191,.2);
+        }
+        #admin-dashboard-section .login-card {
+            border: 1px solid rgba(114,163,201,.2);
+            border-radius: 13px;
+            color: #dceafa;
+            background: linear-gradient(145deg, rgba(15,34,56,.97), rgba(10,25,43,.97));
+            box-shadow: 0 12px 30px rgba(0,0,0,.16), inset 0 1px rgba(255,255,255,.035);
+        }
+        #admin-dashboard-section .login-card:hover {
+            border-color: rgba(71,197,220,.4);
+            box-shadow: 0 14px 34px rgba(0,0,0,.24), 0 0 22px rgba(33,173,195,.07), inset 0 1px rgba(255,255,255,.05);
+        }
+        #admin-dashboard-section h6 { color: #e3f2ff; }
+        #admin-dashboard-section .text-muted { color: #96abc1 !important; }
+        #admin-dashboard-section .text-primary { color: #63c8f2 !important; }
+        #admin-dashboard-section .form-control,
+        #admin-dashboard-section .form-select {
+            border-color: rgba(113,164,203,.26);
+            color: #deefff;
+            background-color: rgba(5,19,34,.72);
+        }
+        #admin-dashboard-section .form-control::placeholder { color: #7188a0; }
+        #admin-dashboard-section .form-control:focus,
+        #admin-dashboard-section .form-select:focus {
+            border-color: rgba(56,189,248,.72);
+            color: #f0f8ff;
+            background-color: #0a2036;
+            box-shadow: 0 0 0 .2rem rgba(56,189,248,.14), 0 0 16px rgba(56,189,248,.08);
+        }
+        #admin-dashboard-section .btn-primary {
+            color: #071722;
+            border-color: #4bc9dc;
+            background: linear-gradient(110deg, #58c8f4, #46d3bc);
+        }
+        #admin-dashboard-section .btn-outline-primary {
+            color: #68d7f0;
+            border-color: rgba(63,189,225,.5);
+            background: rgba(29,114,148,.12);
+        }
+        #admin-dashboard-section .btn-outline-secondary {
+            color: #a8bbce;
+            border-color: rgba(126,157,185,.34);
+            background: rgba(87,119,147,.09);
+        }
+        #admin-dashboard-section #admin-section-status,
+        #admin-dashboard-section #admin-section-diagnostics,
+        #admin-dashboard-section #admin-section-facilities > [class*="col-"] > .login-card,
+        #admin-dashboard-section #admin-section-requests > [class*="col-"] > .login-card,
+        #admin-dashboard-section #admin-section-tools > [class*="col-"] > .login-card,
+        #admin-dashboard-section #admin-section-operations > [class*="col-"] > .login-card { border-top-color: rgba(72,190,220,.66); }
+        #admin-dashboard-section #admin-section-status { border-top-color: #51c9f1; }
+        #admin-dashboard-section #admin-section-diagnostics { border-top-color: #34d2bf; }
+        #admin-dashboard-section #admin-section-facilities > [class*="col-"]:first-child > .login-card { border-top-color: #51c9f1; }
+        #admin-dashboard-section #admin-section-facilities > [class*="col-"]:last-child > .login-card { border-top-color: #34d2bf; }
+        #admin-dashboard-section #admin-facility-overview-struttura1,
+        #admin-dashboard-section #admin-facility-overview-struttura2 {
+            border-color: rgba(112,164,203,.2) !important;
+            color: #d9ebfa;
+            background: rgba(5,20,35,.55);
+        }
+        #admin-dashboard-section #admin-facility-overview-struttura1 { border-top-color: #51c9f1 !important; }
+        #admin-dashboard-section #admin-facility-overview-struttura2 { border-top-color: #34d2bf !important; }
+        #admin-dashboard-section #admin-sync-log {
+            border-color: rgba(112,164,203,.18);
+            background: rgba(5,20,35,.48);
+        }
+        #admin-dashboard-section .admin-sync-log-row,
+        #admin-dashboard-section .admin-audit-filters { border-color: rgba(112,164,203,.18) !important; }
+        #admin-dashboard-section .admin-user-row {
+            border-color: rgba(112,164,203,.2) !important;
+            color: #d9ebfa;
+            background: rgba(5,20,35,.48);
+        }
+        #admin-dashboard-section .table,
+        #admin-dashboard-section table { color: #d9ebfa; }
+        #admin-dashboard-section .table thead th { color: #82a2bf; }
+        #admin-dashboard-section .badge.bg-secondary { color: #c7d7e7 !important; background: #30475c !important; }
+        #admin-dashboard-section a:focus-visible,
+        #admin-dashboard-section button:focus-visible { outline-color: rgba(65,210,238,.7); }
+        @media (max-width: 767px) {
+            #admin-view-overlay { background-size: auto, auto, 28px 28px, 28px 28px; }
+        }
 
         .login-card.s1:hover { border-color: var(--s1); }
         .login-card.s2:hover { border-color: var(--s2); }
