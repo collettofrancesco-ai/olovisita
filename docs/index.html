@@ -1096,6 +1096,196 @@
         #admin-dashboard-section #admin-control-unlocked-badge {
             box-shadow: inset 4px 0 currentColor, 0 8px 24px rgba(15,23,42,.07);
         }
+        /* Area admin: sistema visivo dedicato, mantenuto isolato dal resto dell'app. */
+        #admin-view-overlay {
+            --adm-ink: #17243b;
+            --adm-muted: #68758a;
+            --adm-line: #e4eaf2;
+            --adm-surface: #fff;
+            --adm-bg: #f3f6fb;
+            --adm-blue: #2459a6;
+            --adm-teal: #087e78;
+            color: var(--adm-ink);
+            font-family: 'Outfit', sans-serif;
+            background:
+                radial-gradient(ellipse at 8% 0%, rgba(60,116,196,.19), transparent 34rem),
+                linear-gradient(160deg, #13243c 0, #1a3553 18rem, #f3f6fb 18rem, #f3f6fb 100%);
+        }
+        #admin-view-overlay > div { padding-top: 1.5rem !important; }
+        #admin-view-overlay > div > .text-center {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: .3rem;
+            margin-bottom: 1rem !important;
+            padding: .65rem .25rem 1.1rem;
+            text-align: left !important;
+        }
+        #admin-view-overlay > div > .text-center::before {
+            content: 'OLOHEALTH  /  CONTROL ROOM';
+            color: #a9c4e8;
+            font-size: .65rem;
+            font-weight: 700;
+            letter-spacing: .16em;
+        }
+        #admin-view-overlay > div > .text-center .fs-4 {
+            font-size: clamp(1.45rem, 2.3vw, 2rem) !important;
+            font-weight: 700 !important;
+            letter-spacing: -.04em;
+        }
+        #admin-view-overlay > div > .text-center .text-white-50 {
+            color: #cfdbeb !important;
+            font-size: .88rem !important;
+        }
+        #admin-key-section.login-card {
+            border: 1px solid rgba(255,255,255,.7);
+            border-radius: 22px;
+            background: rgba(255,255,255,.97);
+            box-shadow: 0 24px 70px rgba(6,20,40,.24);
+        }
+        #admin-dashboard-section {
+            padding: 0 0 2rem;
+            color: var(--adm-ink);
+        }
+        #admin-dashboard-section > .d-flex {
+            display: grid !important;
+            grid-template-columns: minmax(0,1fr) auto;
+            gap: .75rem 1rem;
+            padding: .8rem 1rem;
+            margin: 0 0 .7rem !important;
+            border: 1px solid rgba(255,255,255,.13);
+            border-radius: 16px;
+            background: rgba(17,35,59,.94);
+            box-shadow: 0 12px 28px rgba(5,20,40,.19);
+            backdrop-filter: blur(14px);
+        }
+        #admin-dashboard-section > .d-flex > div:first-child {
+            display: flex !important;
+            align-items: center;
+            gap: .5rem;
+            flex-wrap: wrap;
+        }
+        #admin-dashboard-section > .d-flex .badge {
+            padding: .43rem .65rem;
+            border: 1px solid rgba(255,255,255,.12);
+            border-radius: 999px;
+            font-size: .68rem;
+            font-weight: 600;
+            letter-spacing: .015em;
+        }
+        #admin-dashboard-section #admin-request-backup-btn {
+            border-color: rgba(255,255,255,.35);
+            border-radius: 9px;
+            font-weight: 600;
+        }
+        #admin-dashboard-section > .d-flex > button:last-child {
+            align-self: center;
+            color: #d4deec !important;
+            text-decoration: none;
+        }
+        #admin-dashboard-section .admin-quick-nav {
+            top: .5rem;
+            z-index: 22;
+            gap: .3rem;
+            padding: .45rem;
+            margin-bottom: 1rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 13px;
+            background: rgba(255,255,255,.96);
+            box-shadow: 0 7px 22px rgba(21,39,65,.09);
+            backdrop-filter: blur(12px);
+        }
+        #admin-dashboard-section .admin-quick-nav .btn {
+            min-height: 36px;
+            padding: .48rem .82rem;
+            border-color: transparent;
+            border-radius: 9px;
+            color: #53627a;
+            font-size: .76rem;
+            font-weight: 600;
+            transition: color .16s ease, background .16s ease, box-shadow .16s ease;
+        }
+        #admin-dashboard-section .admin-quick-nav .btn:hover,
+        #admin-dashboard-section .admin-quick-nav .btn:focus-visible {
+            color: var(--adm-blue);
+            background: #edf4ff;
+        }
+        #admin-dashboard-section .admin-quick-nav .btn.btn-primary {
+            color: #fff;
+            background: var(--adm-blue);
+            box-shadow: 0 3px 8px rgba(36,89,166,.22);
+        }
+        #admin-dashboard-section .row.g-4 { --bs-gutter-y: 1rem; --bs-gutter-x: 1rem; }
+        #admin-dashboard-section .login-card {
+            padding: 1.25rem 1.4rem;
+            border: 1px solid var(--adm-line);
+            border-radius: 16px;
+            background: var(--adm-surface);
+            box-shadow: 0 4px 16px rgba(26,47,77,.045);
+        }
+        #admin-dashboard-section .login-card:hover {
+            border-color: #d6e0ed;
+            box-shadow: 0 8px 24px rgba(26,47,77,.075);
+        }
+        #admin-dashboard-section h6 {
+            color: var(--adm-ink);
+            font-size: .96rem;
+            font-weight: 700 !important;
+            letter-spacing: -.018em;
+        }
+        #admin-dashboard-section .text-muted { color: var(--adm-muted) !important; }
+        #admin-dashboard-section .small { line-height: 1.55; }
+        #admin-dashboard-section .form-control,
+        #admin-dashboard-section .form-select {
+            min-height: 38px;
+            border-color: #dbe3ed;
+            border-radius: 9px;
+            color: var(--adm-ink);
+            background-color: #fbfcfe;
+            box-shadow: none;
+        }
+        #admin-dashboard-section .form-control:focus,
+        #admin-dashboard-section .form-select:focus {
+            border-color: #7da6dc;
+            background-color: #fff;
+            box-shadow: 0 0 0 .2rem rgba(36,89,166,.12);
+        }
+        #admin-dashboard-section .btn { border-radius: 8px; font-weight: 600; }
+        #admin-dashboard-section .btn-primary { background-color: var(--adm-blue); border-color: var(--adm-blue); }
+        #admin-dashboard-section .admin-control-gated,
+        #admin-dashboard-section #admin-control-key-section,
+        #admin-dashboard-section #admin-control-unlocked-badge {
+            border-radius: 13px;
+        }
+        #admin-dashboard-section #admin-facility-overview-struttura1,
+        #admin-dashboard-section #admin-facility-overview-struttura2 {
+            padding: .85rem !important;
+            border-color: var(--adm-line) !important;
+            border-radius: 12px !important;
+            background: #fafbfd;
+        }
+        #admin-dashboard-section #admin-facility-overview-struttura1 { border-top: 3px solid #3574bd !important; }
+        #admin-dashboard-section #admin-facility-overview-struttura2 { border-top: 3px solid #07877c !important; }
+        #admin-dashboard-section #admin-section-status,
+        #admin-dashboard-section #admin-section-diagnostics,
+        #admin-dashboard-section #admin-section-facilities,
+        #admin-dashboard-section #admin-section-requests,
+        #admin-dashboard-section #admin-section-tools,
+        #admin-dashboard-section #admin-section-operations { scroll-margin-top: 4.5rem; }
+        #admin-dashboard-section .admin-user-row {
+            border-color: var(--adm-line) !important;
+            border-radius: 12px !important;
+            background: #fcfdff;
+        }
+        #admin-dashboard-section .admin-sync-log-row { padding: .65rem .2rem; border-color: var(--adm-line); }
+        #admin-dashboard-section .admin-audit-filters { margin-top: .7rem !important; }
+        #admin-dashboard-section .table,
+        #admin-dashboard-section table { --bs-table-bg: transparent; }
+        #admin-dashboard-section .table > :not(caption) > * > * { padding: .65rem .7rem; }
+        #admin-dashboard-section .table thead th { color: #596981; font-size: .72rem; letter-spacing: .035em; text-transform: uppercase; }
+        #admin-dashboard-section a:focus-visible,
+        #admin-dashboard-section button:focus-visible { outline: 3px solid rgba(36,89,166,.34); outline-offset: 2px; }
         #admin-dashboard-section .admin-quick-nav {
             position: sticky; top: .5rem; z-index: 20;
             display:flex; gap:.4rem; overflow-x:auto; white-space:nowrap;
@@ -1111,13 +1301,20 @@
         #admin-dashboard-section .admin-user-row > .d-flex { flex-wrap:wrap; align-items:flex-start !important; }
         #admin-dashboard-section .admin-user-row > .d-flex > * { min-width:0; }
         @media (max-width: 767px) {
-            #admin-dashboard-section .login-card { padding:1rem !important; }
+            #admin-view-overlay { background: linear-gradient(160deg, #172b48 0, #1a3553 13rem, #f3f6fb 13rem); }
             #admin-view-overlay > div { padding: 1rem .85rem !important; }
-            #admin-dashboard-section > .d-flex { position: static; }
+            #admin-dashboard-section > .d-flex { grid-template-columns: 1fr; position: static; }
+            #admin-dashboard-section > .d-flex > button:last-child { justify-self: start; padding-left: 0; }
             #admin-dashboard-section .admin-quick-nav { top: .5rem; }
-            #admin-dashboard-section .admin-quick-nav .btn { padding-inline: .7rem; }
+            #admin-dashboard-section .admin-quick-nav .btn { padding-inline: .68rem; }
+            #admin-dashboard-section .login-card { padding: 1rem !important; }
+            #admin-dashboard-section .admin-control-key-section > .d-flex,
+            #admin-dashboard-section .admin-control-gated .d-flex { flex-wrap: wrap; }
             #admin-dashboard-section .admin-audit-filters > * { min-width:0; }
             #admin-dashboard-section .admin-audit-filters input[type="date"] { flex:1 1 42%; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            #admin-dashboard-section *, #admin-key-section { scroll-behavior: auto !important; transition-duration: .01ms !important; }
         }
 
         .login-card.s1:hover { border-color: var(--s1); }
