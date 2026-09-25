@@ -1595,6 +1595,11 @@
                                 <input type="text" id="admin-audit-filter-struttura1" class="form-control form-control-sm"
                                     style="font-size:.75rem;" placeholder="Filtra accessi per medico..."
                                     oninput="renderAdminAuditLog('struttura1')">
+                                <select id="admin-audit-event-struttura1" class="form-select form-select-sm" style="font-size:.75rem;max-width:150px;" onchange="renderAdminAuditLog('struttura1')" aria-label="Filtra per evento">
+                                    <option value="">Tutti gli eventi</option><option value="login_success">Login riusciti</option><option value="login_fail">Login falliti</option><option value="logout">Logout</option>
+                                </select>
+                                <input type="date" id="admin-audit-from-struttura1" class="form-control form-control-sm" style="max-width:145px;" onchange="renderAdminAuditLog('struttura1')" aria-label="Da data">
+                                <input type="date" id="admin-audit-to-struttura1" class="form-control form-control-sm" style="max-width:145px;" onchange="renderAdminAuditLog('struttura1')" aria-label="A data">
                                 <button class="btn btn-outline-secondary btn-sm text-nowrap" style="font-size:0.7rem;"
                                     onclick="exportAdminAccessiCsv('struttura1')" title="Esporta accessi in CSV">
                                     <i class="bi bi-filetype-csv me-1"></i>CSV
@@ -1653,6 +1658,11 @@
                                 <input type="text" id="admin-audit-filter-struttura2" class="form-control form-control-sm"
                                     style="font-size:.75rem;" placeholder="Filtra accessi per medico..."
                                     oninput="renderAdminAuditLog('struttura2')">
+                                <select id="admin-audit-event-struttura2" class="form-select form-select-sm" style="font-size:.75rem;max-width:150px;" onchange="renderAdminAuditLog('struttura2')" aria-label="Filtra per evento">
+                                    <option value="">Tutti gli eventi</option><option value="login_success">Login riusciti</option><option value="login_fail">Login falliti</option><option value="logout">Logout</option>
+                                </select>
+                                <input type="date" id="admin-audit-from-struttura2" class="form-control form-control-sm" style="max-width:145px;" onchange="renderAdminAuditLog('struttura2')" aria-label="Da data">
+                                <input type="date" id="admin-audit-to-struttura2" class="form-control form-control-sm" style="max-width:145px;" onchange="renderAdminAuditLog('struttura2')" aria-label="A data">
                                 <button class="btn btn-outline-secondary btn-sm text-nowrap" style="font-size:0.7rem;"
                                     onclick="exportAdminAccessiCsv('struttura2')" title="Esporta accessi in CSV">
                                     <i class="bi bi-filetype-csv me-1"></i>CSV
@@ -6056,9 +6066,18 @@
 
             const auditFilterEl = document.getElementById('admin-audit-filter-' + role);
             const auditFilter = (auditFilterEl ? auditFilterEl.value : '').trim().toLowerCase();
-            const auditLog = auditFilter
-                ? fullLog.filter(a => (a.name || a.username || '').toLowerCase().includes(auditFilter))
-                : fullLog;
+            const eventFilter = (document.getElementById('admin-audit-event-' + role) || {}).value || '';
+            const fromValue = (document.getElementById('admin-audit-from-' + role) || {}).value || '';
+            const toValue = (document.getElementById('admin-audit-to-' + role) || {}).value || '';
+            const fromTs = fromValue ? new Date(fromValue + 'T00:00:00').getTime() : null;
+            const toTs = toValue ? new Date(toValue + 'T23:59:59.999').getTime() : null;
+            const auditLog = fullLog.filter(a => {
+                const identity = ((a.name || '') + ' ' + (a.username || '')).toLowerCase();
+                return (!auditFilter || identity.includes(auditFilter))
+                    && (!eventFilter || a.event === eventFilter)
+                    && (fromTs === null || a.ts >= fromTs)
+                    && (toTs === null || a.ts <= toTs);
+            });
 
             // Tentativi falliti nelle ultime 24h calcolati sul log completo (non su quello
             // filtrato): serve a far notare un possibile attacco anche se l'admin sta filtrando
@@ -6069,22 +6088,25 @@
                     + '" title="Tentativi di login falliti nelle ultime 24 ore">⚠️ ' + failedLast24h + ' falliti/24h</span>'
                 : '';
 
-            let html = '<div class="fw-semibold small mb-1 mt-2">Accessi (' + auditLog.length
-                + (auditFilter ? ' di ' + fullLog.length : '') + ')' + failBadge + '</div>';
+            let html = '<div class="fw-semibold small mb-1 mt-2">Registro accessi (' + auditLog.length
+                + (auditLog.length !== fullLog.length ? ' filtrati di ' + fullLog.length : '') + ')' + failBadge +
+                '<span class="text-muted fw-normal ms-2">Orari locali del dispositivo admin</span></div>';
             if (auditLog.length === 0) {
                 html += '<div class="text-muted small">'
                     + (fullLog.length === 0 ? 'Nessun accesso registrato.' : 'Nessun risultato per il filtro.') + '</div>';
             } else {
-                html += '<div class="table-responsive" style="max-height:260px;overflow-y:auto;"><table class="table table-sm mb-0"><thead><tr>'
-                    + '<th class="small text-muted">Data/ora</th><th class="small text-muted">Medico</th><th class="small text-muted">Esito</th>'
+                html += '<div class="table-responsive" style="max-height:320px;overflow-y:auto;"><table class="table table-sm table-striped mb-0"><thead class="table-light"><tr>'
+                    + '<th class="small text-muted">Data e ora</th><th class="small text-muted">Medico / username</th><th class="small text-muted">Evento</th><th class="small text-muted">Esito</th>'
                     + '</tr></thead><tbody>';
-                auditLog.slice(0, 200).forEach(a => {
-                    const badge = a.event === 'login_success'
-                        ? '<span class="badge bg-success">riuscito</span>'
-                        : '<span class="badge bg-danger">fallito</span>';
-                    html += '<tr><td class="small text-nowrap">' + new Date(a.ts).toLocaleString('it-IT') + '</td>'
-                        + '<td class="small">' + escapeHtml(a.name || a.username || '') + '</td>'
-                        + '<td>' + badge + '</td></tr>';
+                auditLog.slice(0, 500).forEach(a => {
+                    const success = a.event === 'login_success' || a.event === 'logout';
+                    const badge = success
+                        ? '<span class="badge bg-success-subtle text-success-emphasis">Registrato</span>'
+                        : '<span class="badge bg-danger">Non riuscito</span>';
+                    const eventLabel = a.event === 'login_success' ? 'Login' : a.event === 'login_fail' ? 'Tentativo login' : a.event === 'logout' ? 'Logout' : 'Altro';
+                    html += '<tr><td class="small text-nowrap">' + escapeHtml(new Date(a.ts).toLocaleString('it-IT')) + '</td>'
+                        + '<td class="small">' + escapeHtml(a.name || a.username || 'Utente non identificato') + (a.username && a.name !== a.username ? '<div class="text-muted">' + escapeHtml(a.username) + '</div>' : '') + '</td>'
+                        + '<td class="small">' + eventLabel + '</td><td>' + badge + '</td></tr>';
                 });
                 html += '</tbody></table></div>';
             }
@@ -6123,9 +6145,11 @@
 
         function exportAdminAccessiCsv(role) {
             const auditLog = (adminAuditLogMerged[role] || []).slice().sort((a, b) => b.ts - a.ts);
-            const rows = [['Data/ora', 'Medico', 'Esito']];
+            const rows = [['Data/ora (locale)', 'Struttura', 'Medico', 'Username', 'Evento', 'Esito']];
             auditLog.forEach(a => rows.push([
-                new Date(a.ts).toLocaleString('it-IT'), a.name || a.username || '', a.event === 'login_success' ? 'riuscito' : 'fallito'
+                new Date(a.ts).toLocaleString('it-IT'), a.facility || role, a.name || '', a.username || '',
+                a.event === 'login_success' ? 'Login' : a.event === 'login_fail' ? 'Tentativo login' : a.event === 'logout' ? 'Logout' : a.event || 'Altro',
+                a.event === 'login_success' || a.event === 'logout' ? 'registrato' : 'non riuscito'
             ]));
             downloadAdminCsv(`accessi_${role}_${new Date().toISOString().split('T')[0]}.csv`, rows);
         }
@@ -7589,7 +7613,7 @@ function pushBrowserNotif(title, body, tag) {
             DOCTORS[activeFacilityId].color = user.color;
             DOCTORS[activeFacilityId].bg = user.bg;
 
-            S.currentDoctor = { name: user.name, username: user.username };
+            S.currentDoctor = { name: user.name, username: user.username, loginAt: Date.now() };
             isDoctorAuthenticated = true;
 
             document.getElementById('login-overlay').style.display = 'none';
@@ -7851,7 +7875,7 @@ function pushBrowserNotif(title, body, tag) {
             DOCTORS[activeFacilityId].bg = user.bg;
 
             // Traccia il medico loggato
-            S.currentDoctor = { name: user.name, username: user.username };
+            S.currentDoctor = { name: user.name, username: user.username, loginAt: Date.now() };
             isDoctorAuthenticated = true;
             tryResumeAutoBackup();
             recordAuditEvent(user.username, user.name, 'login_success');
@@ -8019,6 +8043,9 @@ function pushBrowserNotif(title, body, tag) {
         }
 
         function logout() {
+            if (S.currentDoctor && S.currentDoctor.username) {
+                recordAuditEvent(S.currentDoctor.username, S.currentDoctor.name, 'logout');
+            }
             if (S.jitsiApi) { S.jitsiApi.dispose(); S.jitsiApi = null; }
             if (mqttClient) {
                 try { mqttClient.end(true); } catch (_) { }
