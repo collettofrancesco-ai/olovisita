@@ -1107,9 +1107,7 @@
             --adm-teal: #087e78;
             color: var(--adm-ink);
             font-family: 'Outfit', sans-serif;
-            background:
-                radial-gradient(ellipse at 8% 0%, rgba(60,116,196,.19), transparent 34rem),
-                linear-gradient(160deg, #13243c 0, #1a3553 18rem, #f3f6fb 18rem, #f3f6fb 100%);
+            background: #f2f5f9;
         }
         #admin-view-overlay > div { padding-top: 1.5rem !important; }
         #admin-view-overlay > div > .text-center {
@@ -1121,6 +1119,14 @@
             margin-bottom: 1rem !important;
             padding: .65rem .25rem 1.1rem;
             text-align: left !important;
+        }
+        #admin-view-overlay > div > .text-center::after {
+            content: '';
+            width: 42px;
+            height: 3px;
+            margin-top: .55rem;
+            border-radius: 99px;
+            background: linear-gradient(90deg, #2f6db4, #17a39a);
         }
         #admin-view-overlay > div > .text-center::before {
             content: 'OLOHEALTH  /  CONTROL ROOM';
@@ -1217,16 +1223,19 @@
             box-shadow: 0 3px 8px rgba(36,89,166,.22);
         }
         #admin-dashboard-section .row.g-4 { --bs-gutter-y: 1rem; --bs-gutter-x: 1rem; }
+        #admin-dashboard-section > .row,
+        #admin-dashboard-section > .admin-quick-nav { position: relative; }
         #admin-dashboard-section .login-card {
-            padding: 1.25rem 1.4rem;
-            border: 1px solid var(--adm-line);
-            border-radius: 16px;
+            position: relative;
+            padding: 1.35rem 1.45rem;
+            border: 1px solid #e3e9f1;
+            border-radius: 14px;
             background: var(--adm-surface);
-            box-shadow: 0 4px 16px rgba(26,47,77,.045);
+            box-shadow: 0 2px 5px rgba(22,43,70,.025), 0 8px 20px rgba(22,43,70,.035);
         }
         #admin-dashboard-section .login-card:hover {
-            border-color: #d6e0ed;
-            box-shadow: 0 8px 24px rgba(26,47,77,.075);
+            border-color: #d7e1ed;
+            box-shadow: 0 4px 8px rgba(22,43,70,.035), 0 12px 26px rgba(22,43,70,.055);
         }
         #admin-dashboard-section h6 {
             color: var(--adm-ink);
@@ -1256,7 +1265,37 @@
         #admin-dashboard-section .admin-control-gated,
         #admin-dashboard-section #admin-control-key-section,
         #admin-dashboard-section #admin-control-unlocked-badge {
-            border-radius: 13px;
+            border-radius: 12px;
+        }
+        #admin-dashboard-section #admin-section-status,
+        #admin-dashboard-section #admin-section-diagnostics,
+        #admin-dashboard-section #admin-section-facilities > [class*="col-"] > .login-card,
+        #admin-dashboard-section #admin-section-requests > [class*="col-"] > .login-card,
+        #admin-dashboard-section #admin-section-tools > [class*="col-"] > .login-card,
+        #admin-dashboard-section #admin-section-operations > [class*="col-"] > .login-card {
+            border-top: 3px solid #e8eef5;
+        }
+        #admin-dashboard-section #admin-section-status { border-top-color: #3977bc; }
+        #admin-dashboard-section #admin-section-diagnostics { border-top-color: #0b9289; }
+        #admin-dashboard-section #admin-section-facilities > [class*="col-"]:first-child > .login-card { border-top-color: #3977bc; }
+        #admin-dashboard-section #admin-section-facilities > [class*="col-"]:last-child > .login-card { border-top-color: #0b9289; }
+        #admin-dashboard-section #admin-control-key-section,
+        #admin-dashboard-section #admin-control-unlocked-badge,
+        #admin-dashboard-section .admin-control-gated { background: #fff; }
+        #admin-dashboard-section #admin-section-facilities .login-card h6 { margin-top: .15rem; }
+        #admin-dashboard-section #admin-section-facilities .admin-audit-filters {
+            padding-top: .75rem;
+            border-top: 1px solid #edf1f6;
+        }
+        #admin-dashboard-section #admin-user-search,
+        #admin-dashboard-section #admin-user-facility-filter,
+        #admin-dashboard-section #admin-user-state-filter { background-color: #fff; }
+        #admin-dashboard-section #admin-sync-log {
+            margin-top: .35rem;
+            padding: .15rem .85rem;
+            border: 1px solid #e8edf3;
+            border-radius: 11px;
+            background: #fbfcfe;
         }
         #admin-dashboard-section #admin-facility-overview-struttura1,
         #admin-dashboard-section #admin-facility-overview-struttura2 {
@@ -1301,7 +1340,7 @@
         #admin-dashboard-section .admin-user-row > .d-flex { flex-wrap:wrap; align-items:flex-start !important; }
         #admin-dashboard-section .admin-user-row > .d-flex > * { min-width:0; }
         @media (max-width: 767px) {
-            #admin-view-overlay { background: linear-gradient(160deg, #172b48 0, #1a3553 13rem, #f3f6fb 13rem); }
+            #admin-view-overlay { background: #f2f5f9; }
             #admin-view-overlay > div { padding: 1rem .85rem !important; }
             #admin-dashboard-section > .d-flex { grid-template-columns: 1fr; position: static; }
             #admin-dashboard-section > .d-flex > button:last-child { justify-self: start; padding-left: 0; }
