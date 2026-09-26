@@ -1541,6 +1541,63 @@
             background: rgba(22,105,84,.17) !important;
         }
         #admin-dashboard-section .admin-user-row code { color: #7dd9ef; }
+        /* Bootstrap table-light/striped impone fondi e testo chiari/scuri propri: neutralizzali nell'audit admin. */
+        #admin-dashboard-section #admin-audit-struttura1 table,
+        #admin-dashboard-section #admin-audit-struttura2 table {
+            --bs-table-color: #dceafa;
+            --bs-table-bg: transparent;
+            --bs-table-striped-color: #e4f1ff;
+            --bs-table-striped-bg: rgba(79,139,179,.09);
+            --bs-table-border-color: rgba(126,169,202,.24);
+            color: #dceafa !important;
+            border-color: rgba(126,169,202,.24) !important;
+        }
+        #admin-dashboard-section #admin-audit-struttura1 table > :not(caption) > * > *,
+        #admin-dashboard-section #admin-audit-struttura2 table > :not(caption) > * > * {
+            color: #dceafa !important;
+            background-color: transparent !important;
+            box-shadow: none !important;
+            border-bottom-color: rgba(126,169,202,.24) !important;
+        }
+        #admin-dashboard-section #admin-audit-struttura1 table thead,
+        #admin-dashboard-section #admin-audit-struttura2 table thead,
+        #admin-dashboard-section #admin-audit-struttura1 table thead.table-light,
+        #admin-dashboard-section #admin-audit-struttura2 table thead.table-light {
+            --bs-table-color: #8ee7f2;
+            --bs-table-bg: rgba(39,113,145,.18);
+            color: #8ee7f2 !important;
+            background: rgba(39,113,145,.18) !important;
+        }
+        #admin-dashboard-section #admin-audit-struttura1 table thead th,
+        #admin-dashboard-section #admin-audit-struttura2 table thead th {
+            color: #8ee7f2 !important;
+            background: rgba(39,113,145,.18) !important;
+            font-weight: 700;
+        }
+        #admin-dashboard-section #admin-audit-struttura1 table tbody tr:nth-of-type(odd) > *,
+        #admin-dashboard-section #admin-audit-struttura2 table tbody tr:nth-of-type(odd) > * {
+            color: #e4f1ff !important;
+            background: rgba(79,139,179,.09) !important;
+        }
+        #admin-dashboard-section #admin-audit-struttura1 table tbody tr:nth-of-type(even) > *,
+        #admin-dashboard-section #admin-audit-struttura2 table tbody tr:nth-of-type(even) > * {
+            color: #dceafa !important;
+            background: rgba(5,20,35,.24) !important;
+        }
+        #admin-dashboard-section #admin-audit-struttura1 table .text-muted,
+        #admin-dashboard-section #admin-audit-struttura2 table .text-muted { color: #a9bfd4 !important; }
+        #admin-dashboard-section #admin-audit-struttura1 table .bg-success-subtle,
+        #admin-dashboard-section #admin-audit-struttura2 table .bg-success-subtle {
+            color: #b9f6d0 !important;
+            background: rgba(22,128,91,.3) !important;
+        }
+        #admin-dashboard-section #admin-audit-struttura1 table .bg-secondary,
+        #admin-dashboard-section #admin-audit-struttura2 table .bg-secondary {
+            color: #d5e4f2 !important;
+            background: #344e66 !important;
+        }
+        #admin-dashboard-section #admin-audit-struttura1 table .bg-danger,
+        #admin-dashboard-section #admin-audit-struttura2 table .bg-danger { color: #fff !important; }
         #admin-dashboard-section #admin-control-unlocked-badge {
             color: #b9f6d0 !important;
             border-color: rgba(52,211,153,.38) !important;
