@@ -5573,6 +5573,8 @@
         const ADMIN_OPERATIONS_KEY = 'tv_admin_operations_log_v1';
         let adminOperationsLog = [];
         try { adminOperationsLog = JSON.parse(localStorage.getItem(ADMIN_OPERATIONS_KEY) || '[]').slice(0, 500); } catch (_) { adminOperationsLog = []; }
+        let adminGroupCodeRotationPendingAt = 0;
+        const adminGroupCodeRejectedRoles = new Set();
 
         function recordAdminOperation(role, action, subject, status, id = null) {
             const existing = id && adminOperationsLog.find(item => item.id === id);
@@ -6308,14 +6310,15 @@
                 // permanente (merge union-by-id, mai rimozione).
                 if (!(await verifyAdminChannelHmac(backupData))) {
                     console.warn('Backup admin scartato: HMAC mancante o non valido (Codice Stanza disallineato o messaggio non autentico).', entry.role);
-                    // Prima solo in console: scartare in silenzio ha fatto sembrare "sparire" accessi
-                    // e backup per giorni prima che qualcuno se ne accorgesse (12-13/09/2026, Codice
-                    // Stanza disallineato tra admin e strutture). Ora un avviso resta a schermo finché
-                    // l'admin non lo chiude, invece di scomparire come un toast normale.
-                    showToast(`⚠️ Backup di <strong>${escapeHtml((DOCTORS[entry.role] || {}).facility || entry.role)}</strong> scartato: Codice Stanza disallineato. Genera e applica di nuovo il Codice Stanza qui sopra.`, 'danger', 0);
+                    // Un pannello può ricevere molti backup retained/non validi: aggiorna il singolo
+                    // stato della struttura invece di accumulare toast identici. HMAC invalido non
+                    // prova da solo un disallineamento: può anche essere un messaggio non autentico.
+                    if (entry.role === 'struttura1' || entry.role === 'struttura2') adminGroupCodeRejectedRoles.add(entry.role);
+                    renderAdminGroupCodeStatus();
                     return;
                 }
 
+                if (entry.role === 'struttura1' || entry.role === 'struttura2') adminGroupCodeRejectedRoles.delete(entry.role);
                 adminReceivedBackups[entry.role] = { data: backupData, ts: entry.ts, facility: entry.facility };
                 registerAdminFacilityHealthResponse(entry.role, entry.ts);
                 mergeAdminAuditLog(entry.role, backupData.shared && backupData.shared.auditLog);
@@ -7168,6 +7171,7 @@
             const input = document.getElementById('admin-groupcode-input');
             const code = input ? input.value.trim() : '';
             if (code.length < 16) { showToast('Genera prima un nuovo codice.', 'warning'); return; }
+            const rotationRequestedAt = Date.now();
             const ok1 = await publishAdminControl('struttura1', { groupCode: code });
             const ok2 = await publishAdminControl('struttura2', { groupCode: code });
             if (ok1 && ok2) {
@@ -7178,6 +7182,8 @@
                 // pagina. Persistito per sopravvivere a un reload di questo stesso pannello.
                 currentGroupCode = code;
                 try { localStorage.setItem('tv_admin_known_groupcode', code); } catch (_) { }
+                adminGroupCodeRotationPendingAt = rotationRequestedAt;
+                adminGroupCodeRejectedRoles.clear();
                 showToast('Codice Stanza applicato a entrambe le strutture', 'success');
                 input.value = '';
                 input.readOnly = true;
@@ -7190,7 +7196,7 @@
             renderAdminGroupCodeStatus();
         }
 
-        function renderAdminGroupCodeStatus() {
+        async function renderAdminGroupCodeStatus() {
             const el = document.getElementById('admin-groupcode-status');
             if (!el) return;
             const c1 = adminControlState.struttura1 && adminControlState.struttura1.groupCode;
@@ -7207,19 +7213,47 @@
             const t1 = adminReceivedBackups.struttura1 && adminReceivedBackups.struttura1.data && adminReceivedBackups.struttura1.data.networkTopicId;
             const t2 = adminReceivedBackups.struttura2 && adminReceivedBackups.struttura2.data && adminReceivedBackups.struttura2.data.networkTopicId;
 
+            // Dopo una rotazione, un backup prova l'applicazione solo se è arrivato dopo l'invio,
+            // supera l'HMAC e dichiara proprio il topic derivato dal codice corrente.
+            let expectedTopic = '';
+            try { if (currentGroupCode) expectedTopic = await deriveTopicId(currentGroupCode); } catch (_) { }
+            const rotationSent = !!adminGroupCodeRotationPendingAt;
+            const facilityChecks = ['struttura1', 'struttura2'].map(role => {
+                const label = (DOCTORS[role] || {}).facility || role;
+                const backup = adminReceivedBackups[role];
+                const control = adminControlState[role];
+                const hasCommand = !!(control && control.groupCode);
+                const fresh = !!(backup && (!rotationSent || backup.ts >= adminGroupCodeRotationPendingAt));
+                const matches = !!(backup && expectedTopic && backup.data.networkTopicId === expectedTopic);
+                let state;
+                if (adminGroupCodeRejectedRoles.has(role)) {
+                    state = '<span class="text-warning">Backup non verificabile: in attesa di un backup autentico o possibile disallineamento</span>';
+                } else if (hasCommand && fresh && matches) {
+                    state = '<span class="text-success">Codice applicato e confermato da backup autentico</span>';
+                } else if (hasCommand) {
+                    state = '<span class="text-info">Comando presente sul canale admin; in attesa di conferma dal dispositivo</span>';
+                } else {
+                    state = '<span class="text-muted">Nessun comando di rotazione registrato</span>';
+                }
+                return '<div><strong>' + escapeHtml(label) + ':</strong> ' + state + '</div>';
+            }).join('');
+
             if (t1 && t2 && t1 !== t2) {
-                el.innerHTML = '<span class="badge bg-danger">⚠️ Le due strutture sono DAVVERO su canali diversi (confermato dai loro backup): la sincronizzazione Network è ferma. Riapplica il Codice Stanza qui sopra su entrambe.</span>';
+                el.innerHTML = '<div class="mb-2">' + facilityChecks + '</div><span class="badge bg-danger">⚠️ Le due strutture sono DAVVERO su canali diversi (confermato dai loro backup): la sincronizzazione Network è ferma. Riapplica il Codice Stanza qui sopra su entrambe.</span>';
                 return;
             }
 
             if (!c1 && !c2) {
-                el.innerHTML = '<span class="badge bg-secondary">Mai ruotato: entrambe le strutture usano ancora il default del sorgente</span>';
+                el.innerHTML = '<div class="mb-2">' + facilityChecks + '</div><span class="badge bg-secondary">Mai ruotato: entrambe le strutture usano ancora il default del sorgente</span>';
             } else if (c1 && c2 && c1 === c2) {
-                el.innerHTML = (t1 && t2)
+                const aligned = (t1 && t2 && t1 === t2 && t1 === expectedTopic &&
+                    (!rotationSent || (adminReceivedBackups.struttura1.ts >= adminGroupCodeRotationPendingAt && adminReceivedBackups.struttura2.ts >= adminGroupCodeRotationPendingAt)));
+                const summary = aligned
                     ? '<span class="badge bg-success">Allineato e confermato: entrambe le strutture sono davvero sullo stesso canale</span>'
-                    : '<span class="badge bg-success">Allineato su entrambe le strutture</span>';
+                    : '<span class="badge bg-warning text-dark">Comando inviato; attendo backup aggiornati da entrambe per confermare</span>';
+                el.innerHTML = '<div class="mb-2">' + facilityChecks + '</div>' + summary;
             } else {
-                el.innerHTML = '<span class="badge bg-danger">Disallineato tra le due strutture: la sincronizzazione Network è probabilmente ferma, riapplica</span>';
+                el.innerHTML = '<div class="mb-2">' + facilityChecks + '</div><span class="badge bg-danger">Disallineato tra i comandi admin delle due strutture: verifica la ricezione prima di considerarlo applicato</span>';
             }
         }
 
