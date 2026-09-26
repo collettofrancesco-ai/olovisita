@@ -23,7 +23,7 @@ ogni sezione spiega quale.
 | `Avvia_Server.command` | Apre la versione pubblica GitHub Pages con un doppio clic (uso non tecnico) |
 | `Dockerfile` / `.dockerignore` | Immagine nginx minima che serve `docs/` — per il deploy interno Olomedia |
 | `.github/workflows/deploy.yml` | CI/CD: test E2E → deploy GitHub Pages, **bloccante** se un test fallisce |
-| `tests/e2e/` | Suite Playwright — 54 test in 7 file, vedi §14 |
+| `tests/e2e/` | Suite Playwright — 65 test in 9 file, vedi §13 |
 | `tests/integration/` | Test MQTT reale isolato su topic casuali, dati sintetici e senza retain |
 | `manuale/` | Documentazione PDF/HTML: privacy GDPR (`Valutazione_Sicurezza_GDPR_Olovisita`), manuali utente IT/FR |
 | `TeleVisita_Admin/` | Strumenti dell'amministratore piattaforma, **fuori dal repo git** (contiene chiavi private) — vedi §13 |
@@ -149,6 +149,29 @@ struttura resta silenziosamente sul codice vecchio e la sincronizzazione Network
    confronto da solo non avrebbe rilevato l'incidente del 05-06/09, perché l'admin aveva
    davvero mandato lo stesso comando — il problema era che una struttura non l'aveva mai
    ricevuto).
+
+3. **Dal 26/09/2026 le strutture tengono vivo il messaggio da sole** (`runControlKeepalive`):
+   il registro di `refresh_control_channel.log` mostrava il messaggio sparito dal broker quasi
+   sempre dal 9/9 in poi (dura circa un giorno), e lo script sul Mac non può ricrearlo, perché
+   non ha la chiave e gira solo a Mac acceso. Ogni PC di struttura conserva l'ultima copia
+   firmata di ENTRAMBE le strutture (`tv_control_envelope_<ruolo>`). Circa 30 secondi dopo il
+   collegamento, e poi ogni 3 ore, apre un client MQTT temporaneo e controlla il broker. Se il
+   messaggio manca o è più vecchio della sua copia, ripubblica i byte identici: la firma resta
+   quella dell'admin.
+   - **Regola "mai tornare indietro"**: una copia con `updatedAt` più vecchio di quella già
+     applicata viene ignorata in tre punti: `handleFacilityControlMessage`, il listener
+     pre-login e `handleAdminControlMessageForDisplay`. Non la si conserva nemmeno come copia
+     da ripubblicare. Toglierla significherebbe che un PC rimasto spento settimane può
+     riportare tutti al codice precedente.
+   - **Limite accettato**: l'ordine dipende dall'orologio del dispositivo admin, perché
+     `updatedAt` è `Date.now()` del pannello.
+   - **In locale** il rinnovo è disattivato, salvo con `?admin_test_topic`.
+   - **Test**: `tests/e2e/control_keepalive.spec.js` e `tests/integration/control_keepalive.spec.js`.
+     Quest'ultimo usa il broker vero, su un topic casuale isolato.
+4. **Un PC senza Codice Stanza lo dice** (`checkControlMissing`). Se 12 secondi dopo il
+   collegamento non è arrivato nessun messaggio di controllo e il PC è ancora sul codice di
+   fabbrica, compare un avviso rosso fisso: "contatta l'amministratore". L'avviso sparisce da
+   solo quando il codice arriva.
 
 **Da non fare mai**: rimettere un Codice Stanza ruotato come nuovo default hardcoded nel
 sorgente pubblico "per evitare che scada" — vanificherebbe la rotazione, chiunque legga
@@ -513,7 +536,7 @@ Playwright headless Chromium contro l'artefatto di produzione (`docs/`), servito
 `python3 -m http.server 4321` prima del run. **Il deploy è bloccato se anche un solo test
 fallisce.**
 
-### Suite E2E (54 test in 7 file)
+### Suite E2E (65 test in 9 file)
 
 | File | Test | Cosa verifica |
 |------|------|---------------|
@@ -523,9 +546,11 @@ fallisce.**
 | `consent_flow.spec.js` | 5 | OTP, consenso firmato/negato/scaduto |
 | `demo.spec.js` | 6 | Demo guidata, demoMode blocca email, `resetAllData` non tocca l'audit log |
 | `security.spec.js` | 8 | Rate limiting login, cifratura a riposo, hash rafforzato, merge audit log, segreto F-01 dedicato ai link paziente |
+| `admin_groupcode.spec.js` | 4 | Conferma della rotazione Codice Stanza nel pannello admin |
+| `control_keepalive.spec.js` | 7 | Copie più vecchie del canale di controllo ignorate, avviso PC senza codice |
 | `regressions.spec.js` | 19 | Confini privacy Centro, import non fidati, HMAC admin, lingue consenso, link paziente, UI documenti, contesto paziente e diagnostica |
 
-### Suite MQTT reale (2 test separati)
+### Suite MQTT reale (3 test separati)
 
 `npm run test:mqtt` collega due browser al broker EMQX tramite un topic casuale per ogni
 esecuzione. Usa soltanto pazienti sintetici e `retain:false`; verifica il viaggio completo
@@ -584,3 +609,4 @@ di ogni bug (quello sta nei commit git). Ordine cronologico:
 | 05/09/2026 | Sessione persistente (`tv_session`, §5.12); incidente disallineamento Codice Stanza reale, rilevamento automatico aggiunto (§5.1) |
 | 06/09/2026 | Autenticazione HMAC del canale verso l'admin (§5.8); leak Centro via "Condividi documento" in chiamata (§5.2, terzo episodio) |
 | 07/09/2026 | Jitsi passato al server proprio Olomedia, chiudendo la ricerca di alternative pubbliche (§9) |
+| 26/09/2026 | Canale di controllo tenuto vivo dalle strutture + avviso PC senza Codice Stanza (§5.1) |

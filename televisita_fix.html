@@ -5228,6 +5228,7 @@
 
         function startLoginControlListener(role) {
             pendingLoginOverride = readCachedControlOverride(role);
+            ownControlSeenThisSession = false;
             if (loginControlClient) {
                 try { loginControlClient.end(true); } catch (_) { }
                 loginControlClient = null;
@@ -5242,6 +5243,11 @@
                         const envelope = JSON.parse(message.toString());
                         const payload = await verifyAndParseControlMessage(envelope);
                         if (!payload) return;
+                        markOwnControlSeen();
+                        cacheControlEnvelope(role, message.toString(), payload);
+                        // Copia più vecchia di quella già nota (ripubblicata da un PC rimasto
+                        // indietro, vedi runControlKeepalive): si tiene quella che abbiamo.
+                        if (isOlderThanCachedControl(role, payload)) return;
                         pendingLoginOverride = payload;
                         cacheControlOverride(role, payload);
                     } catch (_) { }
@@ -5275,6 +5281,17 @@
                 const envelope = JSON.parse(message.toString());
                 const payload = await verifyAndParseControlMessage(envelope);
                 if (!payload) return;
+                markOwnControlSeen();
+                cacheControlEnvelope(activeFacilityId, message.toString(), payload);
+                // Mai tornare indietro: se sul broker è finita una copia più vecchia di quella che
+                // questo PC ha già applicato (ripubblicata da un PC rimasto spento a lungo, vedi
+                // runControlKeepalive), la si ignora — altrimenti si tornerebbe al Codice Stanza
+                // precedente — e si rimette sul broker quella più recente.
+                if (isOlderThanCachedControl(activeFacilityId, payload)) {
+                    console.warn('Canale di controllo: ignorata una copia più vecchia di quella già applicata.');
+                    runControlKeepalive();
+                    return;
+                }
                 // activeFacilityId (non S.role): S.role è solo cosmetico e può essere
                 // temporaneamente diverso durante la demo guidata (vedi runDemo), che chiama
                 // switchRole() per narrare "l'altra struttura" pur restando sullo stesso
@@ -5334,7 +5351,8 @@
                 if (myOverride && myOverride.active === false) {
                     showToast('Il tuo account è stato disattivato dall\'amministratore.', 'danger');
                     setTimeout(() => logout(), 1500);
-                } else if (myOverride && (myOverride.name || myOverride.spec) && DOCTORS[S.role]) {
+                } else if (myOverride && DOCTORS[S.role] &&
+                    ((myOverride.name && myOverride.name !== DOCTORS[S.role].name) || (myOverride.spec && myOverride.spec !== DOCTORS[S.role].spec))) {
                     // Profilo aggiornato dall'admin mentre si è già collegati: applica subito,
                     // senza dover rifare il login (switchRole ri-renderizza badge/header da DOCTORS).
                     if (myOverride.name) DOCTORS[S.role].name = myOverride.name;
@@ -5345,6 +5363,143 @@
             } catch (err) {
                 console.error('Errore nella gestione del canale di controllo (struttura):', err);
             }
+        }
+
+        // ---------------------------------------------------------------------------
+        // CANALE DI CONTROLLO TENUTO VIVO DALLE STRUTTURE
+        // ---------------------------------------------------------------------------
+        // Il messaggio firmato col Codice Stanza resta sul broker pubblico solo circa un giorno
+        // (verificato sul registro di refresh_control_channel.js: dal 9/9 quasi sempre sparito),
+        // e il rinnovo dal Mac dell'admin non basta: gira solo a Mac acceso e non può rimettere un
+        // messaggio già sparito. Un PC NUOVO di una struttura parte dal codice di fabbrica e senza
+        // quel messaggio resta lì in silenzio, senza mai vedere l'altra struttura.
+        // Qui ogni PC delle strutture conserva l'ultima copia firmata di ENTRAMBE le strutture e,
+        // poco dopo il collegamento e poi ogni 3 ore, controlla il broker: se il messaggio manca
+        // (o ce n'è uno più vecchio) ripubblica la sua copia IDENTICA. Nessuna chiave privata
+        // coinvolta: la firma resta quella dell'admin, nessuno può cambiarne il contenuto.
+        const CONTROL_ENVELOPE_CACHE_PREFIX = 'tv_control_envelope_';
+        const CONTROL_KEEPALIVE_ROLES = ['struttura1', 'struttura2'];
+        const CONTROL_KEEPALIVE_WAIT_MS = 8000;
+        const CONTROL_KEEPALIVE_FIRST_DELAY_MS = 30 * 1000;
+        const CONTROL_KEEPALIVE_INTERVAL_MS = 3 * 60 * 60 * 1000;
+        const CONTROL_MISSING_CHECK_MS = 12 * 1000;
+        let controlKeepaliveInFlight = false;
+        let controlKeepaliveScheduled = false;
+        let ownControlSeenThisSession = false;
+        let controlMissingCheckScheduled = false;
+
+        function readCachedControlEnvelope(role) {
+            try {
+                const cached = JSON.parse(localStorage.getItem(CONTROL_ENVELOPE_CACHE_PREFIX + role) || 'null');
+                return cached && typeof cached.raw === 'string' ? cached : null;
+            } catch (_) { return null; }
+        }
+
+        // Chiamare solo con un messaggio GIÀ verificato (payload non null). Tiene sempre la copia
+        // più recente: una più vecchia arrivata dopo non la sostituisce, e nemmeno una più
+        // vecchia di quanto questo PC ha già applicato (PC aggiornato che non aveva ancora una
+        // copia firmata: altrimenti potrebbe ripubblicare proprio quella vecchia).
+        function cacheControlEnvelope(role, raw, payload) {
+            const updatedAt = Number(payload && payload.updatedAt) || 0;
+            const cached = readCachedControlEnvelope(role);
+            if (cached && cached.updatedAt > updatedAt) return;
+            if (isOlderThanCachedControl(role, payload)) return;
+            try { localStorage.setItem(CONTROL_ENVELOPE_CACHE_PREFIX + role, JSON.stringify({ raw, updatedAt })); } catch (_) { }
+        }
+
+        function isOlderThanCachedControl(role, payload) {
+            const cached = readCachedControlOverride(role);
+            return !!(cached && (Number(cached.updatedAt) || 0) > (Number(payload && payload.updatedAt) || 0));
+        }
+
+        function markOwnControlSeen() {
+            ownControlSeenThisSession = true;
+            document.querySelectorAll('[data-control-missing]').forEach(el => el.remove());
+        }
+
+        // Un solo giro: collegamento temporaneo, lettura dei due messaggi, eventuale
+        // ripubblicazione, chiusura. Non tocca mai lo stato dell'app.
+        function runControlKeepalive() {
+            if (controlKeepaliveInFlight || S.demoMode || typeof mqtt === 'undefined') return;
+            // In locale si tocca il canale reale solo se isolato con ?admin_test_topic (§11).
+            if (_isTestEnv() && !new URLSearchParams(window.location.search).get('admin_test_topic')) return;
+            controlKeepaliveInFlight = true;
+            const seen = {};
+            let client = null;
+            let done = false;
+            let hardStop = null;
+            const finish = () => {
+                if (done) return;
+                done = true;
+                controlKeepaliveInFlight = false;
+                if (hardStop) clearTimeout(hardStop);
+                try { if (client) client.end(true); } catch (_) { }
+            };
+            try {
+                client = mqtt.connect(MQTT_BROKERS[0].url, { clean: true, connectTimeout: 8000, reconnectPeriod: 0 });
+            } catch (_) { controlKeepaliveInFlight = false; return; }
+            hardStop = setTimeout(finish, 45000);
+            client.on('error', finish);
+            client.on('close', finish);
+            client.on('message', async (topic, message) => {
+                const role = topic.slice(ADMIN_CONTROL_TOPIC.length);
+                if (!CONTROL_KEEPALIVE_ROLES.includes(role) || !message || message.length === 0) return;
+                try {
+                    const raw = message.toString();
+                    const payload = await verifyAndParseControlMessage(JSON.parse(raw));
+                    if (!payload) return;
+                    seen[role] = Math.max(seen[role] || 0, Number(payload.updatedAt) || 0);
+                    cacheControlEnvelope(role, raw, payload);
+                } catch (_) { }
+            });
+            client.on('connect', () => {
+                client.subscribe(CONTROL_KEEPALIVE_ROLES.map(r => ADMIN_CONTROL_TOPIC + r), { qos: 1 }, (err) => {
+                    if (err) { finish(); return; }
+                    setTimeout(() => {
+                        if (done) return;
+                        if (S.demoMode) { finish(); return; }
+                        const publishes = CONTROL_KEEPALIVE_ROLES.map(role => {
+                            const cached = readCachedControlEnvelope(role);
+                            if (!cached) return null;
+                            if (seen[role] !== undefined && seen[role] >= cached.updatedAt) return null;
+                            return new Promise(resolve => {
+                                client.publish(ADMIN_CONTROL_TOPIC + role, cached.raw, { qos: 1, retain: true }, (pubErr) => {
+                                    if (!pubErr) recordTechnicalSyncEvent('Codice Stanza rimesso sul broker per ' + role);
+                                    resolve();
+                                });
+                            });
+                        }).filter(Boolean);
+                        Promise.all(publishes).then(finish, finish);
+                    }, CONTROL_KEEPALIVE_WAIT_MS);
+                });
+            });
+        }
+
+        function scheduleControlKeepalive() {
+            if (controlKeepaliveScheduled) return;
+            controlKeepaliveScheduled = true;
+            setTimeout(runControlKeepalive, CONTROL_KEEPALIVE_FIRST_DELAY_MS);
+            setInterval(runControlKeepalive, CONTROL_KEEPALIVE_INTERVAL_MS);
+        }
+
+        // PC nuovo senza Codice Stanza: invece di restare in silenzio sul codice di fabbrica
+        // (dove non vede l'altra struttura), lo dice chiaramente finché il codice non arriva.
+        function scheduleControlMissingCheck() {
+            if (controlMissingCheckScheduled) return;
+            controlMissingCheckScheduled = true;
+            setTimeout(checkControlMissing, CONTROL_MISSING_CHECK_MS);
+        }
+
+        function checkControlMissing() {
+            if (ownControlSeenThisSession || S.demoMode || document.querySelector('[data-control-missing]')) return;
+            const cached = readCachedControlOverride(activeFacilityId);
+            if (cached && cached.groupCode) return;
+            if (currentGroupCode !== atob('T2xvdmlzaXRhX3BhbGVybW9fdHVuaXNpYQ==')) return;
+            showToast(currentLang === 'fr'
+                ? '<b>Cet ordinateur n\'a pas reçu la configuration de connexion de l\'administrateur.</b> Il pourrait ne pas communiquer avec l\'autre structure : contactez l\'administrateur.'
+                : '<b>Questo PC non ha ricevuto il Codice Stanza.</b> Potrebbe non comunicare con l\'altra struttura: contatta l\'amministratore.', 'danger', 0);
+            const box = document.getElementById('toast-box');
+            if (box && box.lastElementChild) box.lastElementChild.dataset.controlMissing = '1';
         }
 
         async function getAdminBackupPublicKey() {
@@ -5976,6 +6131,9 @@
                 const envelope = JSON.parse(message.toString());
                 const payload = await verifyAndParseControlMessage(envelope);
                 if (!payload) return;
+                // Una copia più vecchia ripubblicata da una struttura (runControlKeepalive) non deve
+                // diventare la base della prossima modifica admin né riportare indietro il codice.
+                if (adminControlState[role] && (Number(adminControlState[role].updatedAt) || 0) > (Number(payload.updatedAt) || 0)) return;
                 adminControlState[role] = payload;
                 // Allinea currentGroupCode anche se la rotazione è stata applicata da un'altra
                 // sessione/dispositivo admin (il messaggio è comunque verificato via ECDSA qui
@@ -7646,6 +7804,8 @@
                     // runDemo/switchRole), ci si iscriverebbe al canale di controllo della
                     // struttura SBAGLIATA.
                     mqttClient.subscribe(ADMIN_CONTROL_TOPIC + activeFacilityId, { qos: 1 });
+                    scheduleControlMissingCheck();
+                    scheduleControlKeepalive();
 
                     // Sottoscrizione con wildcard "+" a TUTTE le conferme di consenso (vedi
                     // consentConfirmTopicSuffix/publishPatientMqttMessage): essendo pubblicate dal
