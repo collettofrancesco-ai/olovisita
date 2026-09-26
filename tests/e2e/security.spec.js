@@ -176,4 +176,30 @@ test.describe('Segreto dedicato ai link paziente (F-01)', () => {
     expect(result.neverEqualsGroupCode).toBe(true);
     expect(result.format64hex).toBe(true);
   });
+
+  test('messaggi nel vecchio formato XOR "FALLBACK" sempre rifiutati (falsificabili con 256 tentativi)', async ({ page }) => {
+    await loginBypass(page, 'struttura1');
+    const result = await page.evaluate(async () => {
+      currentGroupCode = 'codice-segreto-di-prova-' + Math.random();
+      // L'attaccante non conosce il codice: prova tutte le 256 chiavi possibili del vecchio XOR.
+      const forged = new TextEncoder().encode(JSON.stringify({ type: 'consent_event', action: 'sign', tvId: 'x' }));
+      let accepted = 0;
+      for (let k = 0; k < 256; k++) {
+        const ct = new Uint8Array(forged.length);
+        for (let i = 0; i < forged.length; i++) ct[i] = forged[i] ^ ((k + i) % 256);
+        const out = await decryptPayload({ iv: 'FALLBACK', ciphertext: arrayBufferToBase64(ct) }, currentGroupCode);
+        if (out) accepted++;
+      }
+      // La cifratura vera continua a funzionare e non produce mai il vecchio formato.
+      const enc = await encryptPayload({ type: 'prova', n: 42 }, currentGroupCode);
+      const dec = await decryptPayload(enc, currentGroupCode);
+      const wrongKey = await decryptPayload(enc, 'altro-codice');
+      return { accepted, iv: enc.iv, n: dec && dec.n, wrongKey };
+    });
+    expect(result.accepted).toBe(0);
+    expect(result.iv).not.toBe('FALLBACK');
+    expect(result.n).toBe(42);
+    expect(result.wrongKey).toBeNull();
+  });
 });
+

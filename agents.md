@@ -23,7 +23,7 @@ ogni sezione spiega quale.
 | `Avvia_Server.command` | Apre la versione pubblica GitHub Pages con un doppio clic (uso non tecnico) |
 | `Dockerfile` / `.dockerignore` | Immagine nginx minima che serve `docs/` — per il deploy interno Olomedia |
 | `.github/workflows/deploy.yml` | CI/CD: test E2E → deploy GitHub Pages, **bloccante** se un test fallisce |
-| `tests/e2e/` | Suite Playwright — 66 test in 9 file, vedi §13 |
+| `tests/e2e/` | Suite Playwright — 67 test in 9 file, vedi §13 |
 | `tests/integration/` | Test MQTT reale isolato su topic casuali, dati sintetici e senza retain |
 | `manuale/` | Documentazione PDF/HTML: privacy GDPR (`Valutazione_Sicurezza_GDPR_Olovisita`), manuali utente IT/FR |
 | `TeleVisita_Admin/` | Strumenti dell'amministratore piattaforma, **fuori dal repo git** (contiene chiavi private) — vedi §13 |
@@ -493,6 +493,16 @@ fallirebbe silenziosamente su Firefox/Safari).
   permanente, sostituire questa voce con un broker diverso, **mai** aggiungerne un
   secondo con fallback.
 - Topic base: `olohealth/televisita/demo/` + topic derivato.
+- **Nessun formato di riserva XOR, dal 27/09/2026**: il vecchio formato `iv:"FALLBACK"` è
+  sempre rifiutato in `decryptPayload`, e `encryptPayload` senza Web Crypto non invia nulla.
+  - **Perché**: la sua chiave aveva solo 256 valori possibili. Il broker lascia chiunque
+    iscriversi a `#` e vedere i nomi dei canali, quindi si potevano iniettare messaggi
+    accettati come autentici senza conoscere il Codice Stanza. Verificato 20 su 20.
+  - **Conseguenza per l'HTTP semplice**: una pagina aperta così, per esempio il Docker
+    interno raggiunto da un indirizzo di rete invece che da localhost, non sincronizza più.
+    Lo dice con un avviso rosso (`warnInsecureContext`) invece di lavorare con una cifratura
+    falsificabile.
+  - **Non reintrodurre.**
 
 ---
 
@@ -541,7 +551,7 @@ Playwright headless Chromium contro l'artefatto di produzione (`docs/`), servito
 `python3 -m http.server 4321` prima del run. **Il deploy è bloccato se anche un solo test
 fallisce.**
 
-### Suite E2E (66 test in 9 file)
+### Suite E2E (67 test in 9 file)
 
 | File | Test | Cosa verifica |
 |------|------|---------------|
@@ -550,7 +560,7 @@ fallisce.**
 | `urgent_visit.spec.js` | 6 | Flusso urgente struttura1→2, accettazione, consenso automatico, Centro privato |
 | `consent_flow.spec.js` | 5 | OTP, consenso firmato/negato/scaduto |
 | `demo.spec.js` | 6 | Demo guidata, demoMode blocca email, `resetAllData` non tocca l'audit log |
-| `security.spec.js` | 8 | Rate limiting login, cifratura a riposo, hash rafforzato, merge audit log, segreto F-01 dedicato ai link paziente |
+| `security.spec.js` | 9 | Rate limiting login, cifratura a riposo, hash rafforzato, merge audit log, segreto F-01 dedicato ai link paziente, formato XOR rifiutato |
 | `admin_groupcode.spec.js` | 4 | Conferma della rotazione Codice Stanza nel pannello admin |
 | `control_keepalive.spec.js` | 8 | Copie più vecchie del canale di controllo ignorate, avviso PC senza codice, date admin crescenti |
 | `regressions.spec.js` | 19 | Confini privacy Centro, import non fidati, HMAC admin, lingue consenso, link paziente, UI documenti, contesto paziente e diagnostica |
@@ -615,3 +625,4 @@ di ogni bug (quello sta nei commit git). Ordine cronologico:
 | 06/09/2026 | Autenticazione HMAC del canale verso l'admin (§5.8); leak Centro via "Condividi documento" in chiamata (§5.2, terzo episodio) |
 | 07/09/2026 | Jitsi passato al server proprio Olomedia, chiudendo la ricerca di alternative pubbliche (§9) |
 | 26/09/2026 | Canale di controllo tenuto vivo dalle strutture + avviso PC senza Codice Stanza (§5.1) |
+| 27/09/2026 | Eliminato il formato XOR di riserva, falsificabile (§10) |

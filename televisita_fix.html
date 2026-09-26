@@ -4915,22 +4915,18 @@
         const isSubtleCryptoSupported = !!(window.crypto && window.crypto.subtle);
 
         if (!isSubtleCryptoSupported) {
-            console.warn("⚠️ Attenzione: Web Crypto API (crypto.subtle) non disponibile in questo contesto (es. caricamento locale da file://). Viene abilitato un algoritmo XOR di fallback per garantire la sincronizzazione.");
+            console.warn("⚠️ Web Crypto API non disponibile (pagina non in HTTPS o aperta da file://): sincronizzazione cifrata disattivata.");
         }
 
-        // Cifratura XOR robusta operante a livello di singoli byte per evitare problemi di encoding UTF-8
-        function xorEncryptDecryptBytes(bytes, keyString) {
-            let keyHash = 5381;
-            for (let i = 0; i < keyString.length; i++) {
-                keyHash = ((keyHash << 5) + keyHash) + keyString.charCodeAt(i);
-                keyHash = keyHash & keyHash; // Converte a intero a 32 bit
-            }
-            const result = new Uint8Array(bytes.length);
-            for (let i = 0; i < bytes.length; i++) {
-                const keyByte = (Math.abs(keyHash) + i) % 256;
-                result[i] = bytes[i] ^ keyByte;
-            }
-            return result;
+        // Senza Web Crypto la sincronizzazione è spenta (vedi encryptPayload): lo si dice
+        // chiaramente invece di lasciar credere al medico di essere collegato all'altra struttura.
+        function warnInsecureContext() {
+            if (isSubtleCryptoSupported || document.querySelector('[data-insecure-context]')) return;
+            showToast(currentLang === 'fr'
+                ? '<b>Page non sécurisée (pas en HTTPS).</b> La synchronisation avec l\'autre structure est désactivée : ouvrez l\'adresse https:// de l\'application.'
+                : '<b>Pagina non sicura (non in HTTPS).</b> La sincronizzazione con l\'altra struttura è disattivata: apri l\'indirizzo https:// dell\'app.', 'danger', 0);
+            const box = document.getElementById('toast-box');
+            if (box && box.lastElementChild) box.lastElementChild.dataset.insecureContext = '1';
         }
 
         // Deriva una chiave crittografica AES-GCM-256 a partire dal codice della stanza (roomCode)
@@ -4990,22 +4986,16 @@
             return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
         }
 
-        // Cifra un oggetto JSON usando AES-GCM-256 (in secure context) o XOR sui byte (come fallback)
+        // Cifra un oggetto JSON con AES-GCM-256. Il vecchio formato di riserva "FALLBACK" (XOR)
+        // è stato eliminato il 27/09/2026: la sua chiave dipendeva solo da 256 valori possibili,
+        // quindi chiunque vedesse il nome di un canale sul broker (iscrizione "#" permessa a
+        // tutti) poteva costruire messaggi accettati come autentici SENZA conoscere il Codice
+        // Stanza — visite false, email del paziente sostituite, consensi segnati come firmati.
+        // Senza Web Crypto (pagina aperta in HTTP semplice o da file://) non si cifra né si
+        // invia nulla: meglio nessuna sincronizzazione, segnalata a schermo (vedi
+        // warnInsecureContext), che una sincronizzazione falsificabile. Non reintrodurre.
         async function encryptPayload(payloadObj, roomCode) {
-            if (!isSubtleCryptoSupported) {
-                try {
-                    const plaintext = JSON.stringify(payloadObj);
-                    const plaintextBytes = new TextEncoder().encode(plaintext);
-                    const encryptedBytes = xorEncryptDecryptBytes(plaintextBytes, roomCode);
-                    return {
-                        iv: "FALLBACK",
-                        ciphertext: arrayBufferToBase64(encryptedBytes)
-                    };
-                } catch (err) {
-                    console.error('Errore durante la cifratura fallback:', err);
-                    return null;
-                }
-            }
+            if (!isSubtleCryptoSupported) return null;
 
             try {
                 const plaintext = JSON.stringify(payloadObj);
@@ -5029,18 +5019,8 @@
 
         // Decifra un payload cifrato (IV + Ciphertext in Base64)
         async function decryptPayload(encryptedObj, roomCode) {
-            if (encryptedObj.iv === "FALLBACK" || !isSubtleCryptoSupported) {
-                try {
-                    const ciphertextBuffer = base64ToArrayBuffer(encryptedObj.ciphertext);
-                    const ciphertextBytes = new Uint8Array(ciphertextBuffer);
-                    const decryptedBytes = xorEncryptDecryptBytes(ciphertextBytes, roomCode);
-                    const plaintext = new TextDecoder().decode(decryptedBytes);
-                    return JSON.parse(plaintext);
-                } catch (err) {
-                    console.error('Errore durante la decifratura fallback:', err);
-                    return null;
-                }
-            }
+            // Formato XOR "FALLBACK" sempre rifiutato (vedi encryptPayload): è falsificabile.
+            if (!encryptedObj || encryptedObj.iv === "FALLBACK" || !isSubtleCryptoSupported) return null;
 
             try {
                 const aesKey = await getCryptoKey(roomCode);
@@ -7830,6 +7810,7 @@
                     mqttClient.subscribe(ADMIN_CONTROL_TOPIC + activeFacilityId, { qos: 1 });
                     scheduleControlMissingCheck();
                     scheduleControlKeepalive();
+                    warnInsecureContext();
 
                     // Sottoscrizione con wildcard "+" a TUTTE le conferme di consenso (vedi
                     // consentConfirmTopicSuffix/publishPatientMqttMessage): essendo pubblicate dal
@@ -10394,7 +10375,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                     if (topicId && vkey && tvId) {
                         try {
                             const encrypted = await encryptPayload({ type: 'patient_waiting', tvId }, vkey);
-                            await publishPatientMqttMessage(topicId, encrypted, { topicSuffix: '/waiting/' + tvId });
+                            if (encrypted) await publishPatientMqttMessage(topicId, encrypted, { topicSuffix: '/waiting/' + tvId });
                         } catch (_) {}
                     }
                     window.location.href = jitsiUrl;
