@@ -1552,6 +1552,72 @@
             color: #dceafa !important;
             border-color: rgba(126,169,202,.24) !important;
         }
+        /* Bootstrap table-striped applica testo scuro via --bs-table-color-type:
+           neutralizziamo anche la tabella del registro operazioni admin. */
+        #admin-dashboard-section #admin-operations-log table {
+            --bs-table-color: #dceafa;
+            --bs-table-color-type: #dceafa;
+            --bs-table-bg: transparent;
+            --bs-table-striped-color: #e4f1ff;
+            --bs-table-striped-bg: rgba(79,139,179,.09);
+            --bs-table-border-color: rgba(126,169,202,.24);
+            color: #dceafa !important;
+            border-color: rgba(126,169,202,.24) !important;
+        }
+        #admin-dashboard-section #admin-operations-log table > :not(caption) > * > * {
+            color: #dceafa !important;
+            background-color: transparent !important;
+            box-shadow: none !important;
+            border-bottom-color: rgba(126,169,202,.24) !important;
+        }
+        #admin-dashboard-section #admin-operations-log table thead th {
+            color: #8ee7f2 !important;
+            background: rgba(39,113,145,.18) !important;
+            font-weight: 700;
+        }
+        #admin-dashboard-section #admin-operations-log table tbody tr:nth-of-type(odd) > * {
+            color: #e4f1ff !important;
+            background: rgba(79,139,179,.09) !important;
+        }
+        #admin-dashboard-section #admin-operations-log table tbody tr:nth-of-type(even) > * {
+            color: #dceafa !important;
+            background: rgba(5,20,35,.24) !important;
+        }
+        /* Le tabelle generate nel riepilogo admin portano classi Bootstrap table-light/striped. */
+        #admin-dashboard-section #admin-content-struttura1 table,
+        #admin-dashboard-section #admin-content-struttura2 table {
+            --bs-table-color: #dceafa;
+            --bs-table-color-type: #dceafa;
+            --bs-table-bg: transparent;
+            --bs-table-striped-color: #e4f1ff;
+            --bs-table-striped-bg: rgba(79,139,179,.09);
+            --bs-table-border-color: rgba(126,169,202,.24);
+            color: #dceafa !important;
+        }
+        #admin-dashboard-section #admin-content-struttura1 table > :not(caption) > * > *,
+        #admin-dashboard-section #admin-content-struttura2 table > :not(caption) > * > * {
+            color: #dceafa !important;
+            background-color: transparent !important;
+            box-shadow: none !important;
+            border-bottom-color: rgba(126,169,202,.24) !important;
+        }
+        #admin-dashboard-section #admin-content-struttura1 table thead th,
+        #admin-dashboard-section #admin-content-struttura2 table thead th {
+            color: #8ee7f2 !important;
+            background: rgba(39,113,145,.18) !important;
+        }
+        #admin-dashboard-section #admin-content-struttura1 table tbody tr:nth-of-type(odd) > *,
+        #admin-dashboard-section #admin-content-struttura2 table tbody tr:nth-of-type(odd) > * {
+            color: #e4f1ff !important;
+            background: rgba(79,139,179,.09) !important;
+        }
+        #admin-dashboard-section #admin-content-struttura1 table tbody tr:nth-of-type(even) > *,
+        #admin-dashboard-section #admin-content-struttura2 table tbody tr:nth-of-type(even) > * {
+            color: #dceafa !important;
+            background: rgba(5,20,35,.24) !important;
+        }
+        #admin-dashboard-section #admin-content-struttura1 table .text-muted,
+        #admin-dashboard-section #admin-content-struttura2 table .text-muted { color: #a9bfd4 !important; }
         #admin-dashboard-section #admin-audit-struttura1 table > :not(caption) > * > *,
         #admin-dashboard-section #admin-audit-struttura2 table > :not(caption) > * > * {
             color: #dceafa !important;
