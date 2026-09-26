@@ -6088,6 +6088,28 @@
         // messaggio precedente sul suo topic). `payloadFields` viene fuso sopra l'ultimo stato
         // noto (adminControlState[role]) così una modifica (es. solo password di un utente) non
         // cancella le altre già in vigore (es. config EmailJS impostata in precedenza).
+        // Le strutture scartano un comando con data più vecchia dell'ultimo applicato (vedi
+        // isOlderThanCachedControl): se l'orologio di questo dispositivo fosse indietro rispetto
+        // a quello usato per il comando precedente, il nuovo verrebbe ignorato in silenzio. La data
+        // di un nuovo comando quindi non scende mai sotto l'ultima nota +1 ms, anche dopo un
+        // ricaricamento del pannello e anche se il messaggio precedente è già sparito dal broker.
+        // (Un contatore semplice non andrebbe bene: col messaggio sparito ripartirebbe da 1.)
+        const ADMIN_CONTROL_LAST_UPDATED_PREFIX = 'tv_admin_control_last_updated_';
+
+        function rememberAdminControlUpdatedAt(role, updatedAt) {
+            const value = Number(updatedAt) || 0;
+            try {
+                const known = Number(localStorage.getItem(ADMIN_CONTROL_LAST_UPDATED_PREFIX + role)) || 0;
+                if (value > known) localStorage.setItem(ADMIN_CONTROL_LAST_UPDATED_PREFIX + role, String(value));
+            } catch (_) { }
+        }
+
+        function nextAdminControlUpdatedAt(role, base) {
+            let known = 0;
+            try { known = Number(localStorage.getItem(ADMIN_CONTROL_LAST_UPDATED_PREFIX + role)) || 0; } catch (_) { }
+            return Math.max(Date.now(), known + 1, (Number(base && base.updatedAt) || 0) + 1);
+        }
+
         async function publishAdminControl(role, payloadFields) {
             if (!adminControlPrivateCryptoKey) {
                 showToast('Carica prima la chiave di controllo per poter salvare.', 'warning');
@@ -6101,7 +6123,7 @@
             const operationId = 'adm_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
             recordAdminOperation(operation.role, operation.action, operation.subject, 'Firma in corso', operationId);
             const base = adminControlState[role] || { users: {} };
-            const payload = { ...base, ...payloadFields, updatedAt: Date.now(), adminChangeId: operationId };
+            const payload = { ...base, ...payloadFields, updatedAt: nextAdminControlUpdatedAt(role, base), adminChangeId: operationId };
             const dataStr = JSON.stringify(payload);
             try {
                 const signature = await crypto.subtle.sign(
@@ -6112,6 +6134,7 @@
                 const envelope = { data: dataStr, signature: arrayBufferToBase64(signature) };
                 await new Promise((resolve, reject) => adminMqttClient.publish(ADMIN_CONTROL_TOPIC + role, JSON.stringify(envelope), { qos: 1, retain: true }, err => err ? reject(err) : resolve()));
                 adminControlState[role] = payload;
+                rememberAdminControlUpdatedAt(role, payload.updatedAt);
                 recordAdminOperation(operation.role, operation.action, operation.subject, 'Accettato dal broker; applicazione sulla struttura non verificata', operationId);
                 return true;
             } catch (err) {
@@ -6135,6 +6158,7 @@
                 // diventare la base della prossima modifica admin né riportare indietro il codice.
                 if (adminControlState[role] && (Number(adminControlState[role].updatedAt) || 0) > (Number(payload.updatedAt) || 0)) return;
                 adminControlState[role] = payload;
+                rememberAdminControlUpdatedAt(role, payload.updatedAt);
                 // Allinea currentGroupCode anche se la rotazione è stata applicata da un'altra
                 // sessione/dispositivo admin (il messaggio è comunque verificato via ECDSA qui
                 // sopra, quindi fidato quanto una rotazione fatta da qui): senza questo,

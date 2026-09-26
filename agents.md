@@ -23,7 +23,7 @@ ogni sezione spiega quale.
 | `Avvia_Server.command` | Apre la versione pubblica GitHub Pages con un doppio clic (uso non tecnico) |
 | `Dockerfile` / `.dockerignore` | Immagine nginx minima che serve `docs/` — per il deploy interno Olomedia |
 | `.github/workflows/deploy.yml` | CI/CD: test E2E → deploy GitHub Pages, **bloccante** se un test fallisce |
-| `tests/e2e/` | Suite Playwright — 65 test in 9 file, vedi §13 |
+| `tests/e2e/` | Suite Playwright — 66 test in 9 file, vedi §13 |
 | `tests/integration/` | Test MQTT reale isolato su topic casuali, dati sintetici e senza retain |
 | `manuale/` | Documentazione PDF/HTML: privacy GDPR (`Valutazione_Sicurezza_GDPR_Olovisita`), manuali utente IT/FR |
 | `TeleVisita_Admin/` | Strumenti dell'amministratore piattaforma, **fuori dal repo git** (contiene chiavi private) — vedi §13 |
@@ -163,8 +163,13 @@ struttura resta silenziosamente sul codice vecchio e la sincronizzazione Network
      pre-login e `handleAdminControlMessageForDisplay`. Non la si conserva nemmeno come copia
      da ripubblicare. Toglierla significherebbe che un PC rimasto spento settimane può
      riportare tutti al codice precedente.
-   - **Limite accettato**: l'ordine dipende dall'orologio del dispositivo admin, perché
-     `updatedAt` è `Date.now()` del pannello.
+   - **Data sempre crescente**: `nextAdminControlUpdatedAt` fa sì che un nuovo comando del
+     pannello abbia sempre una data almeno 1 ms più alta dell'ultima nota. L'ultima nota è
+     conservata in `tv_admin_control_last_updated_<ruolo>` e sopravvive a un ricaricamento
+     o al messaggio sparito dal broker. Così un orologio admin tornato indietro non fa
+     scartare i comandi.
+     - **Perché non un contatore**: è stato proposto e scartato il 26/09/2026. Col messaggio
+       sparito dal broker ripartirebbe da 1 e ogni comando verrebbe rifiutato.
    - **In locale** il rinnovo è disattivato, salvo con `?admin_test_topic`.
    - **Test**: `tests/e2e/control_keepalive.spec.js` e `tests/integration/control_keepalive.spec.js`.
      Quest'ultimo usa il broker vero, su un topic casuale isolato.
@@ -536,7 +541,7 @@ Playwright headless Chromium contro l'artefatto di produzione (`docs/`), servito
 `python3 -m http.server 4321` prima del run. **Il deploy è bloccato se anche un solo test
 fallisce.**
 
-### Suite E2E (65 test in 9 file)
+### Suite E2E (66 test in 9 file)
 
 | File | Test | Cosa verifica |
 |------|------|---------------|
@@ -547,7 +552,7 @@ fallisce.**
 | `demo.spec.js` | 6 | Demo guidata, demoMode blocca email, `resetAllData` non tocca l'audit log |
 | `security.spec.js` | 8 | Rate limiting login, cifratura a riposo, hash rafforzato, merge audit log, segreto F-01 dedicato ai link paziente |
 | `admin_groupcode.spec.js` | 4 | Conferma della rotazione Codice Stanza nel pannello admin |
-| `control_keepalive.spec.js` | 7 | Copie più vecchie del canale di controllo ignorate, avviso PC senza codice |
+| `control_keepalive.spec.js` | 8 | Copie più vecchie del canale di controllo ignorate, avviso PC senza codice, date admin crescenti |
 | `regressions.spec.js` | 19 | Confini privacy Centro, import non fidati, HMAC admin, lingue consenso, link paziente, UI documenti, contesto paziente e diagnostica |
 
 ### Suite MQTT reale (3 test separati)

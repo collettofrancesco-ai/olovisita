@@ -128,4 +128,24 @@ test.describe('Canale di controllo tenuto vivo dalle strutture', () => {
     expect(state.at).toBe(2000);
     expect(state.code).toBe('codice-nuovo-di-prova');
   });
+
+  test('la data di un nuovo comando admin non scende mai sotto l\'ultima nota', async ({ page }) => {
+    await page.goto('/?admin=1');
+    await setupSigner(page);
+    const r = await page.evaluate(async () => {
+      const future = Date.now() + 3 * 60 * 60 * 1000; // comando precedente fatto con orologio avanti di 3 ore
+      const normal = nextAdminControlUpdatedAt('struttura1', null);
+      // Visto sul broker dal pannello: diventa la soglia anche dopo un ricaricamento.
+      adminControlState = {};
+      await handleAdminControlMessageForDisplay(ADMIN_CONTROL_TOPIC + 'struttura1',
+        await window.__signControl({ users: {}, updatedAt: future }));
+      adminControlState = {}; // messaggio sparito dal broker / pannello ricaricato
+      const afterFuture = nextAdminControlUpdatedAt('struttura1', null);
+      const fromBase = nextAdminControlUpdatedAt('struttura2', { updatedAt: future + 50 });
+      return { normal, now: Date.now(), future, afterFuture, fromBase };
+    });
+    expect(Math.abs(r.normal - r.now)).toBeLessThan(5000);
+    expect(r.afterFuture).toBe(r.future + 1);
+    expect(r.fromBase).toBe(r.future + 51);
+  });
 });
