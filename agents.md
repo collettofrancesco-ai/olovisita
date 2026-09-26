@@ -178,6 +178,19 @@ struttura resta silenziosamente sul codice vecchio e la sincronizzazione Network
    fabbrica, compare un avviso rosso fisso: "contatta l'amministratore". L'avviso sparisce da
    solo quando il codice arriva.
 
+**Rischio noto e accettato (27/09/2026)**:
+- **Il problema**: il messaggio di controllo è firmato ma NON cifrato, quindi il Codice Stanza
+  si legge in chiaro sul broker pubblico. Il nome del topic è nel sorgente, e dal 26/09 il
+  rinnovo delle strutture lo tiene disponibile di continuo. Chi lo legge può decifrare il
+  traffico Network e i self-backup, visite Centro comprese.
+- **La soluzione valutata**: una copia del codice cifrata per ogni medico, apribile con la
+  sua password, pubblicata anche come file sul sito. Più la "catena" dei codici per i PC
+  già in uso e la registrazione automatica delle chiavi personali verso l'admin.
+- **La decisione**: il titolare l'ha rinviata perché troppo onerosa. Ha stabilito come
+  requisito primario che ogni PC nuovo, di entrambe le strutture, sia SEMPRE allineato.
+  Qualunque correzione futura deve rispettarlo. Da non riproporre di propria iniziativa:
+  va ripresa solo se lo chiede lui.
+
 **Da non fare mai**: rimettere un Codice Stanza ruotato come nuovo default hardcoded nel
 sorgente pubblico "per evitare che scada" — vanificherebbe la rotazione, chiunque legga
 GitHub potrebbe decifrare il traffico Network in tempo reale. Proposto e respinto
