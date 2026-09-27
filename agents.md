@@ -559,8 +559,8 @@ fallirebbe silenziosamente su Firefox/Safari).
 | `admin_control_private_key.DO_NOT_SHARE.json` / `admin_control_public_key.json` | Coppia ECDSA per il canale di controllo (§6) |
 | `generate_control_key.js` | Genera la coppia ECDSA — eseguito una sola volta |
 | `admin_listener.js` | Ascolta i backup cifrati, li decifra, scrive `struttura{1,2}_ultimo_backup.json` |
-| `refresh_control_channel.js` | Ripubblica il messaggio di controllo retained per rinnovarne la ritenzione sul broker (§5.1) — non serve la chiave privata |
-| `com.televisita.refreshcontrol.plist` (in `~/Library/LaunchAgents/`) | Job launchd che esegue `refresh_control_channel.js` ogni 12h + al login; log in `refresh_control_channel.log` |
+| `refresh_control_channel.js` | Dal 27/09/2026 (la versione precedente è in `refresh_control_channel.vecchio.js`). Legge il messaggio di controllo dal broker e ne verifica la firma, lo conserva su disco (`control_cache_<ruolo>.json`, permessi 600) e ripubblica sempre la copia firmata più recente fra broker e disco. Così lo rimette anche quando il broker l'ha perso, cosa che la versione vecchia non poteva fare. Non serve la chiave privata. Con `TV_GITHUB=off` non legge né scrive mai GitHub: il file del sito serve solo alla modalità protetta, ancora non attiva (ramo `codice-stanza-protetto-review`). |
+| `com.televisita.refreshcontrol.plist` (in `~/Library/LaunchAgents/`) | Job launchd che esegue `refresh_control_channel.js` OGNI ORA e al login, con `TV_GITHUB=off`; log in `refresh_control_channel.log`. Il plist precedente, a 12 ore, è in `com.televisita.refreshcontrol.vecchio.plist` |
 
 `launchctl bootout gui/$(id -u)/com.televisita.refreshcontrol` per disattivare il job se
 mai necessario.
