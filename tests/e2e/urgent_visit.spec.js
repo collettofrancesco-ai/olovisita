@@ -2,9 +2,50 @@
 const { test, expect } = require('@playwright/test');
 const { loginBypass } = require('./helpers');
 
+async function markNetworkAligned(page) {
+  await page.evaluate(() => {
+    ownControlSeenThisSession = true;
+    currentGroupCode = 'codice-allineato-di-test';
+  });
+}
+
 test.describe('Visita urgente (Second Opinion)', () => {
+  test('PC non allineato blocca la richiesta prima di creare visita o inviare email', async ({ page }) => {
+    await loginBypass(page, 'struttura1');
+
+    const result = await page.evaluate(async () => {
+      activeFacilityId = 'struttura1';
+      currentGroupCode = atob('T2xvdmlzaXRhX3BhbGVybW9fdHVuaXNpYQ==');
+      ownControlSeenThisSession = false;
+      localStorage.removeItem('tv_admin_control_struttura1');
+      const beforeVisits = S.televisite.length;
+      const beforeEmails = S.emails.length;
+      const sent = await requestImmediate('Non deve partire', 'blocco@test.invalid', '', '', 'M', '', '', '');
+      return { sent, visits: S.televisite.length - beforeVisits, emails: S.emails.length - beforeEmails };
+    });
+
+    expect(result).toEqual({ sent: false, visits: 0, emails: 0 });
+    await expect(page.locator('#toast-box')).toContainText('Richiesta non inviata');
+  });
+
+  test('PC non allineato: nella demo guidata la richiesta resta possibile (nulla esce dal PC)', async ({ page }) => {
+    await loginBypass(page, 'struttura1');
+    const sent = await page.evaluate(async () => {
+      activeFacilityId = 'struttura1';
+      currentGroupCode = atob('T2xvdmlzaXRhX3BhbGVybW9fdHVuaXNpYQ==');
+      ownControlSeenThisSession = false;
+      localStorage.removeItem('tv_admin_control_struttura1');
+      S.demoMode = true;
+      const ok = await requestImmediate('Demo', 'demo@test.invalid', '', '', 'M', '', '', '');
+      S.demoMode = false;
+      return ok;
+    });
+    expect(sent).toBe(true);
+  });
+
   test('richiesta urgente compare nella lista visite struttura1', async ({ page }) => {
     await loginBypass(page, 'struttura1');
+    await markNetworkAligned(page);
 
     await page.evaluate(() => {
       window.requestImmediate('Urgente Test', 'urgente@test.invalid', '+39 333 000 0099',
@@ -19,6 +60,7 @@ test.describe('Visita urgente (Second Opinion)', () => {
 
   test('struttura2 vede la richiesta urgente con il pannello di accettazione', async ({ page }) => {
     await loginBypass(page, 'struttura1');
+    await markNetworkAligned(page);
 
     await page.evaluate(() => {
       window.requestImmediate('Urgente Sync', 'urgente.sync@test.invalid', '',
@@ -32,6 +74,7 @@ test.describe('Visita urgente (Second Opinion)', () => {
 
   test('struttura2 può accettare la richiesta urgente', async ({ page }) => {
     await loginBypass(page, 'struttura1');
+    await markNetworkAligned(page);
 
     await page.evaluate(() => {
       window.requestImmediate('Urgente Accetta', 'urgente.ok@test.invalid', '',
@@ -50,6 +93,7 @@ test.describe('Visita urgente (Second Opinion)', () => {
 
   test('visita urgente ha consenso firmato automaticamente', async ({ page }) => {
     await loginBypass(page, 'struttura1');
+    await markNetworkAligned(page);
 
     await page.evaluate(() => {
       window.requestImmediate('Urgente Consent', 'urgente.consent@test.invalid', '',

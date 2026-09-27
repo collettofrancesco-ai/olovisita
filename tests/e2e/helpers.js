@@ -21,6 +21,10 @@ async function loginBypass(page, role = 'struttura1') {
     document.getElementById('login-overlay').style.display = 'none';
     window.switchRole(r);
     isDoctorAuthenticated = true;
+    // Un PC di prova "normale" è già allineato al canale Network (Codice Stanza ricevuto):
+    // senza, le richieste Network verrebbero bloccate da isNetworkAlignmentMissing. I test
+    // sul PC non allineato lo rimettono a false esplicitamente.
+    ownControlSeenThisSession = true;
   }, role);
   // Verifica che il cruscotto sia effettivamente visibile
   await expect(page.locator('#role-badge')).toBeVisible();

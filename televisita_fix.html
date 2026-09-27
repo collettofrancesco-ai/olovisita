@@ -12686,6 +12686,9 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
                 return;
             }
             const isCentro = visitMode === 'centro';
+            // Visita Network da un PC non allineato: l'altra struttura non la riceverebbe mai.
+            // Le visite Centro restano sul PC e non hanno bisogno del canale (vedi §5.2).
+            if (!isCentro && !S.demoMode && isNetworkAlignmentMissing()) { warnNetworkNotAligned(); return; }
 
             // Recupero i dati demografici inseriti per la televisita
             const dob = document.getElementById(`${pfx}-dob`).value;
@@ -13156,7 +13159,27 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
         // ---------------------------------------------------------------------------
         // RICHIESTA IMMEDIATA
         // ---------------------------------------------------------------------------
+        // Vero se questo PC non ha mai ricevuto il Codice Stanza (nessun messaggio di controllo,
+        // né in questa sessione né salvato da una precedente) ed è ancora sul codice di fabbrica:
+        // qualunque richiesta Network partirebbe su un canale che l'altra struttura non ascolta.
+        function isNetworkAlignmentMissing() {
+            const cachedControl = readCachedControlOverride(activeFacilityId);
+            return !ownControlSeenThisSession && !(cachedControl && cachedControl.groupCode)
+                && currentGroupCode === atob('T2xvdmlzaXRhX3BhbGVybW9fdHVuaXNpYQ==');
+        }
+
+        function warnNetworkNotAligned() {
+            showToast(currentLang === 'fr'
+                ? '<b>Demande non envoyée.</b> Cet ordinateur n\'a pas encore reçu la configuration pour communiquer avec l\'autre structure. Réessayez dans quelques secondes ; si le problème persiste, contactez l\'administrateur.'
+                : '<b>Richiesta non inviata.</b> Questo PC non ha ancora ricevuto la configurazione per comunicare con l\'altra struttura. Riprova tra qualche secondo; se il problema resta, contatta l\'amministratore.', 'danger', 0);
+        }
+
         async function requestImmediate(patientName, patientEmail, phone, dob, gender, pob, idType, cf) {
+            // Una second opinion Network deve usare lo stesso canale di entrambe le sedi: su un
+            // PC non allineato la richiesta finirebbe su un canale che nessuno ascolta, persa in
+            // silenzio. Si ferma PRIMA di creare visita/documenti o inviare l'invito.
+            // Non nella demo guidata: lì nulla esce comunque dal PC (vedi S.demoMode, §5.10).
+            if (!S.demoMode && isNetworkAlignmentMissing()) { warnNetworkNotAligned(); return false; }
             const finalPatient = patientName || 'Paziente Campione';
             const finalEmail = patientEmail || 'paziente@email.com';
             const finalPhone = phone || '';
@@ -13255,6 +13278,7 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
             });
             addNotif('bi-envelope-fill', t('email_invite_simulated_title', { patient: finalPatient }), t('email_invite_simulated_body', { url: callUrl }), 'incoming', email.id);
             flashBell();
+            return true;
         }
 
         function submitUrgentRequest(event) {

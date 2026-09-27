@@ -75,4 +75,33 @@ test.describe('Creazione visita programmata', () => {
 
     await expect(list2.filter({ hasText: 'Playwright Accetta' })).toContainText('Accettata');
   });
+
+  test('PC non allineato: visita Network bloccata con avviso, visita Centro creata normalmente', async ({ page }) => {
+    await loginBypass(page, 'struttura1');
+    await page.evaluate(() => {
+      activeFacilityId = 'struttura1';
+      currentGroupCode = atob('T2xvdmlzaXRhX3BhbGVybW9fdHVuaXNpYQ==');
+      ownControlSeenThisSession = false;
+      localStorage.removeItem('tv_admin_control_struttura1');
+    });
+    const before = await page.evaluate(() => S.televisite.length);
+
+    await page.fill('#f-patient', 'Non Deve Partire');
+    await page.fill('#f-email', 'bloccata@test.invalid');
+    await page.selectOption('#f-visit-mode', 'network');
+    await page.fill('#f-date', todayStr());
+    await page.fill('#f-time', futureTime(60));
+    await page.locator('#sched-form button[type="submit"]').click();
+    await expect(page.locator('#toast-box')).toContainText('Richiesta non inviata');
+    expect(await page.evaluate(() => S.televisite.length)).toBe(before);
+
+    await page.fill('#f-patient', 'Centro Resta Possibile');
+    await page.fill('#f-email', 'centro.ok@test.invalid');
+    await page.selectOption('#f-visit-mode', 'centro');
+    await page.fill('#f-date', todayStr());
+    await page.fill('#f-time', futureTime(90));
+    await page.locator('#sched-form button[type="submit"]').click();
+    await expect(page.locator('#vlist-s1')).toContainText('Centro Resta Possibile');
+  });
 });
+
