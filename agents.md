@@ -23,7 +23,7 @@ ogni sezione spiega quale.
 | `Avvia_Server.command` | Apre la versione pubblica GitHub Pages con un doppio clic (uso non tecnico) |
 | `Dockerfile` / `.dockerignore` | Immagine nginx minima che serve `docs/` — per il deploy interno Olomedia |
 | `.github/workflows/deploy.yml` | CI/CD: test E2E → deploy GitHub Pages, **bloccante** se un test fallisce |
-| `tests/e2e/` | Suite Playwright — 67 test in 9 file, vedi §13 |
+| `tests/e2e/` | Suite Playwright — 68 test in 9 file, vedi §13 |
 | `tests/integration/` | Test MQTT reale isolato su topic casuali, dati sintetici e senza retain |
 | `manuale/` | Documentazione PDF/HTML: privacy GDPR (`Valutazione_Sicurezza_GDPR_Olovisita`), manuali utente IT/FR |
 | `TeleVisita_Admin/` | Strumenti dell'amministratore piattaforma, **fuori dal repo git** (contiene chiavi private) — vedi §13 |
@@ -564,7 +564,7 @@ Playwright headless Chromium contro l'artefatto di produzione (`docs/`), servito
 `python3 -m http.server 4321` prima del run. **Il deploy è bloccato se anche un solo test
 fallisce.**
 
-### Suite E2E (67 test in 9 file)
+### Suite E2E (68 test in 9 file)
 
 | File | Test | Cosa verifica |
 |------|------|---------------|
@@ -576,7 +576,7 @@ fallisce.**
 | `security.spec.js` | 9 | Rate limiting login, cifratura a riposo, hash rafforzato, merge audit log, segreto F-01 dedicato ai link paziente, formato XOR rifiutato |
 | `admin_groupcode.spec.js` | 4 | Conferma della rotazione Codice Stanza nel pannello admin |
 | `control_keepalive.spec.js` | 8 | Copie più vecchie del canale di controllo ignorate, avviso PC senza codice, date admin crescenti |
-| `regressions.spec.js` | 19 | Confini privacy Centro, import non fidati, HMAC admin, lingue consenso, link paziente, UI documenti, contesto paziente e diagnostica |
+| `regressions.spec.js` | 20 | Confini privacy Centro, import non fidati, HMAC admin, lingue consenso, link paziente, UI documenti, contesto paziente e diagnostica |
 
 ### Suite MQTT reale (3 test separati)
 

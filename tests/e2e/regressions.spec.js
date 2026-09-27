@@ -290,4 +290,29 @@ test.describe('Contesto paziente, documenti e diagnostica', () => {
     await expect(page.locator('#admin-health-struttura1')).toHaveText('broker disconnesso');
     await expect(page.locator('#admin-health-struttura2')).toHaveText('broker disconnesso');
   });
+
+  test('cambio password: accetta la password attuale impostata dall\'amministratore', async ({ page }) => {
+    await loginBypass(page, 'struttura1');
+    const r = await page.evaluate(async () => {
+      const role = 'struttura1';
+      const user = FACILITIES[role].users[0];
+      activeFacilityId = role;
+      S.currentDoctor = { username: user.username, name: user.name };
+      // Password cambiata dal pannello: l'hash in vigore è nel canale di controllo, non nel sorgente.
+      cacheControlOverride(role, { users: { [user.username]: { passwordHash: await computeStoredPasswordHash('Impostata-Da-Admin-1', user.username) } }, updatedAt: Date.now() });
+      mqttClient = null; // nessun invio reale: si ferma dopo la verifica
+      const run = async (current) => {
+        document.getElementById('cpw-current').value = current;
+        document.getElementById('cpw-new').value = 'NuovaPassword-2026';
+        document.getElementById('cpw-confirm').value = 'NuovaPassword-2026';
+        document.getElementById('cpw-submit-btn').disabled = false;
+        await submitPasswordChangeRequest();
+        return document.getElementById('cpw-error').textContent;
+      };
+      return { right: await run('Impostata-Da-Admin-1'), wrong: await run('password-sbagliata') };
+    });
+    expect(r.right).not.toBe('Password attuale non corretta.');
+    expect(r.wrong).toBe('Password attuale non corretta.');
+  });
 });
+

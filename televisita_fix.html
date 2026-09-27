@@ -9006,8 +9006,15 @@ function pushBrowserNotif(title, body, tag) {
             // alla vera struttura del medico, non a quella eventualmente mostrata dalla demo.
             const user = FACILITIES[activeFacilityId].users.find(u => u.username === S.currentDoctor?.username);
             if (!user) return;
+            // Stesso hash del login: quello impostato dall'amministratore (canale di controllo),
+            // se c'è, altrimenti quello del sorgente. Confrontare solo col sorgente dava "Password
+            // attuale non corretta" a chiunque avesse avuto la password cambiata dal pannello,
+            // anche digitandola giusta (segnalato il 27/09/2026).
+            const control = readCachedControlOverride(activeFacilityId) || pendingLoginOverride;
+            const override = control && control.users && control.users[user.username];
+            const expectedCurrentHash = (override && override.passwordHash) ? override.passwordHash : user.passwordHash;
             const currentHash = await computeStoredPasswordHash(currentPw, user.username);
-            if (currentHash !== user.passwordHash) { showErr(t('changepw_err_wrong')); return; }
+            if (currentHash !== expectedCurrentHash) { showErr(t('changepw_err_wrong')); return; }
 
             // Codice pronto da incollare in manage_users.py, per chi vuole comunque rendere
             // il cambio permanente nel sorgente. Il campo "passwordHash" (in chiaro qui accanto)
