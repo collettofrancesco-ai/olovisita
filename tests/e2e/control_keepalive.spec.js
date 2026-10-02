@@ -148,4 +148,56 @@ test.describe('Canale di controllo tenuto vivo dalle strutture', () => {
     expect(r.afterFuture).toBe(r.future + 1);
     expect(r.fromBase).toBe(r.future + 51);
   });
+
+  test('PC appena aggiornato: la richiesta Network resta bloccata finché è in uso il codice vecchio', async ({ page }) => {
+    await loginBypass(page, 'struttura1');
+    const r = await page.evaluate(async () => {
+      activeFacilityId = 'struttura1';
+      // Il canale è stato "sentito" (come fa il listener prima del login), ma il PC usa
+      // ancora il codice di fabbrica: prima del 02/10/2026 la guardia lo lasciava passare.
+      ownControlSeenThisSession = true;
+      cacheControlOverride('struttura1', { users: {}, groupCode: 'codice-annunciato-di-test', updatedAt: 10 });
+      currentGroupCode = atob('T2xvdmlzaXRhX3BhbGVybW9fdHVuaXNpYQ==');
+      const before = S.televisite.length;
+      const blocked = await requestImmediate('Non deve partire', 'blocco@test.invalid', '', '', 'M', '', '', '');
+      const added = S.televisite.length - before;
+      currentGroupCode = 'codice-annunciato-di-test';
+      return { blocked, added, missingAfter: isNetworkAlignmentMissing() };
+    });
+    expect(r).toEqual({ blocked: false, added: 0, missingAfter: false });
+    await expect(page.locator('#toast-box')).toContainText('Richiesta non inviata');
+  });
+
+  test('PC nuovo: il login reale si collega subito col codice ricevuto prima del login', async ({ page }) => {
+    await page.route('**/*emailjs*/**', route => route.abort());
+    await page.route('**/*.mqtt*/**', route => route.abort());
+    await page.goto('/');
+    await page.click('#card-facility-s1');
+    const username = await page.locator('#user-select option').nth(1).getAttribute('value');
+    // Simula quanto ricevuto dal listener prima del login: password impostata dall'admin
+    // (così il test non dipende da quelle vere) e il Codice Stanza attuale.
+    await page.evaluate(async (u) => {
+      const payload = {
+        users: { [u]: { passwordHash: await computeStoredPasswordHash('PasswordDiTest!1', u) } },
+        groupCode: 'codice-annunciato-di-test',
+        updatedAt: 10
+      };
+      cacheControlOverride('struttura1', payload);
+      pendingLoginOverride = payload;
+      ownControlSeenThisSession = true;
+    }, username);
+    expect(await page.evaluate(() => currentGroupCode)).toBe(atob('T2xvdmlzaXRhX3BhbGVybW9fdHVuaXNpYQ=='));
+
+    await page.selectOption('#user-select', username);
+    await page.fill('#pwd-input', 'PasswordDiTest!1');
+    await page.click('button[onclick="submitLogin()"]');
+    await expect(page.locator('#login-overlay')).toBeHidden();
+
+    await expect.poll(() => page.evaluate(() => currentGroupCode)).toBe('codice-annunciato-di-test');
+    const r = await page.evaluate(() => ({
+      saved: localStorage.getItem('tv_current_group_code'),
+      missing: isNetworkAlignmentMissing()
+    }));
+    expect(r).toEqual({ saved: 'codice-annunciato-di-test', missing: false });
+  });
 });

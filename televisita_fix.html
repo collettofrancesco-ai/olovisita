@@ -5206,6 +5206,28 @@
             } catch (_) { return null; }
         }
 
+        // Il Codice Stanza più recente annunciato dal canale di controllo per questa struttura, se
+        // già arrivato (anche solo dal listener prima del login). null se non è mai arrivato.
+        function knownControlGroupCode(role) {
+            const cached = readCachedControlOverride(role);
+            return (cached && cached.groupCode) || null;
+        }
+
+        // Codice con cui collegarsi al login (o al ripristino della sessione): quello annunciato
+        // dal canale di controllo, se già noto, invece di quello rimasto in memoria. Su un PC nuovo
+        // il listener prima del login riceve il codice giusto, ma prima si partiva comunque col
+        // codice di fabbrica e lo si correggeva solo un secondo dopo: in quel secondo una richiesta
+        // finiva sul canale sbagliato. Salvato subito come fa handleFacilityControlMessage, così al
+        // prossimo avvio lo stato su disco si decifra con lo stesso codice con cui verrà scritto.
+        function groupCodeForConnect() {
+            const known = knownControlGroupCode(activeFacilityId);
+            if (known && known !== currentGroupCode) {
+                try { localStorage.setItem('tv_current_group_code', known); } catch (_) { }
+                return known;
+            }
+            return currentGroupCode;
+        }
+
         function startLoginControlListener(role) {
             pendingLoginOverride = readCachedControlOverride(role);
             ownControlSeenThisSession = false;
@@ -8626,7 +8648,7 @@ function pushBrowserNotif(title, body, tag) {
 
             mqttColdStart = !localStorage.getItem('tv_state');
             if (mqttColdStart) showSyncRestoreOverlay();
-            initMQTT(currentGroupCode);
+            initMQTT(groupCodeForConnect());
             return true;
         }
 
@@ -8894,7 +8916,9 @@ function pushBrowserNotif(title, body, tag) {
             // DOMContentLoaded) o al default hardcoded se non ce n'è mai stata una — passarlo
             // esplicitamente invece del default fisso è ciò che permette al login di rispettare
             // un Codice Stanza ruotato dall'amministratore (F-01) invece di sovrascriverlo sempre.
-            initMQTT(currentGroupCode);
+            // groupCodeForConnect: se il listener prima del login ha già ricevuto un codice più
+            // nuovo, si parte direttamente con quello.
+            initMQTT(groupCodeForConnect());
         }
 
         // ---------------------------------------------------------------------------
@@ -13163,8 +13187,14 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
         // né in questa sessione né salvato da una precedente) ed è ancora sul codice di fabbrica:
         // qualunque richiesta Network partirebbe su un canale che l'altra struttura non ascolta.
         function isNetworkAlignmentMissing() {
-            const cachedControl = readCachedControlOverride(activeFacilityId);
-            return !ownControlSeenThisSession && !(cachedControl && cachedControl.groupCode)
+            // Se il canale di controllo ha già annunciato un codice, conta solo se è quello in uso:
+            // "ho sentito il canale" non basta. Il listener prima del login lo sente subito, ma il
+            // PC può essere ancora collegato col codice vecchio (verificato il 02/10/2026: per circa
+            // un secondo dopo il login una richiesta partiva sul canale che l'altra struttura non
+            // ascolta, senza alcun avviso).
+            const known = knownControlGroupCode(activeFacilityId);
+            if (known) return known !== currentGroupCode;
+            return !ownControlSeenThisSession
                 && currentGroupCode === atob('T2xvdmlzaXRhX3BhbGVybW9fdHVuaXNpYQ==');
         }
 

@@ -23,7 +23,7 @@ ogni sezione spiega quale.
 | `Avvia_Server.command` | Apre la versione pubblica GitHub Pages con un doppio clic (uso non tecnico) |
 | `Dockerfile` / `.dockerignore` | Immagine nginx minima che serve `docs/` — per il deploy interno Olomedia |
 | `.github/workflows/deploy.yml` | CI/CD: test E2E → deploy GitHub Pages, **bloccante** se un test fallisce |
-| `tests/e2e/` | Suite Playwright — 71 test in 9 file, vedi §13 |
+| `tests/e2e/` | Suite Playwright — 73 test in 9 file, vedi §13 |
 | `tests/integration/` | Test MQTT reale isolato su topic casuali, dati sintetici e senza retain |
 | `manuale/` | Documentazione PDF/HTML: privacy GDPR (`Valutazione_Sicurezza_GDPR_Olovisita`), manuali utente IT/FR |
 | `TeleVisita_Admin/` | Strumenti dell'amministratore piattaforma, **fuori dal repo git** (contiene chiavi private) — vedi §13 |
@@ -193,9 +193,16 @@ struttura resta silenziosamente sul codice vecchio e la sincronizzazione Network
 
 5. **Nessuna richiesta Network da un PC non allineato (27/09/2026)**: `requestImmediate` (second
    opinion urgente) e `scheduleVisit` in modalità Network si fermano PRIMA di creare dati se
-   `isNetworkAlignmentMissing()`, cioè se il PC non ha mai ricevuto il messaggio di controllo ed
-   è ancora sul codice di fabbrica. Altrimenti la richiesta finirebbe su un canale che l'altra
+   `isNetworkAlignmentMissing()`. Altrimenti la richiesta finirebbe su un canale che l'altra
    struttura non ascolta, persa in silenzio. Il medico vede "Richiesta non inviata…".
+   - **Quando scatta**: se il canale di controllo ha già annunciato un codice, il PC è allineato
+     solo se quel codice è quello IN USO. Se non ne ha mai annunciato uno, scatta quando il PC non
+     ha mai sentito il canale ed è ancora sul codice di fabbrica.
+   - **Perché il confronto e non "ho sentito il canale" (02/10/2026)**: il listener prima del
+     login sente il canale subito, ma il login si collegava comunque col codice di fabbrica e lo
+     correggeva un secondo dopo. In quel secondo una richiesta partiva sul canale sbagliato e la
+     guardia la lasciava passare. Ora login e ripristino sessione partono direttamente col codice
+     annunciato (`groupCodeForConnect`).
    - **Esclusi dal blocco**: le visite Centro, che restano sul PC, e la demo guidata, dove
      nulla esce dal PC.
    - **Nei test**: `loginBypass` simula un PC già allineato (`ownControlSeenThisSession = true`).
@@ -573,7 +580,7 @@ Playwright headless Chromium contro l'artefatto di produzione (`docs/`), servito
 `python3 -m http.server 4321` prima del run. **Il deploy è bloccato se anche un solo test
 fallisce.**
 
-### Suite E2E (71 test in 9 file)
+### Suite E2E (73 test in 9 file)
 
 | File | Test | Cosa verifica |
 |------|------|---------------|
@@ -584,7 +591,7 @@ fallisce.**
 | `demo.spec.js` | 6 | Demo guidata, demoMode blocca email, `resetAllData` non tocca l'audit log |
 | `security.spec.js` | 9 | Rate limiting login, cifratura a riposo, hash rafforzato, merge audit log, segreto F-01 dedicato ai link paziente, formato XOR rifiutato |
 | `admin_groupcode.spec.js` | 4 | Conferma della rotazione Codice Stanza nel pannello admin |
-| `control_keepalive.spec.js` | 8 | Copie più vecchie del canale di controllo ignorate, avviso PC senza codice, date admin crescenti |
+| `control_keepalive.spec.js` | 10 | Copie più vecchie del canale di controllo ignorate, avviso PC senza codice, date admin crescenti, PC nuovo collegato subito col codice giusto |
 | `regressions.spec.js` | 20 | Confini privacy Centro, import non fidati, HMAC admin, lingue consenso, link paziente, UI documenti, contesto paziente e diagnostica |
 
 ### Suite MQTT reale (3 test separati)
