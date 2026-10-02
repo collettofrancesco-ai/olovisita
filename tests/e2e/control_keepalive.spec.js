@@ -168,6 +168,20 @@ test.describe('Canale di controllo tenuto vivo dalle strutture', () => {
     await expect(page.locator('#toast-box')).toContainText('Richiesta non inviata');
   });
 
+  test('canale mai sentito: bloccato anche con un codice diverso da quello di fabbrica', async ({ page }) => {
+    await loginBypass(page, 'struttura1');
+    const r = await page.evaluate(async () => {
+      activeFacilityId = 'struttura1';
+      localStorage.removeItem('tv_admin_control_struttura1');
+      ownControlSeenThisSession = false;
+      currentGroupCode = 'codice-non-verificato';
+      const before = S.televisite.length;
+      const sent = await requestImmediate('Non deve partire', 'blocco@test.invalid', '', '', 'M', '', '', '');
+      return { sent, added: S.televisite.length - before };
+    });
+    expect(r).toEqual({ sent: false, added: 0 });
+  });
+
   test('PC nuovo: il login reale si collega subito col codice ricevuto prima del login', async ({ page }) => {
     await page.route('**/*emailjs*/**', route => route.abort());
     await page.route('**/*.mqtt*/**', route => route.abort());

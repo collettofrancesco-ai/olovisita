@@ -13192,10 +13192,12 @@ ${canCancel ? `<button class="btn btn-outline-danger btn-sm py-0 ms-auto" onclic
             // PC può essere ancora collegato col codice vecchio (verificato il 02/10/2026: per circa
             // un secondo dopo il login una richiesta partiva sul canale che l'altra struttura non
             // ascolta, senza alcun avviso).
+            // Canale mai sentito e nessun codice annunciato: non allineato, qualunque codice sia in
+            // uso (non solo quello di fabbrica). Un codice diverso arriva solo dal canale, che scrive
+            // anche la cache: se manca, quel codice non è verificato.
             const known = knownControlGroupCode(activeFacilityId);
             if (known) return known !== currentGroupCode;
-            return !ownControlSeenThisSession
-                && currentGroupCode === atob('T2xvdmlzaXRhX3BhbGVybW9fdHVuaXNpYQ==');
+            return !ownControlSeenThisSession;
         }
 
         function warnNetworkNotAligned() {
